@@ -196,12 +196,12 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
 }
 
 // ─── Sidebar ─────────────────────────────────────────────────
-function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFile,outputFormat,setOutputFormat,onGenerate,onEmail,generating}){
+function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFile,onGenerate,onEmail,generating}){
   const filled=[draft.jobNum,draft.xmtlNum,draft.client,draft.projectDesc,draft.fromName,draft.date].filter(Boolean).length;
   const total=6;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
   const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0;
   const pct=Math.min(100,Math.round((filled/total)*25+(hasT?15:0)+(hasI?15:0)+(hasP?15:0)+(goodContacts>0?15:0)+(activeChecks>0?10:0)+(documents.length>0?5:0)));
-  const canGenerate=hasT&&documents.length>0&&filled>=4&&!generating;
+  const canGenerate = hasT && documents.length > 0 && pdfFiles.length > 0 && filled >= 4 && !generating;
 
   return <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
     <Card style={{padding:"18px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"10px"}}><span style={{fontSize:"12px",fontWeight:600,color:T.t2}}>Readiness</span><span style={{fontSize:"20px",fontWeight:600,fontFamily:T.fM,color:pct>=100?T.ok:T.acc}}>{pct}%</span></div>
@@ -211,24 +211,30 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
       {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:pdfFiles.length,ok:hasP},{l:"Options set",v:activeChecks,ok:activeChecks>0},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
         <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":"muted"}>{String(x.v)}</Badge></div>)}</div></Card>
 
-    <Card style={{padding:"18px"}}><SL sub mono>Output</SL>
-      {[{v:"combined_pdf",l:"Combined PDF (transmittal + drawings)"},{v:"docx",l:"Word document only (.docx)"},{v:"both",l:"Both (DOCX + combined PDF)"}].map(o=>
-        <label key={o.v} style={{display:"flex",alignItems:"center",gap:"8px",padding:"5px 8px",borderRadius:T.rS,cursor:"pointer",fontSize:"13px",color:outputFormat===o.v?T.t1:T.t2,marginBottom:"2px",background:outputFormat===o.v?T.accM:"transparent",border:`1px solid ${outputFormat===o.v?T.accB:"transparent"}`,transition:"all 0.15s"}} onClick={()=>setOutputFormat(o.v)}>
-          <span style={{width:"13px",height:"13px",borderRadius:"50%",border:`2px solid ${outputFormat===o.v?T.acc:T.bd}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{outputFormat===o.v&&<span style={{width:"5px",height:"5px",borderRadius:"50%",background:T.acc}}/>}</span>{o.l}</label>)}</Card>
+    <Card style={{padding:"18px"}}><SL sub mono>Package Output</SL>
+      <div style={{fontSize:"13px", color:T.t2, lineHeight:1.6}}>Includes:
+        <div style={{marginTop:"8px", display:"flex", flexDirection:"column", gap:"6px"}}>
+          <Badge color="info">Transmittal DOCX</Badge>
+          <Badge color="info">Transmittal PDF</Badge>
+          <Badge color="info">Combined PDF</Badge>
+        </div>
+      </div>
+    </Card>    
 
     <Card style={{padding:"18px"}}>
       <Btn variant="primary" icon={generating?I.spin:I.zap} onClick={onGenerate} disabled={!canGenerate}
         style={{width:"100%",justifyContent:"center",padding:"10px 16px",fontSize:"14px"}}>
-        {generating?"Generating...":"Generate Transmittal"}
+        {generating?"Generating...":"Generate Transmittal Package"}
       </Btn>
-      {!canGenerate&&!generating&&<div style={{fontSize:"11px",color:T.t3,textAlign:"center",marginTop:"6px"}}>
+      {!canGenerate&&!generating&& ( <div style={{fontSize:"11px",color:T.t3,textAlign:"center",marginTop:"6px"}}>
         {!hasT?"Upload a template":""}
         {hasT&&documents.length===0?"Add documents":""}
-        {hasT&&documents.length>0&&filled<4?"Fill required fields":""}
-      </div>}
+        {hasT&&documents.length>0&&pdfFiles.length===0 ?"Upload drawing PDFs":""}
+        {hasT&&documents.length>0&&pdfFiles.length>0&&filled<4?"Fill required fields":""}
+      </div>)}
       <div style={{display:"flex",gap:"8px",marginTop:"8px"}}>
         <Btn variant="secondary" icon={I.send} onClick={onEmail} style={{flex:1,justifyContent:"center"}}>Email</Btn>
-        <Btn variant="secondary" icon={I.download} onClick={onGenerate} disabled={!canGenerate} style={{flex:1,justifyContent:"center"}}>Export</Btn>
+        <Btn variant="secondary" icon={I.download} onClick={onGenerate} disabled={!canGenerate} style={{flex:1,justifyContent:"center"}}>Download Transmittal Package</Btn>
       </div>
     </Card>
   </div>;
@@ -252,7 +258,6 @@ export default function App(){
   const[checks,setChecks]=useState(defaultChecks);
   const[contacts,setContacts]=useState([]);
   const[documents,setDocuments]=useState([]);
-  const[outputFormat,setOutputFormat]=useState("combined_pdf");
   const[templateFile,setTemplateFile]=useState(null);   // File object
   const[indexFile,setIndexFile]=useState(null);          // File object
   const[pdfFiles,setPdfFiles]=useState([]);              // File objects
@@ -319,8 +324,8 @@ export default function App(){
 
   // ─── Generate Transmittal ────────────────────────────────
   const handleGenerate=useCallback(async()=>{
-    if(!templateFile||documents.length===0)return;
-    setGenerating(true);showToast("Generating transmittal...","loading");
+    if(!templateFile||documents.length===0||pdfFiles.length===0)return;
+    setGenerating(true);showToast("Generating transmittal package...","loading");
     try{
       const form=new FormData();
       form.append("template",templateFile);
@@ -333,28 +338,28 @@ export default function App(){
       form.append("checks",JSON.stringify(checks));
       form.append("contacts",JSON.stringify(contacts.filter(c=>c.name||c.email).map(({name,company,email,phone})=>({name,company,email,phone}))));
       form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
-      form.append("output_format",outputFormat);
       for(const pdf of pdfFiles){form.append("pdfs",pdf)}
 
       const res=await fetch(`${API}/api/render`,{method:"POST",body:form});
       if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
 
       // Download the result
-      const blob=await res.blob();
-      const ct=res.headers.get("content-type")||"";
-      let ext="docx";
-      if(ct.includes("pdf"))ext="pdf";
-      else if(ct.includes("zip"))ext="zip";
-      const filename=`R3P-${draft.jobNum||"XXXX"}_XMTL-${draft.xmtlNum||"001"}.${ext}`;
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();
-      document.body.removeChild(a);URL.revokeObjectURL(url);
+      const blob = await res.blob();
+      const filename = `R3P-${draft.jobNum||"XXXX"}_XMTL-${draft.xmtlNum||"001"}_Package.zip`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-      showToast(`Transmittal generated: ${filename}`,"success");
+      showToast(`Transmittal package generated: ${filename}`,"success");
     }catch(e){
       showToast(`Generation failed: ${e.message}`,"error",8000);
     }finally{setGenerating(false)}
-  },[templateFile,documents,draft,checks,contacts,pdfFiles,outputFormat]);
+  },[templateFile,documents,draft,checks,contacts,pdfFiles]);
 
   // ─── Email (placeholder — opens dialog) ──────────────────
   const handleEmail=useCallback(()=>{
@@ -387,7 +392,7 @@ export default function App(){
           <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} indexLoading={indexLoading} indexWarnings={indexWarnings}/>
         </div>
         <div style={{position:"sticky",top:"24px",alignSelf:"start"}}>
-          <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} templateFile={templateFile} indexFile={indexFile} outputFormat={outputFormat} setOutputFormat={setOutputFormat} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating}/>
+          <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating}/>
         </div>
       </div>
       <footer style={{padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,display:"flex",justifyContent:"space-between",fontSize:"11px",fontFamily:T.fM,color:T.t3}}>

@@ -113,7 +113,6 @@ async def api_render(
     checks: str = Form(..., description="JSON: checkbox states"),
     contacts: str = Form(..., description="JSON: [{name, company, email, phone}]"),
     documents: str = Form(..., description="JSON: [{doc_no, desc, rev}]"),
-    output_format: str = Form("combined_pdf", description="combined_pdf | docx | both"),
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
 ):
     """
