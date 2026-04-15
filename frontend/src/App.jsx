@@ -240,6 +240,19 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
   </div>;
 }
 
+// ─── Backend Banner ──────────────────────────────────────────
+function BackendBanner({status}){
+  if(status==="ready")return null;
+  const cfg={
+    checking:{bg:T.infoBg,bd:"rgba(92,142,184,0.3)",t:T.info,icon:I.spin,msg:"Connecting to backend service…"},
+    failed:{bg:T.errBg,bd:"rgba(184,92,92,0.3)",t:T.err,icon:null,msg:"Backend offline — start the Python server: cd backend && uvicorn app:app --port 8000"},
+  }[status]||{};
+  return <div style={{padding:"8px 32px",background:cfg.bg,border:`0 solid ${cfg.bd}`,borderBottomWidth:"1px",display:"flex",alignItems:"center",gap:"8px",fontSize:"12px",fontFamily:T.fM,color:cfg.t}}>
+    {cfg.icon&&<span style={{display:"flex"}}>{cfg.icon}</span>}
+    <span>{cfg.msg}</span>
+  </div>;
+}
+
 // ─── Header ──────────────────────────────────────────────────
 function Header(){return <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 32px",borderBottom:`1px solid ${T.bd}`,background:T.bgEl}}>
   <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
@@ -266,11 +279,27 @@ export default function App(){
   const[indexWarnings,setIndexWarnings]=useState([]);
   const[generating,setGenerating]=useState(false);
   const[toast,setToast]=useState(null); // {message,type}
+  const[backendStatus,setBackendStatus]=useState("checking"); // "checking"|"ready"|"failed"
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
   // Load saved contacts
   useEffect(()=>{try{const v=localStorage.getItem("r3p_contact_lists");if(v)setSavedLists(JSON.parse(v))}catch(e){}},[]);
+
+  // Backend health check — shows a banner while the Python server is starting up
+  useEffect(()=>{
+    let cancelled=false;
+    const probe=async()=>{
+      try{
+        const res=await fetch(`${API}/api/health`,{signal:AbortSignal.timeout(5000)});
+        if(!cancelled)setBackendStatus(res.ok?"ready":"failed");
+      }catch{
+        if(!cancelled)setBackendStatus("failed");
+      }
+    };
+    probe();
+    return()=>{cancelled=true;};
+  },[]);
   const persistLists=useCallback(l=>{setSavedLists(l);try{localStorage.setItem("r3p_contact_lists",JSON.stringify(l))}catch(e){}},[]);
 
   const u=useCallback((k,v)=>setDraft(p=>({...p,[k]:v})),[]);
@@ -380,6 +409,7 @@ export default function App(){
     <style>{CSS}</style>
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column"}}>
       <Header/>
+      <BackendBanner status={backendStatus}/>
       <div style={{padding:"9px 32px",borderBottom:`1px solid ${T.bdSub}`,display:"flex",alignItems:"center",gap:"8px",fontSize:"12px",fontFamily:T.fM,color:T.t3}}>
         <span style={{color:T.t2}}>Draft</span><span style={{opacity:0.4}}>/</span><span>New Transmittal</span>
         {draft.jobNum&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.acc}}>{draft.jobNum}</span></>}
