@@ -21,7 +21,7 @@ export default defineConfig({
 
   // Expose TAURI_ENV_* variables to the frontend alongside the
   // normal VITE_* prefix so Tauri-injected env vars are accessible.
-  envPrefix: ["VITE_", "TAURI_ENV_*"],
+  envPrefix: ["VITE_", "TAURI_ENV_"],
 
   build: {
     // Tauri uses Chromium on Windows; target it explicitly for an
