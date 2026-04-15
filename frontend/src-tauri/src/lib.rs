@@ -84,7 +84,7 @@ fn find_python() -> Option<String> {
                 .map(|s| s.success())
                 .unwrap_or(false)
             {
-                println!("[tauri] \u{2713} Using conda Python: {}", path.display());
+                println!("[tauri] Found conda Python: {}", path.display());
                 return Some(path.to_string_lossy().into_owned());
             }
         }
@@ -100,7 +100,7 @@ fn find_python() -> Option<String> {
         .map(|s| s.success())
         .unwrap_or(false)
     {
-        println!("[tauri] \u{2713} Using PATH Python: python");
+        println!("[tauri] Found PATH Python: python");
         return Some("python".to_string());
     }
 
@@ -213,8 +213,7 @@ pub fn run() {
                                         );
                                     }
                                     Ok(None) => {
-                                        // Still running — good.
-                                        println!("[tauri] Backend process (PID {pid}) is running.");
+                                        // Still running — good, nothing to report.
                                     }
                                     Err(e) => {
                                         eprintln!("[tauri] \u{26a0} Could not check backend status: {e}");
