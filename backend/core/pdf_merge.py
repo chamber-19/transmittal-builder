@@ -157,6 +157,47 @@ def merge_pdfs(
     return output_path
 
 
+def merge_source_pdfs(
+    source_pdfs: List[str],
+    output_path: str,
+) -> str:
+    """
+    Merge only the source drawing PDFs into a single combined PDF.
+
+    Args:
+        source_pdfs: List of source document PDF paths
+        output_path: Where to save the merged PDF
+
+    Returns:
+        The output path.
+
+    Raises:
+        ValueError: If no readable PDFs were merged.
+    """
+    writer = PdfWriter()
+    merged_count = 0
+
+    for pdf_path in source_pdfs:
+        if not os.path.isfile(pdf_path):
+            continue
+        try:
+            reader = PdfReader(pdf_path)
+            for page in reader.pages:
+                writer.add_page(page)
+            merged_count += 1
+        except Exception:
+            continue
+
+    if merged_count == 0:
+        raise ValueError("No readable drawing PDFs were available to merge.")
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "wb") as f:
+        writer.write(f)
+
+    return output_path
+
+
 def build_combined_pdf(
     docx_path: str,
     source_pdfs: List[str],

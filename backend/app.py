@@ -3,7 +3,7 @@ R3P Transmittal Builder — Backend API
 
 Routes:
     POST /api/parse-index     Parse an Excel drawing index → document rows
-    POST /api/render          Render transmittal → DOCX / combined PDF / both
+    POST /api/render          Render transmittal → ZIP package (docx + pdf + drawings)
     POST /api/email           Send transmittal via SMTP
 
 Run:
@@ -26,7 +26,7 @@ from pydantic import BaseModel
 
 from core.render import render_transmittal
 from core.excel_parser import parse_drawing_index
-from core.pdf_merge import build_combined_pdf, docx_to_pdf, merge_pdfs
+from core.pdf_merge import docx_to_pdf, merge_source_pdfs
 
 
 # ─── App Setup ────────────────────────────────────────────────
@@ -116,12 +116,12 @@ async def api_render(
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
 ):
     """
-    Render a transmittal document and optionally merge with source PDFs.
+    Render a transmittal package.
 
-    Output formats:
-        - combined_pdf: Transmittal cover + all source PDFs merged into one file
-        - docx: Just the rendered .docx
-        - both: Returns a ZIP with .docx + combined .pdf
+    Always returns a ZIP containing:
+        - the rendered transmittal .docx
+        - the rendered transmittal .pdf
+        - a merged PDF of the submitted drawing PDFs only
     """
     work_dir = _make_work_dir()
 
@@ -163,56 +163,37 @@ async def api_render(
             out_path=docx_out,
         )
 
-        # Return based on requested format
-        if output_format == "docx":
-            return FileResponse(
-                docx_out,
-                media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                filename=f"{base_name}.docx",
-            )
+        if not saved_pdfs:
+            raise HTTPException(400, "At least one source PDF is required to build the drawing package.")
 
-        if output_format in ("combined_pdf", "both"):
-            combined_name = f"{base_name}_Combined.pdf"
-            combined_path, error = build_combined_pdf(
-                docx_path=docx_out,
-                source_pdfs=saved_pdfs,
-                work_dir=work_dir,
-                output_name=combined_name,
-            )
+        # Create transmittal PDF
+        transmittal_pdf_path, error = docx_to_pdf(docx_out, work_dir)
+        if not transmittal_pdf_path:
+            raise HTTPException(500, f"Transmittal PDF generation failed: {error}")
 
-            if not combined_path:
-                # Fall back to docx if PDF conversion fails
-                if output_format == "combined_pdf":
-                    raise HTTPException(500, f"PDF generation failed: {error}")
-                # For "both", just return the docx with a warning
-                return FileResponse(
-                    docx_out,
-                    media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    filename=f"{base_name}.docx",
-                    headers={"X-PDF-Error": error or "unknown"},
-                )
+        # Create merged drawings-only PDF
+        drawings_combined_name = f"{base_name}_Drawings_Combined.pdf"
+        drawings_combined_path = os.path.join(work_dir, drawings_combined_name)
+        try:
+            merge_source_pdfs(saved_pdfs, drawings_combined_path)
+        except Exception as e:
+            raise HTTPException(500, f"Drawing PDF merge failed: {e}")
 
-            if output_format == "combined_pdf":
-                return FileResponse(
-                    combined_path,
-                    media_type="application/pdf",
-                    filename=combined_name,
-                )
+        # Return package ZIP
+        import zipfile
+        zip_name = f"{base_name}_Package.zip"
+        zip_path = os.path.join(work_dir, zip_name)
 
-            # "both" — return a ZIP
-            import zipfile
-            zip_name = f"{base_name}.zip"
-            zip_path = os.path.join(work_dir, zip_name)
-            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                zf.write(docx_out, arcname=f"{base_name}.docx")
-                zf.write(combined_path, arcname=combined_name)
-            return FileResponse(
-                zip_path,
-                media_type="application/zip",
-                filename=zip_name,
-            )
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.write(docx_out, arcname=f"{base_name}.docx")
+            zf.write(transmittal_pdf_path, arcname=f"{base_name}.pdf")
+            zf.write(drawings_combined_path, arcname=drawings_combined_name)
 
-        raise HTTPException(400, f"Unknown output_format: {output_format}")
+        return FileResponse(
+            zip_path,
+            media_type="application/zip",
+            filename=zip_name,
+        )
 
     except HTTPException:
         raise
