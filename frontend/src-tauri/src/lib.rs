@@ -147,7 +147,15 @@ fn find_backend_dir() -> Option<PathBuf> {
     }
 
     // 2. CWD-relative fallback.
-    let cwd = std::env::current_dir().unwrap_or_default();
+    let cwd = match std::env::current_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!(
+                "[tauri] ⚠ Could not determine current working directory: {e}"
+            );
+            return None;
+        }
+    };
     println!(
         "[tauri] CARGO_MANIFEST_DIR anchor missed; trying CWD-relative paths (cwd = {})",
         cwd.display()
