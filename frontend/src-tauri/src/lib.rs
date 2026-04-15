@@ -119,19 +119,61 @@ fn home_dir() -> Option<PathBuf> {
     }
 }
 
-/// Search likely working-directory-relative paths for `backend/app.py`.
+/// Locate the repository's `backend/` directory containing `app.py`.
 ///
-/// The working directory varies depending on how `tauri dev` is invoked:
-///   • `frontend/`           → `../backend`
-///   • `frontend/src-tauri/` → `../../backend`
-///   • repo root             → `./backend`
+/// Discovery order:
+/// 1. **Compile-time anchor** — `CARGO_MANIFEST_DIR` points at
+///    `frontend/src-tauri/` during `cargo build` / `tauri dev`.
+///    The backend lives two levels up at `../../backend`.
+///    This is immune to whatever the process cwd happens to be.
+/// 2. **CWD-relative fallback** — in case the binary was built
+///    separately and `CARGO_MANIFEST_DIR` no longer exists on disk.
 fn find_backend_dir() -> Option<PathBuf> {
-    for rel in ["../backend", "../../backend", "./backend"] {
-        let p = PathBuf::from(rel);
-        if p.join("app.py").exists() {
-            return p.canonicalize().ok();
+    // 1. Compile-time anchor (most reliable during development).
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let anchored = manifest_dir.join("..").join("..").join("backend");
+    println!(
+        "[tauri] Checking CARGO_MANIFEST_DIR anchor: {}",
+        anchored.display()
+    );
+    if anchored.join("app.py").is_file() {
+        if let Ok(abs) = anchored.canonicalize() {
+            println!(
+                "[tauri] Found backend via CARGO_MANIFEST_DIR: {}",
+                abs.display()
+            );
+            return Some(abs);
         }
     }
+
+    // 2. CWD-relative fallback.
+    let cwd = match std::env::current_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!(
+                "[tauri] ⚠ Could not determine current working directory: {e}"
+            );
+            return None;
+        }
+    };
+    println!(
+        "[tauri] CARGO_MANIFEST_DIR anchor missed; trying CWD-relative paths (cwd = {})",
+        cwd.display()
+    );
+    for rel in ["../backend", "../../backend", "./backend"] {
+        let p = PathBuf::from(rel);
+        if p.join("app.py").is_file() {
+            if let Ok(abs) = p.canonicalize() {
+                println!(
+                    "[tauri] Found backend via CWD-relative '{}': {}",
+                    rel,
+                    abs.display()
+                );
+                return Some(abs);
+            }
+        }
+    }
+
     None
 }
 
@@ -179,7 +221,10 @@ pub fn run() {
                 "[tauri] Starting backend: {} -m uvicorn app:app --host 127.0.0.1 --port 8000 --reload",
                 python
             );
-            println!("[tauri] Working directory: {}", backend_dir.display());
+            println!(
+                "[tauri] Child process cwd: {}",
+                backend_dir.display()
+            );
 
             match Command::new(&python)
                 .args([
