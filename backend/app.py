@@ -364,7 +364,8 @@ async def api_render_to_folder(
         # Determine output filenames
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
         xmtl_num = fields_dict.get("transmittal_num", "").strip() or _get_next_xmtl_num(output_dir)
-        # Pad to 3 digits if purely numeric
+        # Pad to 3 digits if purely numeric; non-numeric values (e.g. "ABC") are
+        # passed through unchanged — this is intentional for non-standard numbering.
         xmtl_num_padded = xmtl_num.zfill(3) if xmtl_num.isdigit() else xmtl_num
         # Avoid doubling any leading "R3P-" that the client already included
         job_label = job_num if job_num.upper().startswith("R3P-") else f"R3P-{job_num}"
@@ -423,10 +424,28 @@ async def api_render_to_folder(
             json.dump(clean_contacts, f, indent=2, ensure_ascii=False)
         files_written.append(contacts_xmtl)
 
-        # Also update/create contacts.json at the project root level
+        # Also update/create contacts.json at the project root level, merging
+        # with any existing contacts to avoid losing previously saved recipients.
         contacts_root = os.path.join(output_dir, "contacts.json")
+        existing_contacts = []
+        if os.path.isfile(contacts_root):
+            try:
+                with open(contacts_root, "r", encoding="utf-8") as f:
+                    existing_contacts = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                existing_contacts = []
+
+        # Deduplicate by email (new contacts take precedence over existing ones)
+        merged = {c.get("email", "").lower(): c for c in existing_contacts if c.get("email")}
+        for c in clean_contacts:
+            if c.get("email"):
+                # Normalize email to lowercase for consistency
+                merged[c["email"].lower()] = {**c, "email": c["email"].lower()}
+        # Sort by email for stable, deterministic output
+        merged_list = sorted(merged.values(), key=lambda c: c.get("email", ""))
+
         with open(contacts_root, "w", encoding="utf-8") as f:
-            json.dump(clean_contacts, f, indent=2, ensure_ascii=False)
+            json.dump(merged_list, f, indent=2, ensure_ascii=False)
 
         return JSONResponse({
             "success": True,
@@ -490,7 +509,9 @@ async def api_render(
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
         xmtl_num = fields_dict.get("transmittal_num", "").strip() or "001"
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_name = f"R3P-{job_num}_XMTL-{xmtl_num}_{timestamp}"
+        # Avoid doubling any leading "R3P-" that the client already included
+        job_label = job_num if job_num.upper().startswith("R3P-") else f"R3P-{job_num}"
+        base_name = f"{job_label}_XMTL-{xmtl_num}_{timestamp}"
 
         # Render the .docx
         docx_out = os.path.join(work_dir, f"{base_name}.docx")

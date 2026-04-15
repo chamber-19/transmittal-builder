@@ -250,7 +250,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
             <span style={{fontFamily:T.fM,fontSize:"12px",fontWeight:600,color:T.acc}}>{p.job_num}</span>
             {p.client_site&&<span style={{fontSize:"12px",color:T.t1}}>{p.client_site}</span>}
             {p.existing_xmtl.length>0&&<span style={{marginLeft:"auto",fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
-              XMTL-{p.existing_xmtl.at(-1)?.replace("XMTL-","")} → <span style={{color:T.acc}}>next: {p.next_xmtl_num}</span>
+              XMTL-{p.existing_xmtl[p.existing_xmtl.length-1]?.replace("XMTL-","")} → <span style={{color:T.acc}}>next: {p.next_xmtl_num}</span>
             </span>}
           </div>
           <div style={{display:"flex",gap:"5px",flexWrap:"wrap"}}>
@@ -462,8 +462,8 @@ export default function App(){
   const u=useCallback((k,v)=>setDraft(p=>({...p,[k]:v})),[]);
 
   // ─── Project folder selection handler ────────────────────
-  const handleProjectSelect=useCallback(async(project)=>{
-    if(!project){
+  const handleProjectSelect=useCallback(async(selectedProject)=>{
+    if(!selectedProject){
       setProjectFolderPath(null);
       setNextXmtlNum(null);
       return;
@@ -471,22 +471,24 @@ export default function App(){
 
     showToast("Scanning project folder...","loading");
 
+    const applyProjectData=(path,jobNum,clientSite,xmtlNum)=>{
+      setProjectFolderPath(path);
+      setNextXmtlNum(xmtlNum);
+      u("jobNum",jobNum);
+      u("client",clientSite);
+      u("xmtlNum",xmtlNum);
+    };
+
     try{
       const res=await fetch(`${API}/api/scan-folder`,{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({folder_path:project.path}),
+        body:JSON.stringify({folder_path:selectedProject.path}),
       });
       const data=await res.json();
       if(!res.ok)throw new Error(data.detail||"Scan failed");
 
-      setProjectFolderPath(project.path);
-      setNextXmtlNum(data.next_xmtl_num);
-
-      // Auto-fill project fields
-      u("jobNum",data.job_num||"");
-      u("client",data.client_site||"");
-      u("xmtlNum",data.next_xmtl_num||"001");
+      applyProjectData(selectedProject.path,data.job_num||"",data.client_site||"",data.next_xmtl_num||"001");
 
       // Auto-load contacts
       if(data.contacts&&data.contacts.length>0){
@@ -496,11 +498,7 @@ export default function App(){
       showToast(`Project loaded — XMTL-${data.next_xmtl_num} ready`,"success",4000);
     }catch(e){
       showToast(`Project scan failed: ${e.message}`,"error",6000);
-      setProjectFolderPath(project.path);
-      setNextXmtlNum(project.next_xmtl_num||"001");
-      u("jobNum",project.job_num||"");
-      u("client",project.client_site||"");
-      u("xmtlNum",project.next_xmtl_num||"001");
+      applyProjectData(selectedProject.path,selectedProject.job_num||"",selectedProject.client_site||"",selectedProject.next_xmtl_num||"001");
     }
   },[u]);
   const toggle=useCallback(k=>setChecks(p=>({...p,[k]:!p[k]})),[]);
