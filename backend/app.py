@@ -112,21 +112,146 @@ async def api_parse_index(file: UploadFile = File(...)):
 
 # Pattern matching typical job numbers like "R3P-2401" or "ABC-1234"
 _JOB_NUM_RE = re.compile(r'^([A-Z][A-Z0-9]*-\d{3,})', re.IGNORECASE)
+# Pattern matching numeric-prefixed job numbers like "25074-HEN"
+_JOB_NUM_RE2 = re.compile(r'^(\d+[A-Z]?-[A-Z]{2,})', re.IGNORECASE)
+# Transmittals folder name detector
+_TRANSMITTALS_NAME_RE = re.compile(r'transmittal', re.IGNORECASE)
+# Numbered department folder pattern like "01-ENGINEERING"
+_DEPT_FOLDER_RE = re.compile(r'^\d{2}-')
 
 
 def _parse_project_name(folder_name: str) -> tuple[str, str]:
     """
     Split a project folder name into (job_num, client_site).
 
-    Example: "R3P-2401-Brazos-Substation" → ("R3P-2401", "Brazos Substation")
+    Handles two naming conventions:
+      "R3P-2401-Brazos-Substation"              → ("R3P-2401", "Brazos Substation")
+      "25074-HEN - NANULAK 180 MW BESS DESIGN"  → ("25074-HEN", "NANULAK 180 MW BESS DESIGN")
     """
+    # Try primary pattern first (letter-led: R3P-2401)
     m = _JOB_NUM_RE.match(folder_name)
     if m:
         job_num = m.group(1).upper()
-        rest = folder_name[m.end():].lstrip("-")
-        client_site = rest.replace("-", " ").strip()
+        rest = folder_name[m.end():]
+        if rest.startswith(" - "):
+            client_site = rest[3:].strip()
+        else:
+            client_site = rest.lstrip("-").replace("-", " ").strip()
+        return job_num, client_site
+    # Try secondary pattern (digit-led: 25074-HEN)
+    m2 = _JOB_NUM_RE2.match(folder_name)
+    if m2:
+        job_num = m2.group(1).upper()
+        rest = folder_name[m2.end():]
+        if rest.startswith(" - "):
+            client_site = rest[3:].strip()
+        else:
+            client_site = rest.lstrip("-").replace("-", " ").strip()
         return job_num, client_site
     return folder_name, ""
+
+
+def _is_transmittals_folder(folder_name: str, folder_path: str) -> bool:
+    """
+    Return True if the folder appears to be a transmittals folder.
+    Checks both the folder name (contains 'transmittal') and its contents
+    (has at least one XMTL-* subfolder).
+    """
+    if _TRANSMITTALS_NAME_RE.search(folder_name):
+        return True
+    try:
+        for entry in os.scandir(folder_path):
+            if entry.is_dir() and re.match(r'^xmtl-\d+$', entry.name, re.IGNORECASE):
+                return True
+    except OSError:
+        pass
+    return False
+
+
+def _find_transmittals_subfolder(folder_path: str) -> Optional[str]:
+    """Return the path of the first transmittals subfolder found, or None."""
+    try:
+        for entry in os.scandir(folder_path):
+            if entry.is_dir() and _is_transmittals_folder(entry.name, entry.path):
+                return entry.path
+    except OSError:
+        pass
+    return None
+
+
+def _collect_pdf_sources(parent_path: str, exclude_path: Optional[str] = None) -> list[dict]:
+    """
+    Build a list of PDF source descriptors from immediate subfolders of *parent_path*
+    (and their immediate sub-subfolders), skipping *exclude_path*.
+
+    Each descriptor: {path, label, pdf_count, pdf_files}  where pdf_files is a
+    sorted list of *absolute* paths to the discovered PDFs.
+    """
+    sources: list[dict] = []
+    exclude_norm = os.path.normpath(exclude_path) if exclude_path else None
+
+    try:
+        for entry in sorted(os.scandir(parent_path), key=lambda e: e.name.lower()):
+            if not entry.is_dir():
+                continue
+            if exclude_norm and os.path.normpath(entry.path) == exclude_norm:
+                continue
+
+            # PDFs directly in this subfolder
+            direct_pdfs: list[str] = []
+            try:
+                for f in os.scandir(entry.path):
+                    if f.is_file() and f.name.lower().endswith(".pdf"):
+                        direct_pdfs.append(f.path)
+            except OSError:
+                pass
+
+            if direct_pdfs:
+                sources.append({
+                    "path": entry.path,
+                    "label": entry.name,
+                    "pdf_count": len(direct_pdfs),
+                    "pdf_files": sorted(direct_pdfs),
+                })
+
+            # One level deeper (e.g. 01-ENGINEERING/DRAWINGS)
+            try:
+                for sub in sorted(os.scandir(entry.path), key=lambda e: e.name.lower()):
+                    if not sub.is_dir():
+                        continue
+                    sub_pdfs: list[str] = []
+                    try:
+                        for f in os.scandir(sub.path):
+                            if f.is_file() and f.name.lower().endswith(".pdf"):
+                                sub_pdfs.append(f.path)
+                    except OSError:
+                        pass
+                    if sub_pdfs:
+                        sources.append({
+                            "path": sub.path,
+                            "label": f"{entry.name} / {sub.name}",
+                            "pdf_count": len(sub_pdfs),
+                            "pdf_files": sorted(sub_pdfs),
+                        })
+            except OSError:
+                pass
+
+    except OSError:
+        pass
+
+    return sources
+
+
+def _load_contacts_from(folder_path: str) -> list[dict]:
+    """Try to load and return contacts from contacts.json in folder_path."""
+    contacts_path = os.path.join(folder_path, "contacts.json")
+    if os.path.isfile(contacts_path):
+        try:
+            with open(contacts_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError):
+            pass
+    return []
 
 
 def _get_next_xmtl_num(folder_path: str) -> str:
@@ -167,6 +292,7 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
     has_template = False
     has_contacts = False
     existing_xmtl: list[str] = []
+    xmtl_scan_dir = folder_path  # where to look for XMTL-* folders
 
     try:
         for entry in os.scandir(folder_path):
@@ -176,6 +302,10 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
                     existing_xmtl.append(entry.name)
                 elif n == "drawings":
                     has_drawings = True
+                elif _is_transmittals_folder(entry.name, entry.path):
+                    # Project root has a transmittals subfolder — use it for XMTL scanning
+                    xmtl_scan_dir = entry.path
+                    has_drawings = True  # assume drawings exist somewhere
             elif entry.is_file():
                 if n.endswith(".pdf"):
                     has_drawings = True
@@ -188,8 +318,17 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
     except OSError:
         pass
 
+    # If a transmittals subfolder was found, enumerate XMTL-* from there
+    if xmtl_scan_dir != folder_path:
+        try:
+            for entry in os.scandir(xmtl_scan_dir):
+                if entry.is_dir() and re.match(r'^xmtl-\d+$', entry.name, re.IGNORECASE):
+                    existing_xmtl.append(entry.name)
+        except OSError:
+            pass
+
     existing_xmtl.sort()
-    next_num = _get_next_xmtl_num(folder_path)
+    next_num = _get_next_xmtl_num(xmtl_scan_dir)
 
     return {
         "path": folder_path,
@@ -245,66 +384,174 @@ def api_scan_folder(req: ScanFolderRequest):
     """
     Deep-scan a specific project folder.
 
-    Returns discovered PDFs, index files, templates, contacts, existing XMTL
-    folders, and the next available XMTL number.
+    Supports multi-level folder structures:
+
+    **Transmittals folder** (contains XMTL-* subfolders or name contains "transmittal"):
+      - Walks up to infer the project root (skipping numbered dept folders)
+      - Scans sibling folders for PDF sources, index/template files
+      - Returns output_dir = the transmittals folder itself
+
+    **Project root** (contains numbered department subfolders like "01-*"):
+      - Locates the transmittals subfolder within it
+      - Scans department subfolders for PDF sources
+      - Returns output_dir = transmittals subfolder (or the root if none found)
+
+    **Flat structure** (original behavior fallback):
+      - Scans for PDFs, index, template, XMTL folders at the top level
+      - Returns output_dir = the selected folder
     """
     folder_path = os.path.normpath(req.folder_path)
     if not os.path.isdir(folder_path):
         raise HTTPException(400, f"Folder does not exist: {folder_path}")
 
     folder_name = os.path.basename(folder_path)
-    job_num, client_site = _parse_project_name(folder_name)
 
-    pdfs: list[str] = []
+    # ── Classify the selected folder ──────────────────────────
+    is_xmtl_folder = _is_transmittals_folder(folder_name, folder_path)
+
+    has_dept_subfolders = False
+    if not is_xmtl_folder:
+        try:
+            for e in os.scandir(folder_path):
+                if e.is_dir() and _DEPT_FOLDER_RE.match(e.name):
+                    has_dept_subfolders = True
+                    break
+        except OSError:
+            pass
+
+    transmittals_folder: Optional[str] = None
+    project_root: Optional[str] = None
+    pdf_sources: list[dict] = []
+
+    if is_xmtl_folder:
+        # ── Case A: selected folder IS the transmittals folder ──
+        transmittals_folder = folder_path
+        parent = os.path.dirname(folder_path)
+        parent_name = os.path.basename(parent)
+        # If the parent is a numbered dept folder, skip up one more level
+        if _DEPT_FOLDER_RE.match(parent_name):
+            candidate = os.path.dirname(parent)
+        else:
+            candidate = parent
+        # Validate the candidate exists; fall back to parent if not
+        project_root = candidate if os.path.isdir(candidate) else parent
+        job_num, client_site = _parse_project_name(os.path.basename(project_root))
+        output_dir = transmittals_folder
+        pdf_sources = _collect_pdf_sources(project_root, transmittals_folder)
+
+    elif has_dept_subfolders:
+        # ── Case B: selected folder is a project root ────────
+        project_root = folder_path
+        job_num, client_site = _parse_project_name(folder_name)
+        transmittals_folder = _find_transmittals_subfolder(folder_path)
+        output_dir = transmittals_folder or folder_path
+        pdf_sources = _collect_pdf_sources(folder_path, transmittals_folder)
+
+    else:
+        # ── Case C: flat / legacy structure ──────────────────
+        project_root = folder_path
+        transmittals_folder = None
+        job_num, client_site = _parse_project_name(folder_name)
+        output_dir = folder_path
+        pdf_sources = []
+
+    # ── Determine the directory to scan for XMTL-* folders ──
+    scan_dir = transmittals_folder or output_dir
+
+    existing_xmtl: list[str] = []
+    contacts: list[dict] = []
     index_files: list[str] = []
     template_files: list[str] = []
-    contacts: list[dict] = []
-    existing_xmtl: list[str] = []
+    flat_pdfs: list[str] = []
 
     def _rel(path: str) -> str:
-        return os.path.relpath(path, folder_path).replace("\\", "/")
+        try:
+            return os.path.relpath(path, project_root).replace("\\", "/")
+        except ValueError:
+            return path
 
+    # ── Scan transmittals/output dir for XMTL folders + contacts ──
     try:
-        for entry in os.scandir(folder_path):
+        for entry in os.scandir(scan_dir):
             n = entry.name.lower()
             if entry.is_dir():
                 if re.match(r'^xmtl-\d+$', n):
                     existing_xmtl.append(entry.name)
-                elif n == "drawings":
-                    # Scan drawings subfolder for PDFs
-                    for sub in os.scandir(entry.path):
-                        if sub.is_file() and sub.name.lower().endswith(".pdf"):
-                            pdfs.append(_rel(sub.path))
-            elif entry.is_file():
-                if n.endswith(".pdf"):
-                    pdfs.append(_rel(entry.path))
-                elif n.endswith((".xlsx", ".xls")):
-                    index_files.append(_rel(entry.path))
-                elif n.endswith(".docx"):
-                    template_files.append(_rel(entry.path))
-                elif n == "contacts.json":
+            elif entry.is_file() and n == "contacts.json":
+                try:
+                    with open(entry.path, "r", encoding="utf-8") as f:
+                        contacts = json.load(f)
+                except (OSError, json.JSONDecodeError):
+                    pass
+    except OSError:
+        pass
+
+    # Fall back to project root contacts if not found in transmittals folder
+    if not contacts and project_root and project_root != scan_dir:
+        contacts = _load_contacts_from(project_root)
+
+    # ── Scan project root + dept subfolders for index/template files ──
+    if project_root:
+        try:
+            for entry in os.scandir(project_root):
+                n = entry.name.lower()
+                if entry.is_file():
+                    if n.endswith((".xlsx", ".xls")):
+                        index_files.append(_rel(entry.path))
+                    elif n.endswith(".docx"):
+                        template_files.append(_rel(entry.path))
+                    elif n.endswith(".pdf"):
+                        flat_pdfs.append(_rel(entry.path))
+                elif entry.is_dir() and not _is_transmittals_folder(entry.name, entry.path):
+                    # Shallow scan of dept subfolders for index/template files
                     try:
-                        with open(entry.path, "r", encoding="utf-8") as f:
-                            contacts = json.load(f)
-                    except (OSError, json.JSONDecodeError):
-                        contacts = []
-    except OSError as exc:
-        raise HTTPException(500, f"Error scanning folder: {exc}") from exc
+                        for sub in os.scandir(entry.path):
+                            sn = sub.name.lower()
+                            if sub.is_file():
+                                if sn.endswith((".xlsx", ".xls")):
+                                    index_files.append(_rel(sub.path))
+                                elif sn.endswith(".docx"):
+                                    template_files.append(_rel(sub.path))
+                    except OSError:
+                        pass
+        except OSError:
+            pass
+
+    # ── Flat-only extras: scan "drawings" subfolder ───────────
+    if not is_xmtl_folder and not has_dept_subfolders:
+        try:
+            for entry in os.scandir(folder_path):
+                n = entry.name.lower()
+                if entry.is_dir() and n == "drawings":
+                    try:
+                        for sub in os.scandir(entry.path):
+                            if sub.is_file() and sub.name.lower().endswith(".pdf"):
+                                flat_pdfs.append(_rel(sub.path))
+                    except OSError:
+                        pass
+                elif entry.is_file() and n.endswith(".pdf"):
+                    flat_pdfs.append(_rel(entry.path))
+        except OSError:
+            pass
 
     existing_xmtl.sort()
-    pdfs.sort()
+    flat_pdfs.sort()
     index_files.sort()
     template_files.sort()
 
     return JSONResponse({
         "job_num": job_num,
         "client_site": client_site,
-        "pdfs": pdfs,
+        "project_root": project_root,
+        "transmittals_folder": transmittals_folder,
+        "output_dir": output_dir,
+        "pdfs": flat_pdfs,
+        "pdf_sources": pdf_sources,
         "index_files": index_files,
         "template_files": template_files,
         "contacts": contacts,
         "existing_xmtl": existing_xmtl,
-        "next_xmtl_num": _get_next_xmtl_num(folder_path),
+        "next_xmtl_num": _get_next_xmtl_num(scan_dir),
     })
 
 
@@ -317,8 +564,9 @@ async def api_render_to_folder(
     checks: str = Form(..., description="JSON: checkbox states"),
     contacts: str = Form(..., description="JSON: [{name, company, email, phone}]"),
     documents: str = Form(..., description="JSON: [{doc_no, desc, rev}]"),
-    output_dir: str = Form(..., description="Absolute path to the project folder"),
+    output_dir: str = Form(..., description="Absolute path to the transmittals / project folder"),
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
+    local_pdf_paths: str = Form(default="[]", description="JSON: list of absolute paths to local PDFs on disk"),
 ):
     """
     Render a transmittal package and write the output files directly to disk.
@@ -327,6 +575,10 @@ async def api_render_to_folder(
     rendered ``.docx``, ``.pdf``, and combined drawings PDF into it, and
     saves a ``contacts.json`` file in both the XMTL folder and the project
     root for easy reuse.
+
+    Source PDFs can be provided either as uploaded files (*pdfs*) or as a
+    JSON list of absolute local paths (*local_pdf_paths*).  Both may be used
+    together; duplicates (by basename) are silently dropped.
 
     Returns JSON with the path to the created folder and the list of files
     written.
@@ -340,6 +592,7 @@ async def api_render_to_folder(
             checks_dict = json.loads(checks)
             contacts_list = json.loads(contacts)
             documents_list = json.loads(documents)
+            local_paths: list[str] = json.loads(local_pdf_paths)
         except json.JSONDecodeError as e:
             raise HTTPException(400, f"Invalid JSON in form data: {e}")
 
@@ -354,9 +607,23 @@ async def api_render_to_folder(
         pdf_dir = os.path.join(work_dir, "pdfs")
         os.makedirs(pdf_dir, exist_ok=True)
         saved_pdfs: list[str] = []
+        seen_names: set[str] = set()
         for pdf in pdfs:
             if pdf.filename and pdf.filename.lower().endswith(".pdf"):
                 saved_pdfs.append(_save_upload(pdf, pdf_dir))
+                seen_names.add(pdf.filename.lower())
+
+        # Copy local PDFs directly from disk (avoid duplicate basenames)
+        for lp in local_paths:
+            lp = os.path.normpath(lp)
+            bname = os.path.basename(lp).lower()
+            if bname in seen_names:
+                continue
+            if os.path.isfile(lp) and bname.endswith(".pdf"):
+                dest = os.path.join(pdf_dir, os.path.basename(lp))
+                shutil.copy2(lp, dest)
+                saved_pdfs.append(dest)
+                seen_names.add(bname)
 
         if not saved_pdfs:
             raise HTTPException(400, "At least one source PDF is required.")
@@ -424,28 +691,38 @@ async def api_render_to_folder(
             json.dump(clean_contacts, f, indent=2, ensure_ascii=False)
         files_written.append(contacts_xmtl)
 
-        # Also update/create contacts.json at the project root level, merging
-        # with any existing contacts to avoid losing previously saved recipients.
-        contacts_root = os.path.join(output_dir, "contacts.json")
-        existing_contacts = []
-        if os.path.isfile(contacts_root):
-            try:
-                with open(contacts_root, "r", encoding="utf-8") as f:
-                    existing_contacts = json.load(f)
-            except (OSError, json.JSONDecodeError):
-                existing_contacts = []
+        def _write_merged_contacts(target_dir: str) -> None:
+            """Merge clean_contacts into an existing contacts.json in target_dir."""
+            contacts_path = os.path.join(target_dir, "contacts.json")
+            existing: list[dict] = []
+            if os.path.isfile(contacts_path):
+                try:
+                    with open(contacts_path, "r", encoding="utf-8") as f:
+                        existing = json.load(f)
+                except (OSError, json.JSONDecodeError):
+                    existing = []
+            # Deduplicate by email (new contacts take precedence over existing ones)
+            merged = {c.get("email", "").lower(): c for c in existing if c.get("email")}
+            for c in clean_contacts:
+                if c.get("email"):
+                    merged[c["email"].lower()] = {**c, "email": c["email"].lower()}
+            merged_list = sorted(merged.values(), key=lambda c: c.get("email", ""))
+            with open(contacts_path, "w", encoding="utf-8") as f:
+                json.dump(merged_list, f, indent=2, ensure_ascii=False)
 
-        # Deduplicate by email (new contacts take precedence over existing ones)
-        merged = {c.get("email", "").lower(): c for c in existing_contacts if c.get("email")}
-        for c in clean_contacts:
-            if c.get("email"):
-                # Normalize email to lowercase for consistency
-                merged[c["email"].lower()] = {**c, "email": c["email"].lower()}
-        # Sort by email for stable, deterministic output
-        merged_list = sorted(merged.values(), key=lambda c: c.get("email", ""))
+        # Write/merge contacts.json at output_dir level (transmittals folder)
+        _write_merged_contacts(output_dir)
 
-        with open(contacts_root, "w", encoding="utf-8") as f:
-            json.dump(merged_list, f, indent=2, ensure_ascii=False)
+        # Also write/merge at the project root if output_dir is a transmittals folder
+        output_dir_name = os.path.basename(output_dir)
+        if _is_transmittals_folder(output_dir_name, output_dir):
+            parent = os.path.dirname(output_dir)
+            parent_name = os.path.basename(parent)
+            candidate_root = os.path.dirname(parent) if _DEPT_FOLDER_RE.match(parent_name) else parent
+            # Only write to the project root if it exists and differs from output_dir
+            if (os.path.isdir(candidate_root)
+                    and os.path.normpath(candidate_root) != os.path.normpath(output_dir)):
+                _write_merged_contacts(candidate_root)
 
         return JSONResponse({
             "success": True,

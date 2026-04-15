@@ -331,7 +331,7 @@ const thS={fontSize:"10px",fontWeight:600,fontFamily:T.fM,letterSpacing:"0.08em"
 const cMono={background:"transparent",border:"none",color:T.t1,fontFamily:T.fM,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 const cBody={background:"transparent",border:"none",color:T.t1,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 
-function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,indexFile,pdfFiles,onFileDrop,clearTemplate,clearIndex,removePdf,indexLoading,indexWarnings}){
+function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,indexFile,pdfFiles,localPdfPaths,onFileDrop,clearTemplate,clearIndex,removePdf,removeLocalPdf,indexLoading,indexWarnings}){
   const inputRef=useRef(null);const[over,setOver]=useState(false);const prevent=e=>{e.preventDefault();e.stopPropagation()};
   return <Card>
     <SL>Documents</SL>
@@ -343,13 +343,19 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
       <div style={{fontSize:"14px",color:T.t1,fontWeight:500,marginBottom:"4px"}}>{indexLoading?"Parsing drawing index...":"Drop all your files here"}</div>
       <div style={{fontSize:"12px",color:T.t3,lineHeight:1.7}}><span style={{color:T.t2}}>PDFs</span> → source documents · <span style={{color:T.ok}}>Excel</span> → drawing index & revisions · <span style={{color:T.info}}>DOCX</span> → template</div>
     </div>
-    {(templateFile||indexFile||pdfFiles.length>0)&&<div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"16px"}}>
+    {(templateFile||indexFile||pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0))&&<div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"16px"}}>
       {templateFile&&<FileChip name={templateFile.name} type="doc" onRemove={clearTemplate}/>}
       {indexFile&&<FileChip name={indexFile.name} type="xl" onRemove={clearIndex}/>}
       {pdfFiles.map(f=><div key={f.name} style={{display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 8px",borderRadius:T.rS,background:T.bgEl,border:`1px solid ${T.bdSub}`,fontSize:"12px",fontFamily:T.fM,color:T.t2}}>
         <span style={{display:"flex",color:T.t3}}>{I.pdf}</span><span style={{maxWidth:"120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
         <button onClick={()=>removePdf(f.name)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"0",display:"flex",opacity:0.5}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.5"}}>{I.x}</button>
       </div>)}
+      {localPdfPaths&&localPdfPaths.map(p=>{const n=p.replace(/\\/g,"/").split("/").pop();return <div key={p} style={{display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 8px",borderRadius:T.rS,background:T.okBg,border:`1px solid rgba(107,158,107,0.3)`,fontSize:"12px",fontFamily:T.fM,color:T.ok}}>
+        <span style={{display:"flex",color:T.ok}}>{I.pdf}</span>
+        <span style={{fontSize:"9px",fontWeight:700,letterSpacing:"0.06em",color:T.ok,flexShrink:0}}>LOCAL</span>
+        <span style={{maxWidth:"120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n}</span>
+        <button onClick={()=>removeLocalPdf(p)} style={{background:"none",border:"none",color:T.ok,cursor:"pointer",padding:"0",display:"flex",opacity:0.5}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.5"}}>{I.x}</button>
+      </div>;})}
     </div>}
     {indexWarnings&&indexWarnings.length>0&&<div style={{marginBottom:"12px",padding:"8px 12px",borderRadius:T.rS,background:T.warnBg,border:`1px solid rgba(196,162,77,0.3)`,fontSize:"12px",color:T.warn}}>{indexWarnings.join(" · ")}</div>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
@@ -367,13 +373,57 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
   </Card>;
 }
 
+// ─── PDF Sources Panel ───────────────────────────────────────
+function PdfSourcesPanel({pdfSources,localPdfPaths,onTogglePdf}){
+  const[expanded,setExpanded]=useState(null);
+  if(!pdfSources||pdfSources.length===0)return null;
+  const selectedPdfPathsSet=new Set(localPdfPaths);
+  return <Card>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+      <SL>PDF Sources Found</SL>
+      {localPdfPaths.length>0&&<Badge color="success">{localPdfPaths.length} added</Badge>}
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+      {pdfSources.map((src,i)=>{
+        const isExp=expanded===i;
+        return <div key={src.path}>
+          <button onClick={()=>setExpanded(isExp?null:i)}
+            style={{display:"flex",alignItems:"center",gap:"8px",width:"100%",padding:"8px 10px",background:T.bgEl,border:`1px solid ${T.bdSub}`,borderRadius:isExp?`${T.rS} ${T.rS} 0 0`:T.rS,cursor:"pointer",textAlign:"left",transition:"background 0.15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.background=T.bgHov}} onMouseLeave={e=>{e.currentTarget.style.background=T.bgEl}}>
+            <span style={{display:"flex",color:T.acc,flexShrink:0}}>{I.folder}</span>
+            <span style={{flex:1,fontSize:"12px",fontFamily:T.fM,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{src.label}</span>
+            <span style={{fontSize:"11px",color:T.t3,flexShrink:0,marginRight:"4px"}}>{src.pdf_count} PDFs</span>
+            <span style={{fontSize:"10px",color:T.t3,flexShrink:0}}>{isExp?"▼":"▶"}</span>
+          </button>
+          {isExp&&<div style={{border:`1px solid ${T.bdSub}`,borderTop:"none",borderRadius:`0 0 ${T.rS} ${T.rS}`,background:T.bgIn,maxHeight:"220px",overflowY:"auto"}}>
+            {src.pdf_files.map(pdfPath=>{
+              const name=pdfPath.replace(/\\/g,"/").split("/").pop();
+              const added=selectedPdfPathsSet.has(pdfPath);
+              return <div key={pdfPath} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 10px",borderBottom:`1px solid ${T.bdSub}`}}>
+                <span style={{display:"flex",color:added?T.ok:T.t3,flexShrink:0}}>{I.pdf}</span>
+                <span style={{flex:1,fontSize:"12px",fontFamily:T.fM,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</span>
+                <Btn variant={added?"secondary":"ghost"} onClick={()=>onTogglePdf(pdfPath)}
+                  style={{padding:"3px 8px",fontSize:"11px",flexShrink:0,color:added?T.ok:T.t2,borderColor:added?"rgba(107,158,107,0.4)":T.bd}}>
+                  {added?"✓ Added":"Add"}
+                </Btn>
+              </div>;
+            })}
+          </div>}
+        </div>;
+      })}
+    </div>
+    <div style={{marginTop:"8px",fontSize:"11px",color:T.t3}}>Click a folder to browse PDFs · click Add to include in this transmittal</div>
+  </Card>;
+}
+
 // ─── Sidebar ─────────────────────────────────────────────────
-function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFile,onGenerate,onEmail,generating,projectFolderPath,nextXmtlNum}){
+function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templateFile,indexFile,onGenerate,onEmail,generating,projectFolderPath,nextXmtlNum}){
   const filled=[draft.jobNum,draft.xmtlNum,draft.client,draft.projectDesc,draft.fromName,draft.date].filter(Boolean).length;
   const total=6;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
-  const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0;
+  const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0);
+  const totalPdfCount=pdfFiles.length+(localPdfPaths?localPdfPaths.length:0);
   const pct=Math.min(100,Math.round((filled/total)*25+(hasT?15:0)+(hasI?15:0)+(hasP?15:0)+(goodContacts>0?15:0)+(activeChecks>0?10:0)+(documents.length>0?5:0)));
-  const canGenerate=hasT&&documents.length>0&&pdfFiles.length>0&&filled>=4&&!generating;
+  const canGenerate=hasT&&documents.length>0&&hasP&&filled>=4&&!generating;
   const folderMode=!!projectFolderPath;
 
   return <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
@@ -381,7 +431,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
       <div style={{height:"4px",background:T.bgIn,borderRadius:"2px",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pct>=100?T.ok:T.acc,borderRadius:"2px",transition:"width 0.4s ease"}}/></div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Summary</SL><div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:pdfFiles.length,ok:hasP},{l:"Options set",v:activeChecks,ok:activeChecks>0},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
+      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:totalPdfCount,ok:hasP},{l:"Options set",v:activeChecks,ok:activeChecks>0},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
         <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":"muted"}>{String(x.v)}</Badge></div>)}</div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Output</SL>
@@ -413,8 +463,8 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
       {!canGenerate&&!generating&&(<div style={{fontSize:"11px",color:T.t3,textAlign:"center",marginTop:"6px"}}>
         {!hasT?"Upload a template":""}
         {hasT&&documents.length===0?"Add documents":""}
-        {hasT&&documents.length>0&&pdfFiles.length===0?"Upload drawing PDFs":""}
-        {hasT&&documents.length>0&&pdfFiles.length>0&&filled<4?"Fill required fields":""}
+        {hasT&&documents.length>0&&!hasP?"Upload or select drawing PDFs":""}
+        {hasT&&documents.length>0&&hasP&&filled<4?"Fill required fields":""}
       </div>)}
       <Btn variant="secondary" icon={I.send} onClick={onEmail} style={{width:"100%",justifyContent:"center",marginTop:"8px"}}>Email</Btn>
     </Card>
@@ -450,8 +500,11 @@ export default function App(){
   const[backendStatus,setBackendStatus]=useState("checking"); // checking | ready | failed
 
   // ─── Project folder mode state ───────────────────────────
-  const[projectFolderPath,setProjectFolderPath]=useState(null); // absolute path of active project
+  const[projectFolderPath,setProjectFolderPath]=useState(null); // absolute path (transmittals folder)
   const[nextXmtlNum,setNextXmtlNum]=useState(null);             // e.g. "003"
+  const[projectRoot,setProjectRoot]=useState(null);             // project root folder name for breadcrumb
+  const[pdfSources,setPdfSources]=useState([]);                 // [{path,label,pdf_count,pdf_files}]
+  const[localPdfPaths,setLocalPdfPaths]=useState([]);           // absolute paths selected from pdfSources
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
@@ -466,14 +519,19 @@ export default function App(){
     if(!selectedProject){
       setProjectFolderPath(null);
       setNextXmtlNum(null);
+      setProjectRoot(null);
+      setPdfSources([]);
+      setLocalPdfPaths([]);
       return;
     }
 
     showToast("Scanning project folder...","loading");
 
-    const applyProjectData=(path,jobNum,clientSite,xmtlNum)=>{
-      setProjectFolderPath(path);
+    const applyProjectData=(outputDir,jobNum,clientSite,xmtlNum,root,sources)=>{
+      setProjectFolderPath(outputDir);
       setNextXmtlNum(xmtlNum);
+      setProjectRoot(root||null);
+      setPdfSources(sources||[]);
       u("jobNum",jobNum);
       u("client",clientSite);
       u("xmtlNum",xmtlNum);
@@ -488,7 +546,9 @@ export default function App(){
       const data=await res.json();
       if(!res.ok)throw new Error(data.detail||"Scan failed");
 
-      applyProjectData(selectedProject.path,data.job_num||"",data.client_site||"",data.next_xmtl_num||"001");
+      const outputDir=data.output_dir||selectedProject.path;
+      const rootName=data.project_root?data.project_root.split(/[/\\]/).pop():null;
+      applyProjectData(outputDir,data.job_num||"",data.client_site||"",data.next_xmtl_num||"001",rootName,data.pdf_sources||[]);
 
       // Auto-load contacts
       if(data.contacts&&data.contacts.length>0){
@@ -498,7 +558,7 @@ export default function App(){
       showToast(`Project loaded — XMTL-${data.next_xmtl_num} ready`,"success",4000);
     }catch(e){
       showToast(`Project scan failed: ${e.message}`,"error",6000);
-      applyProjectData(selectedProject.path,selectedProject.job_num||"",selectedProject.client_site||"",selectedProject.next_xmtl_num||"001");
+      applyProjectData(selectedProject.path,selectedProject.job_num||"",selectedProject.client_site||"",selectedProject.next_xmtl_num||"001",null,[]);
     }
   },[u]);
   const toggle=useCallback(k=>setChecks(p=>({...p,[k]:!p[k]})),[]);
@@ -548,10 +608,14 @@ export default function App(){
   const clearTemplate=useCallback(()=>setTemplateFile(null),[]);
   const clearIndex=useCallback(()=>{setIndexFile(null);setDocuments([]);setIndexWarnings([])},[]);
   const removePdf=useCallback(name=>setPdfFiles(p=>p.filter(f=>f.name!==name)),[]);
+  const toggleLocalPdf=useCallback(path=>setLocalPdfPaths(p=>p.includes(path)?p.filter(x=>x!==path):[...p,path]),[]);
+  const removeLocalPdf=useCallback(path=>setLocalPdfPaths(p=>p.filter(x=>x!==path)),[]);
 
   // ─── Generate Transmittal ────────────────────────────────
   const handleGenerate=useCallback(async()=>{
-    if(!templateFile||documents.length===0||pdfFiles.length===0)return;
+    const hasUploadedPdfs=pdfFiles.length>0;
+    const hasLocalPdfs=localPdfPaths.length>0;
+    if(!templateFile||documents.length===0||(!hasUploadedPdfs&&!hasLocalPdfs))return;
     setGenerating(true);
 
     const fieldsPayload={
@@ -574,6 +638,7 @@ export default function App(){
         form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
         form.append("output_dir",projectFolderPath);
         for(const pdf of pdfFiles){form.append("pdfs",pdf)}
+        if(hasLocalPdfs){form.append("local_pdf_paths",JSON.stringify(localPdfPaths))}
 
         const res=await fetch(`${API}/api/render-to-folder`,{method:"POST",body:form});
         if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
@@ -711,6 +776,7 @@ export default function App(){
         <span style={{opacity:0.4}}>/</span>
         <span>New Transmittal</span>
         {draft.jobNum&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.acc}}>{draft.jobNum}</span></>}
+        {projectRoot&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.t2,maxWidth:"240px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projectRoot}</span></>}
         {projectFolderPath&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.ok}}>Folder Mode</span></>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:"24px",flex:1,padding:"24px 32px",maxWidth:"1280px",width:"100%",margin:"0 auto"}}>
@@ -719,10 +785,11 @@ export default function App(){
           <ProjectSection draft={draft} u={u}/>
           <OptionsSection checks={checks} toggle={toggle}/>
           <ContactsSection contacts={contacts} updateContact={updateContact} removeContact={removeContact} addContact={addContact} savedLists={savedLists} onSaveList={onSaveList} onLoadList={onLoadList} onDeleteList={onDeleteList}/>
-          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} indexLoading={indexLoading} indexWarnings={indexWarnings}/>
+          {pdfSources.length>0&&<PdfSourcesPanel pdfSources={pdfSources} localPdfPaths={localPdfPaths} onTogglePdf={toggleLocalPdf}/>}
+          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} removeLocalPdf={removeLocalPdf} indexLoading={indexLoading} indexWarnings={indexWarnings}/>
         </div>
         <div style={{position:"sticky",top:"24px",alignSelf:"start"}}>
-          <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>
+          <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>
         </div>
       </div>
       <footer style={{display:"flex",justifyContent:"space-between",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
