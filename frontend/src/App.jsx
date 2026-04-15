@@ -247,10 +247,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
         {hasT&&documents.length>0&&pdfFiles.length===0?"Upload drawing PDFs":""}
         {hasT&&documents.length>0&&pdfFiles.length>0&&filled<4?"Fill required fields":""}
       </div>)}
-      <div style={{display:"flex",gap:"8px",marginTop:"8px"}}>
-        <Btn variant="secondary" icon={I.send} onClick={onEmail} style={{flex:1,justifyContent:"center"}}>Email</Btn>
-        <Btn variant="secondary" icon={I.download} onClick={onGenerate} disabled={!canGenerate} style={{flex:1,justifyContent:"center"}}>Download Transmittal Package</Btn>
-      </div>
+      <Btn variant="secondary" icon={I.send} onClick={onEmail} style={{width:"100%",justifyContent:"center",marginTop:"8px"}}>Email</Btn>
     </Card>
   </div>;
 }
