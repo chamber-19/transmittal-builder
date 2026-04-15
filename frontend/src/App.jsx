@@ -396,7 +396,7 @@ export default function App(){
     let cancelled=false;
 
     const waitForBackend=async()=>{
-      const maxAttempts=20;
+      const maxAttempts=40;
       const delayMs=500;
 
       for(let attempt=1;attempt<=maxAttempts;attempt++){
@@ -438,9 +438,15 @@ export default function App(){
     return <>
       <style>{CSS}</style>
       <div style={statusScreenStyle}>
-        <div style={{fontSize:"16px",fontWeight:600,color:T.err}}>Backend failed to start</div>
-        <div style={{fontSize:"12px",color:T.t3,maxWidth:"420px",lineHeight:1.6}}>
-          The local backend could not be reached. Make sure it is running, then try again.
+        <div style={{fontSize:"16px",fontWeight:600,color:T.err}}>Backend Unavailable</div>
+        <div style={{fontSize:"12px",color:T.t3,maxWidth:"480px",lineHeight:1.7}}>
+          The Python backend at <span style={{fontFamily:T.fM,color:T.t2}}>127.0.0.1:8000</span> could not be reached.
+          <br/><br/>
+          <strong style={{color:T.t2}}>Desktop mode:</strong> Check the terminal for backend startup errors.
+          Make sure Python and <span style={{fontFamily:T.fM}}>uvicorn</span> are installed in the active environment.
+          <br/><br/>
+          <strong style={{color:T.t2}}>Web mode:</strong> Start the backend manually:<br/>
+          <code style={{fontFamily:T.fM,fontSize:"11px",color:T.acc}}>cd backend && uvicorn app:app --port 8000</code>
         </div>
         <Btn variant="secondary" onClick={()=>window.location.reload()} style={{marginTop:"6px"}}>
           Retry

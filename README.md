@@ -23,32 +23,36 @@ Transmittal-Builder/
     ├── src/
     │   ├── App.jsx            Main React application
     │   └── main.jsx           React entry point
-    ├── src-tauri/             Tauri desktop shell (Phase 1)
+    ├── src-tauri/             Tauri desktop shell (Phase 2)
     │   ├── tauri.conf.json    Window / bundle configuration
     │   ├── Cargo.toml         Rust workspace manifest
     │   ├── build.rs           Tauri build script
     │   ├── src/
     │   │   ├── main.rs        Binary entry point
-    │   │   └── lib.rs         Tauri app logic
+    │   │   └── lib.rs         Tauri app logic + backend auto-start
     │   ├── capabilities/      Tauri permission grants
     │   └── icons/             App icon assets
     ├── package.json
     └── vite.config.js
 ```
 
-**Data flow (Phase 1)**
+**Data flow (Phase 2 — dev mode)**
 
 ```
 ┌─────────────────────────────┐     HTTP/REST      ┌───────────────────┐
 │  Tauri WebView               │ ─────────────────► │  Python FastAPI   │
 │  React UI (port 1420 dev)   │ ◄───────────────── │  (port 8000)      │
 └─────────────────────────────┘                     └───────────────────┘
-        Tauri shell (Rust)
-        wraps the WebView
+        Tauri shell (Rust)            ▲
+        wraps the WebView             │
+                │                     │
+                └── spawns backend ───┘
+                    on startup (dev)
 ```
 
-The React frontend communicates with the Python backend over `http://127.0.0.1:8000`.
-No IPC between Rust and Python is needed in Phase 1.
+In dev mode, Tauri automatically spawns the Python backend when the desktop
+app starts. The React frontend polls `/api/health` and shows the main UI
+once the backend is reachable.
 
 ---
 
@@ -83,13 +87,22 @@ API docs at <http://localhost:8000/docs>
 
 ## Quick Start — Tauri Desktop
 
-**Prerequisites (Windows)**
+**Prerequisites (all platforms)**
 
-1. [Rust](https://www.rust-lang.org/tools/install) — `rustup` installs the toolchain
-2. Microsoft C++ Build Tools (or Visual Studio with "Desktop development with C++")
-3. Node.js ≥ 18 and npm
+1. Python 3.10+ with `pip` (or a Conda/virtualenv environment)
+2. Backend dependencies installed:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   ```
+3. [Rust](https://www.rust-lang.org/tools/install) — `rustup` installs the toolchain
+4. Node.js ≥ 18 and npm
 
-**Prerequisites (Linux)**
+**Additional prerequisites (Windows)**
+
+- Microsoft C++ Build Tools (or Visual Studio with "Desktop development with C++")
+
+**Additional prerequisites (Linux)**
 
 ```bash
 sudo apt update
@@ -98,21 +111,63 @@ sudo apt install -y \
   patchelf libssl-dev libayatana-appindicator3-dev
 ```
 
-**Run the desktop app**
+### Run the desktop app (single command)
 
 ```bash
-# Terminal 1 — Python backend (must be running first)
-cd backend
-uvicorn app:app --port 8000
-
-# Terminal 2 — Tauri dev window
 cd frontend
 npm install
 npm run desktop      # = tauri dev
 ```
 
-`tauri dev` starts the Vite server on port 1420 automatically (via `beforeDevCommand`),
-then opens the native desktop window wrapping that server.
+That's it! The Tauri shell will:
+
+1. Start the Vite dev server on port 1420 (`beforeDevCommand`)
+2. Compile and launch the native Rust binary
+3. **Automatically spawn the Python backend** on `127.0.0.1:8000`
+4. Open the desktop window with a "Starting local services…" spinner
+5. Show the main UI once the backend health check passes
+
+> **Note:** If the backend is already running (e.g. you started it manually),
+> Tauri detects that port 8000 is occupied and skips spawning a second instance.
+
+### Python environment requirements
+
+Tauri searches for a Python interpreter in this order: `python`, `python3`, `py`.
+The first one found on `PATH` is used to run uvicorn.
+
+- **Conda / virtualenv users:** Activate your environment in the terminal
+  **before** running `npm run desktop` so that the correct Python is on `PATH`.
+- **System Python users:** Make sure `uvicorn` is installed globally or the
+  backend dependencies are in the system Python:
+  ```bash
+  pip install -r backend/requirements.txt
+  ```
+
+### Troubleshooting backend auto-start
+
+| Symptom | Fix |
+|---------|-----|
+| "Python not found" in terminal | Install Python 3.10+ and ensure `python` (or `python3`/`py`) is on PATH |
+| "Could not find backend/app.py" | Run `npm run desktop` from the `frontend/` directory |
+| Backend starts but crashes | Check terminal output for import errors; run `pip install -r backend/requirements.txt` |
+| "Backend Unavailable" in the UI | Check terminal for errors; the backend has ~20 s to become reachable |
+
+### Manual backend (fallback)
+
+If the automatic start doesn't work for your setup, you can still start the
+backend manually in a separate terminal:
+
+```bash
+# Terminal 1 — Python backend
+cd backend
+uvicorn app:app --reload --port 8000
+
+# Terminal 2 — Tauri dev window
+cd frontend
+npm run desktop
+```
+
+Tauri will detect the already-running backend and skip spawning.
 
 **Build a distributable installer**
 
@@ -126,6 +181,9 @@ npm run desktop:build   # = tauri build
 ```
 
 The installer is placed in `frontend/src-tauri/target/release/bundle/`.
+
+> **Note:** `desktop:build` does **not** bundle the Python backend yet.
+> See Phase 3 in the migration roadmap below.
 
 ---
 
@@ -164,7 +222,7 @@ Without either converter, `/api/render` still works for `output_format=docx`.
 
 | Variable        | Description                             |
 |-----------------|-----------------------------------------|
-| VITE_API_URL    | Backend URL (default: `http://localhost:8000`) |
+| VITE_API_URL    | Backend URL (default: `http://127.0.0.1:8000`) |
 
 ---
 
@@ -175,10 +233,26 @@ Windows-first Tauri desktop application.
 
 | Phase | Status | Description |
 |-------|--------|-------------|
-| **1** | ✅ **Done** | Tauri shell around existing frontend; Python backend runs separately; backend health-check banner in UI |
-| 2 | 🔜 Planned | Tauri orchestrates Python backend startup — spawn/monitor `uvicorn` from `lib.rs` |
+| **1** | ✅ Done | Tauri shell around existing frontend; Python backend runs separately; backend health-check banner in UI |
+| **2** | ✅ Done | Tauri auto-starts the Python backend in dev mode — single `npm run desktop` command |
 | 3 | 🔜 Planned | Bundle Python backend as a Tauri [sidecar](https://tauri.app/develop/sidecar/) — fully self-contained installer |
 | 4 | 🔜 Planned | Remote version manifest on Google Drive; forced-update flow with `tauri-plugin-updater` |
+
+### Phase 2 — known limitations
+
+- **Dev-only:** The backend auto-start is designed for local development.
+  Production/installer builds do not yet bundle the Python backend (see Phase 3).
+- **No auto-install:** Python and the backend's pip dependencies must be
+  installed before running the desktop app.
+- **Process cleanup:** The backend child process is killed when the Tauri
+  window closes normally. If the Tauri process is force-killed (e.g.
+  `taskkill /F`), the backend may remain running as an orphan; it will be
+  detected and reused on next launch.
+- **Single instance:** If port 8000 is already in use by another application,
+  Tauri assumes the backend is running and skips spawning. This avoids
+  duplicate launches but means a port conflict won't be reported by Tauri
+  itself — the frontend health check will fail if the occupant isn't the
+  correct backend.
 
 ---
 
