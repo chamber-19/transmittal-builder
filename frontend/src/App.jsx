@@ -2,10 +2,27 @@ import { useState, useCallback, useRef, useEffect } from "react";
 
 /* ═══════════════════════════════════════════════════════════════
    R3P TRANSMITTAL BUILDER v3.0 — Wired Frontend
-   API: /api/parse-index, /api/render, /api/email
+   API: /api/parse-index, /api/render, /api/email,
+        /api/scan-projects, /api/scan-folder, /api/render-to-folder
    ═══════════════════════════════════════════════════════════════ */
 
 const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"; // Backend URL
+
+// Detect Tauri desktop environment
+const isTauri = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
+
+// Open a native folder-picker dialog (desktop only).
+// Returns the selected path string or null.
+async function pickFolder() {
+  if (!isTauri) return null;
+  try {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const result = await open({ directory: true, multiple: false });
+    return result || null;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Icons ───────────────────────────────────────────────────
 const I={
@@ -25,6 +42,8 @@ const I={
   xl:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><text x="7" y="9.5" textAnchor="middle" fill="currentColor" fontSize="5" fontWeight="700" fontFamily="sans-serif">XL</text></svg>,
   doc:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><text x="7" y="9.5" textAnchor="middle" fill="currentColor" fontSize="4.5" fontWeight="700" fontFamily="sans-serif">DOC</text></svg>,
   spin:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 2a6 6 0 105.3 3.2"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="0.8s" repeatCount="indefinite"/></path></svg>,
+  folder:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4.5A1.5 1.5 0 013.5 3h3l1.5 1.5H13A1.5 1.5 0 0114.5 6v5.5A1.5 1.5 0 0113 13H3A1.5 1.5 0 011.5 11.5v-7z"/></svg>,
+  search:<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="6" r="4"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>,
 };
 
 // ─── Tokens ──────────────────────────────────────────────────
@@ -114,6 +133,144 @@ function FileChip({name,type,onRemove}){
     <button onClick={onRemove} style={{background:"none",border:"none",color:c.t,cursor:"pointer",padding:"0 0 0 2px",display:"flex",opacity:0.6}}
       onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.6"}}>{I.x}</button>
   </div>;
+}
+
+// ─── Project Search Panel ─────────────────────────────────────
+function ProjectSearchPanel({onProjectSelect,showToast}){
+  const[root,setRoot]=useState(()=>{
+    try{return localStorage.getItem("r3p_projects_root")||""}catch{return ""}
+  });
+  const[query,setQuery]=useState("");
+  const[results,setResults]=useState([]);
+  const[searching,setSearching]=useState(false);
+  const[open,setOpen]=useState(false);
+  const[selectedPath,setSelectedPath]=useState(null);
+  const debounceRef=useRef(null);
+  const panelRef=useRef(null);
+
+  const saveRoot=v=>{
+    setRoot(v);
+    try{localStorage.setItem("r3p_projects_root",v)}catch{}
+  };
+
+  const handleBrowse=async()=>{
+    const picked=await pickFolder();
+    if(picked)saveRoot(picked);
+  };
+
+  const doSearch=useCallback(async(r,q)=>{
+    if(!r)return;
+    setSearching(true);
+    try{
+      const url=new URL(`${API}/api/scan-projects`);
+      url.searchParams.set("root",r);
+      if(q)url.searchParams.set("query",q);
+      const res=await fetch(url);
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.detail||"Search failed");
+      setResults(data.projects||[]);
+      setOpen(true);
+    }catch(e){
+      showToast(`Project search failed: ${e.message}`,"error",5000);
+    }finally{setSearching(false)}
+  },[]);
+
+  useEffect(()=>{
+    clearTimeout(debounceRef.current);
+    if(!root){setResults([]);setOpen(false);return}
+    debounceRef.current=setTimeout(()=>doSearch(root,query),300);
+    return()=>clearTimeout(debounceRef.current);
+  },[root,query,doSearch]);
+
+  // Close dropdown on outside click
+  useEffect(()=>{
+    const handler=e=>{if(panelRef.current&&!panelRef.current.contains(e.target))setOpen(false)};
+    document.addEventListener("mousedown",handler);
+    return()=>document.removeEventListener("mousedown",handler);
+  },[]);
+
+  const handleSelect=async(project)=>{
+    setOpen(false);
+    setSelectedPath(project.path);
+    setQuery(project.job_num+(project.client_site?` — ${project.client_site}`:""));
+    onProjectSelect(project);
+  };
+
+  const clearSelection=()=>{
+    setSelectedPath(null);
+    setQuery("");
+    setResults([]);
+    onProjectSelect(null);
+  };
+
+  if(!isTauri){
+    return <Card style={{padding:"14px 20px",borderColor:T.bdSub}}>
+      <div style={{fontSize:"12px",color:T.t3,display:"flex",alignItems:"center",gap:"6px"}}>
+        <span style={{display:"flex",color:T.t3}}>{I.folder}</span>
+        Project folder search is only available in the desktop app.
+      </div>
+    </Card>;
+  }
+
+  return <div ref={panelRef}><Card style={{padding:"16px 20px"}}>
+    <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"12px"}}>
+      <span style={{display:"flex",color:T.acc}}>{I.folder}</span>
+      <span style={{fontSize:"12px",fontWeight:600,color:T.t2,textTransform:"uppercase",letterSpacing:"0.06em"}}>Project Folder</span>
+      {selectedPath&&<Badge color="success">Active</Badge>}
+      {selectedPath&&<Btn variant="ghost" onClick={clearSelection} style={{marginLeft:"auto",padding:"3px 8px",fontSize:"11px"}}>Clear</Btn>}
+    </div>
+
+    {/* Projects Root row */}
+    <div style={{display:"flex",gap:"6px",marginBottom:"10px",alignItems:"center"}}>
+      <div style={{flex:1,position:"relative"}}>
+        <input value={root} onChange={e=>saveRoot(e.target.value)} placeholder="Projects root directory (e.g. C:\Projects)"
+          style={{width:"100%",padding:"6px 10px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fM,fontSize:"12px",outline:"none",transition:"border-color 0.15s"}}
+          onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
+      </div>
+      <Btn variant="secondary" icon={I.folder} onClick={handleBrowse} style={{padding:"5px 10px",fontSize:"12px",flexShrink:0}}>Browse</Btn>
+    </div>
+
+    {/* Search input + dropdown */}
+    {root&&<div style={{position:"relative"}}>
+      <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+        <span style={{position:"absolute",left:"10px",color:T.t3,display:"flex",pointerEvents:"none"}}>{searching?I.spin:I.search}</span>
+        <input value={query} onChange={e=>setQuery(e.target.value)}
+          onFocus={e=>{if(results.length>0||root)setOpen(true);e.target.style.borderColor=T.bdFoc}}
+          onBlur={e=>{e.target.style.borderColor=T.bd}}
+          placeholder="Search projects by name, job number..."
+          style={{width:"100%",padding:"6px 10px 6px 32px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fB,fontSize:"13px",outline:"none",transition:"border-color 0.15s"}}/>
+        {query&&<button onClick={()=>setQuery("")} style={{position:"absolute",right:"8px",background:"none",border:"none",color:T.t3,cursor:"pointer",display:"flex",padding:"2px"}}>{I.x}</button>}
+      </div>
+
+      {open&&results.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:200,marginTop:"4px",background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:T.r,boxShadow:"0 8px 32px rgba(0,0,0,0.4)",maxHeight:"280px",overflowY:"auto"}}>
+        {results.map(p=><button key={p.path} onClick={()=>handleSelect(p)}
+          style={{display:"flex",flexDirection:"column",width:"100%",padding:"10px 14px",background:"none",border:"none",borderBottom:`1px solid ${T.bdSub}`,textAlign:"left",cursor:"pointer",transition:"background 0.15s"}}
+          onMouseEnter={e=>{e.currentTarget.style.background=T.bgHov}} onMouseLeave={e=>{e.currentTarget.style.background="none"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px"}}>
+            <span style={{fontFamily:T.fM,fontSize:"12px",fontWeight:600,color:T.acc}}>{p.job_num}</span>
+            {p.client_site&&<span style={{fontSize:"12px",color:T.t1}}>{p.client_site}</span>}
+            {p.existing_xmtl.length>0&&<span style={{marginLeft:"auto",fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
+              XMTL-{p.existing_xmtl.at(-1)?.replace("XMTL-","")} → <span style={{color:T.acc}}>next: {p.next_xmtl_num}</span>
+            </span>}
+          </div>
+          <div style={{display:"flex",gap:"5px",flexWrap:"wrap"}}>
+            {p.has_drawings&&<Badge color="success">PDFs</Badge>}
+            {p.has_index&&<Badge color="info">Index</Badge>}
+            {p.has_template&&<Badge color="info">Template</Badge>}
+            {p.has_contacts&&<Badge color="accent">Contacts</Badge>}
+          </div>
+        </button>)}
+      </div>}
+      {open&&results.length===0&&!searching&&root&&query&&
+        <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:200,marginTop:"4px",padding:"12px 14px",background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:T.r,fontSize:"12px",color:T.t3}}>
+          No projects found matching "{query}"
+        </div>}
+    </div>}
+
+    {selectedPath&&<div style={{marginTop:"10px",padding:"8px 10px",background:T.bgEl,borderRadius:T.rS,border:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3,wordBreak:"break-all"}}>
+      {selectedPath}
+    </div>}
+  </Card></div>;
 }
 
 // ─── Sections ────────────────────────────────────────────────
@@ -211,12 +368,13 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
 }
 
 // ─── Sidebar ─────────────────────────────────────────────────
-function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFile,onGenerate,onEmail,generating}){
+function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFile,onGenerate,onEmail,generating,projectFolderPath,nextXmtlNum}){
   const filled=[draft.jobNum,draft.xmtlNum,draft.client,draft.projectDesc,draft.fromName,draft.date].filter(Boolean).length;
   const total=6;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
   const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0;
   const pct=Math.min(100,Math.round((filled/total)*25+(hasT?15:0)+(hasI?15:0)+(hasP?15:0)+(goodContacts>0?15:0)+(activeChecks>0?10:0)+(documents.length>0?5:0)));
   const canGenerate=hasT&&documents.length>0&&pdfFiles.length>0&&filled>=4&&!generating;
+  const folderMode=!!projectFolderPath;
 
   return <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
     <Card style={{padding:"18px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"10px"}}><span style={{fontSize:"12px",fontWeight:600,color:T.t2}}>Readiness</span><span style={{fontSize:"20px",fontWeight:600,fontFamily:T.fM,color:pct>=100?T.ok:T.acc}}>{pct}%</span></div>
@@ -227,19 +385,30 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
         <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":"muted"}>{String(x.v)}</Badge></div>)}</div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Output</SL>
-      <div style={{fontSize:"13px",color:T.t2,lineHeight:1.6}}>Includes:
+      {folderMode?<div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"6px"}}><span style={{color:T.ok,display:"flex"}}>{I.folder}</span><span style={{fontSize:"12px",fontWeight:600,color:T.ok}}>Folder Mode</span></div>
+        <div style={{fontSize:"11px",fontFamily:T.fM,color:T.t3,wordBreak:"break-all",marginBottom:"4px"}}>{projectFolderPath}</div>
+        <Badge color="success">XMTL-{(nextXmtlNum||"???")}</Badge>
+        <div style={{display:"flex",flexDirection:"column",gap:"4px",marginTop:"4px"}}>
+          <Badge color="info">Transmittal DOCX</Badge>
+          <Badge color="info">Transmittal PDF</Badge>
+          <Badge color="info">Combined PDF</Badge>
+          <Badge color="accent">contacts.json</Badge>
+        </div>
+      </div>:<div style={{fontSize:"13px",color:T.t2,lineHeight:1.6}}>Includes:
         <div style={{display:"flex",flexDirection:"column",gap:"6px",marginTop:"8px"}}>
           <Badge color="info">Transmittal DOCX</Badge>
           <Badge color="info">Transmittal PDF</Badge>
           <Badge color="info">Combined PDF</Badge>
         </div>
-      </div>
+        <div style={{fontSize:"11px",color:T.t3,marginTop:"8px"}}>Select a project above for folder output</div>
+      </div>}
     </Card>
 
     <Card style={{padding:"18px"}}>
       <Btn variant="primary" icon={generating?I.spin:I.zap} onClick={onGenerate} disabled={!canGenerate}
         style={{width:"100%",justifyContent:"center",padding:"10px 16px",fontSize:"14px"}}>
-        {generating?"Generating...":"Generate Transmittal Package"}
+        {generating?"Generating...":(folderMode?"Save to Project Folder":"Generate Transmittal Package")}
       </Btn>
       {!canGenerate&&!generating&&(<div style={{fontSize:"11px",color:T.t3,textAlign:"center",marginTop:"6px"}}>
         {!hasT?"Upload a template":""}
@@ -280,6 +449,10 @@ export default function App(){
   const[toast,setToast]=useState(null); // {message,type}
   const[backendStatus,setBackendStatus]=useState("checking"); // checking | ready | failed
 
+  // ─── Project folder mode state ───────────────────────────
+  const[projectFolderPath,setProjectFolderPath]=useState(null); // absolute path of active project
+  const[nextXmtlNum,setNextXmtlNum]=useState(null);             // e.g. "003"
+
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
   // Load saved contacts
@@ -287,6 +460,49 @@ export default function App(){
   const persistLists=useCallback(l=>{setSavedLists(l);try{localStorage.setItem("r3p_contact_lists",JSON.stringify(l))}catch(e){}},[]);
 
   const u=useCallback((k,v)=>setDraft(p=>({...p,[k]:v})),[]);
+
+  // ─── Project folder selection handler ────────────────────
+  const handleProjectSelect=useCallback(async(project)=>{
+    if(!project){
+      setProjectFolderPath(null);
+      setNextXmtlNum(null);
+      return;
+    }
+
+    showToast("Scanning project folder...","loading");
+
+    try{
+      const res=await fetch(`${API}/api/scan-folder`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({folder_path:project.path}),
+      });
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.detail||"Scan failed");
+
+      setProjectFolderPath(project.path);
+      setNextXmtlNum(data.next_xmtl_num);
+
+      // Auto-fill project fields
+      u("jobNum",data.job_num||"");
+      u("client",data.client_site||"");
+      u("xmtlNum",data.next_xmtl_num||"001");
+
+      // Auto-load contacts
+      if(data.contacts&&data.contacts.length>0){
+        setContacts(data.contacts.map(c=>({...c,id:uid()})));
+      }
+
+      showToast(`Project loaded — XMTL-${data.next_xmtl_num} ready`,"success",4000);
+    }catch(e){
+      showToast(`Project scan failed: ${e.message}`,"error",6000);
+      setProjectFolderPath(project.path);
+      setNextXmtlNum(project.next_xmtl_num||"001");
+      u("jobNum",project.job_num||"");
+      u("client",project.client_site||"");
+      u("xmtlNum",project.next_xmtl_num||"001");
+    }
+  },[u]);
   const toggle=useCallback(k=>setChecks(p=>({...p,[k]:!p[k]})),[]);
   const addContact=useCallback(()=>setContacts(p=>[...p,{id:uid(),name:"",company:"",email:"",phone:""}]),[]);
   const updateContact=useCallback((id,f,v)=>setContacts(p=>p.map(c=>c.id===id?{...c,[f]:v}:c)),[]);
@@ -338,18 +554,53 @@ export default function App(){
   // ─── Generate Transmittal ────────────────────────────────
   const handleGenerate=useCallback(async()=>{
     if(!templateFile||documents.length===0||pdfFiles.length===0)return;
-    setGenerating(true);showToast("Generating transmittal package...","loading");
+    setGenerating(true);
+
+    const fieldsPayload={
+      date:draft.date,job_num:draft.jobNum,transmittal_num:draft.xmtlNum,
+      client:draft.client,project_desc:draft.projectDesc,
+      from_name:draft.fromName,from_title:draft.fromTitle,
+      from_email:draft.fromEmail,from_phone:draft.fromPhone,firm:draft.firm,
+    };
+    const contactsClean=contacts.filter(c=>c.name||c.email).map(({name,company,email,phone})=>({name,company,email,phone}));
+
+    // ── Folder output mode ─────────────────────────────────
+    if(projectFolderPath){
+      showToast("Writing to project folder...","loading");
+      try{
+        const form=new FormData();
+        form.append("template",templateFile);
+        form.append("fields",JSON.stringify(fieldsPayload));
+        form.append("checks",JSON.stringify(checks));
+        form.append("contacts",JSON.stringify(contactsClean));
+        form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
+        form.append("output_dir",projectFolderPath);
+        for(const pdf of pdfFiles){form.append("pdfs",pdf)}
+
+        const res=await fetch(`${API}/api/render-to-folder`,{method:"POST",body:form});
+        if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
+
+        const data=await res.json();
+        const folderName=data.xmtl_folder_name||"XMTL folder";
+        showToast(`✓ Saved to ${folderName} in project folder`,"success",8000);
+        // Use the next_xmtl_num returned by the backend (already accounts for the new folder)
+        const newNum=data.next_xmtl_num||"001";
+        setNextXmtlNum(newNum);
+        u("xmtlNum",newNum);
+      }catch(e){
+        showToast(`Folder output failed: ${e.message}`,"error",8000);
+      }finally{setGenerating(false)}
+      return;
+    }
+
+    // ── ZIP download mode (original workflow) ──────────────
+    showToast("Generating transmittal package...","loading");
     try{
       const form=new FormData();
       form.append("template",templateFile);
-      form.append("fields",JSON.stringify({
-        date:draft.date,job_num:draft.jobNum,transmittal_num:draft.xmtlNum,
-        client:draft.client,project_desc:draft.projectDesc,
-        from_name:draft.fromName,from_title:draft.fromTitle,
-        from_email:draft.fromEmail,from_phone:draft.fromPhone,firm:draft.firm,
-      }));
+      form.append("fields",JSON.stringify(fieldsPayload));
       form.append("checks",JSON.stringify(checks));
-      form.append("contacts",JSON.stringify(contacts.filter(c=>c.name||c.email).map(({name,company,email,phone})=>({name,company,email,phone}))));
+      form.append("contacts",JSON.stringify(contactsClean));
       form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
       for(const pdf of pdfFiles){form.append("pdfs",pdf)}
 
@@ -371,7 +622,7 @@ export default function App(){
     }catch(e){
       showToast(`Generation failed: ${e.message}`,"error",8000);
     }finally{setGenerating(false)}
-  },[templateFile,documents,draft,checks,contacts,pdfFiles]);
+  },[templateFile,documents,draft,checks,contacts,pdfFiles,projectFolderPath,u]);
 
   // ─── Email (placeholder) ─────────────────────────────────
   const handleEmail=useCallback(()=>{
@@ -462,16 +713,18 @@ export default function App(){
         <span style={{opacity:0.4}}>/</span>
         <span>New Transmittal</span>
         {draft.jobNum&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.acc}}>{draft.jobNum}</span></>}
+        {projectFolderPath&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.ok}}>Folder Mode</span></>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:"24px",flex:1,padding:"24px 32px",maxWidth:"1280px",width:"100%",margin:"0 auto"}}>
         <div style={{display:"flex",flexDirection:"column",gap:"18px"}}>
+          <ProjectSearchPanel onProjectSelect={handleProjectSelect} showToast={showToast}/>
           <ProjectSection draft={draft} u={u}/>
           <OptionsSection checks={checks} toggle={toggle}/>
           <ContactsSection contacts={contacts} updateContact={updateContact} removeContact={removeContact} addContact={addContact} savedLists={savedLists} onSaveList={onSaveList} onLoadList={onLoadList} onDeleteList={onDeleteList}/>
           <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} indexLoading={indexLoading} indexWarnings={indexWarnings}/>
         </div>
         <div style={{position:"sticky",top:"24px",alignSelf:"start"}}>
-          <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating}/>
+          <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>
         </div>
       </div>
       <footer style={{display:"flex",justifyContent:"space-between",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3}}>

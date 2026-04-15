@@ -12,6 +12,7 @@
     "desktop:build": "tauri build"
   },
   "dependencies": {
+    "@tauri-apps/plugin-dialog": "^2.7.0",
     "@vercel/speed-insights": "^2.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

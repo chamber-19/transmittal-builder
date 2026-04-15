@@ -184,6 +184,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(move |_app| {
             // ── Skip if the backend is already reachable ────────
             if is_backend_running() {
