@@ -377,7 +377,7 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
 function PdfSourcesPanel({pdfSources,localPdfPaths,onTogglePdf}){
   const[expanded,setExpanded]=useState(null);
   if(!pdfSources||pdfSources.length===0)return null;
-  const addedSet=new Set(localPdfPaths);
+  const selectedPdfPathsSet=new Set(localPdfPaths);
   return <Card>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
       <SL>PDF Sources Found</SL>
@@ -398,7 +398,7 @@ function PdfSourcesPanel({pdfSources,localPdfPaths,onTogglePdf}){
           {isExp&&<div style={{border:`1px solid ${T.bdSub}`,borderTop:"none",borderRadius:`0 0 ${T.rS} ${T.rS}`,background:T.bgIn,maxHeight:"220px",overflowY:"auto"}}>
             {src.pdf_files.map(pdfPath=>{
               const name=pdfPath.replace(/\\/g,"/").split("/").pop();
-              const added=addedSet.has(pdfPath);
+              const added=selectedPdfPathsSet.has(pdfPath);
               return <div key={pdfPath} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 10px",borderBottom:`1px solid ${T.bdSub}`}}>
                 <span style={{display:"flex",color:added?T.ok:T.t3,flexShrink:0}}>{I.pdf}</span>
                 <span style={{flex:1,fontSize:"12px",fontFamily:T.fM,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</span>
@@ -615,7 +615,7 @@ export default function App(){
   const handleGenerate=useCallback(async()=>{
     const hasUploadedPdfs=pdfFiles.length>0;
     const hasLocalPdfs=localPdfPaths.length>0;
-    if(!templateFile||documents.length===0||(! hasUploadedPdfs&&!hasLocalPdfs))return;
+    if(!templateFile||documents.length===0||(!hasUploadedPdfs&&!hasLocalPdfs))return;
     setGenerating(true);
 
     const fieldsPayload={

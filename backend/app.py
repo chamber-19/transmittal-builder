@@ -430,9 +430,11 @@ def api_scan_folder(req: ScanFolderRequest):
         parent_name = os.path.basename(parent)
         # If the parent is a numbered dept folder, skip up one more level
         if _DEPT_FOLDER_RE.match(parent_name):
-            project_root = os.path.dirname(parent)
+            candidate = os.path.dirname(parent)
         else:
-            project_root = parent
+            candidate = parent
+        # Validate the candidate exists; fall back to parent if not
+        project_root = candidate if os.path.isdir(candidate) else parent
         job_num, client_site = _parse_project_name(os.path.basename(project_root))
         output_dir = transmittals_folder
         pdf_sources = _collect_pdf_sources(project_root, transmittals_folder)
@@ -716,9 +718,11 @@ async def api_render_to_folder(
         if _is_transmittals_folder(output_dir_name, output_dir):
             parent = os.path.dirname(output_dir)
             parent_name = os.path.basename(parent)
-            project_root_dir = os.path.dirname(parent) if _DEPT_FOLDER_RE.match(parent_name) else parent
-            if os.path.normpath(project_root_dir) != os.path.normpath(output_dir):
-                _write_merged_contacts(project_root_dir)
+            candidate_root = os.path.dirname(parent) if _DEPT_FOLDER_RE.match(parent_name) else parent
+            # Only write to the project root if it exists and differs from output_dir
+            if (os.path.isdir(candidate_root)
+                    and os.path.normpath(candidate_root) != os.path.normpath(output_dir)):
+                _write_merged_contacts(candidate_root)
 
         return JSONResponse({
             "success": True,
