@@ -5,7 +5,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
    API: /api/parse-index, /api/render, /api/email
    ═══════════════════════════════════════════════════════════════ */
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000"; // Backend URL
+const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"; // Backend URL
 
 // ─── Icons ───────────────────────────────────────────────────
 const I={
@@ -52,6 +52,21 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 `;
 
 let _id=0;const uid=()=>`_${++_id}_${Date.now()}`;
+
+// ─── Status screen (shared layout for checking / failed) ─────
+const statusScreenStyle={
+  display:"flex",
+  flexDirection:"column",
+  alignItems:"center",
+  justifyContent:"center",
+  gap:"12px",
+  minHeight:"100vh",
+  padding:"24px",
+  background:T.bg,
+  color:T.t1,
+  fontFamily:T.fB,
+  textAlign:"center",
+};
 
 // ─── Primitives ──────────────────────────────────────────────
 const SL=({children,mono,sub})=><div style={{marginBottom:sub?"6px":"14px"}}><span style={{fontSize:sub?"10px":"11px",fontWeight:600,fontFamily:mono?T.fM:T.fB,letterSpacing:"0.08em",textTransform:"uppercase",color:sub?T.t3:T.acc}}>{children}</span></div>;
@@ -201,7 +216,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
   const total=6;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
   const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0;
   const pct=Math.min(100,Math.round((filled/total)*25+(hasT?15:0)+(hasI?15:0)+(hasP?15:0)+(goodContacts>0?15:0)+(activeChecks>0?10:0)+(documents.length>0?5:0)));
-  const canGenerate = hasT && documents.length > 0 && pdfFiles.length > 0 && filled >= 4 && !generating;
+  const canGenerate=hasT&&documents.length>0&&pdfFiles.length>0&&filled>=4&&!generating;
 
   return <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
     <Card style={{padding:"18px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"10px"}}><span style={{fontSize:"12px",fontWeight:600,color:T.t2}}>Readiness</span><span style={{fontSize:"20px",fontWeight:600,fontFamily:T.fM,color:pct>=100?T.ok:T.acc}}>{pct}%</span></div>
@@ -212,24 +227,24 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
         <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":"muted"}>{String(x.v)}</Badge></div>)}</div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Output</SL>
-      <div style={{fontSize:"13px", color:T.t2, lineHeight:1.6}}>Includes:
-        <div style={{marginTop:"8px", display:"flex", flexDirection:"column", gap:"6px"}}>
+      <div style={{fontSize:"13px",color:T.t2,lineHeight:1.6}}>Includes:
+        <div style={{display:"flex",flexDirection:"column",gap:"6px",marginTop:"8px"}}>
           <Badge color="info">Transmittal DOCX</Badge>
           <Badge color="info">Transmittal PDF</Badge>
           <Badge color="info">Combined PDF</Badge>
         </div>
       </div>
-    </Card>    
+    </Card>
 
     <Card style={{padding:"18px"}}>
       <Btn variant="primary" icon={generating?I.spin:I.zap} onClick={onGenerate} disabled={!canGenerate}
         style={{width:"100%",justifyContent:"center",padding:"10px 16px",fontSize:"14px"}}>
         {generating?"Generating...":"Generate Transmittal Package"}
       </Btn>
-      {!canGenerate&&!generating&& ( <div style={{fontSize:"11px",color:T.t3,textAlign:"center",marginTop:"6px"}}>
+      {!canGenerate&&!generating&&(<div style={{fontSize:"11px",color:T.t3,textAlign:"center",marginTop:"6px"}}>
         {!hasT?"Upload a template":""}
         {hasT&&documents.length===0?"Add documents":""}
-        {hasT&&documents.length>0&&pdfFiles.length===0 ?"Upload drawing PDFs":""}
+        {hasT&&documents.length>0&&pdfFiles.length===0?"Upload drawing PDFs":""}
         {hasT&&documents.length>0&&pdfFiles.length>0&&filled<4?"Fill required fields":""}
       </div>)}
       <div style={{display:"flex",gap:"8px",marginTop:"8px"}}>
@@ -266,6 +281,7 @@ export default function App(){
   const[indexWarnings,setIndexWarnings]=useState([]);
   const[generating,setGenerating]=useState(false);
   const[toast,setToast]=useState(null); // {message,type}
+  const[backendStatus,setBackendStatus]=useState("checking"); // checking | ready | failed
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
@@ -295,7 +311,7 @@ export default function App(){
       if(data.warnings?.length)setIndexWarnings(data.warnings);
       showToast(`Loaded ${data.row_count} documents from "${data.sheet_name}"`,"success");
     }catch(e){
-      showToast(`Index parse error: ${e.message}`,"error");
+      showToast(`Index parse failed: ${e.message}`,"error");
     }finally{setIndexLoading(false)}
   },[]);
 
@@ -330,10 +346,10 @@ export default function App(){
       const form=new FormData();
       form.append("template",templateFile);
       form.append("fields",JSON.stringify({
-        date:draft.date, job_num:draft.jobNum, transmittal_num:draft.xmtlNum,
-        client:draft.client, project_desc:draft.projectDesc,
-        from_name:draft.fromName, from_title:draft.fromTitle,
-        from_email:draft.fromEmail, from_phone:draft.fromPhone, firm:draft.firm,
+        date:draft.date,job_num:draft.jobNum,transmittal_num:draft.xmtlNum,
+        client:draft.client,project_desc:draft.projectDesc,
+        from_name:draft.fromName,from_title:draft.fromTitle,
+        from_email:draft.fromEmail,from_phone:draft.fromPhone,firm:draft.firm,
       }));
       form.append("checks",JSON.stringify(checks));
       form.append("contacts",JSON.stringify(contacts.filter(c=>c.name||c.email).map(({name,company,email,phone})=>({name,company,email,phone}))));
@@ -343,13 +359,12 @@ export default function App(){
       const res=await fetch(`${API}/api/render`,{method:"POST",body:form});
       if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
 
-      // Download the result
-      const blob = await res.blob();
-      const filename = `R3P-${draft.jobNum||"XXXX"}_XMTL-${draft.xmtlNum||"001"}_Package.zip`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
+      const blob=await res.blob();
+      const filename=`R3P-${draft.jobNum||"XXXX"}_XMTL-${draft.xmtlNum||"001"}_Package.zip`;
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;
+      a.download=filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -361,7 +376,7 @@ export default function App(){
     }finally{setGenerating(false)}
   },[templateFile,documents,draft,checks,contacts,pdfFiles]);
 
-  // ─── Email (placeholder — opens dialog) ──────────────────
+  // ─── Email (placeholder) ─────────────────────────────────
   const handleEmail=useCallback(()=>{
     showToast("Email integration: configure SMTP in backend .env to enable","info",5000);
   },[]);
@@ -376,15 +391,76 @@ export default function App(){
   const onLoadList=useCallback(name=>{const list=savedLists.find(l=>l.name===name);if(list){setContacts(list.contacts.map(c=>({...c,id:uid()})));showToast(`Loaded "${name}"`,"success",3000)}},[savedLists]);
   const onDeleteList=useCallback(name=>{persistLists(savedLists.filter(l=>l.name!==name));showToast(`Deleted "${name}"`,"info",3000)},[savedLists,persistLists]);
 
+  // ─── Check backend status on load ─────────────────────────
+  useEffect(()=>{
+    let cancelled=false;
+
+    const waitForBackend=async()=>{
+      const maxAttempts=20;
+      const delayMs=500;
+
+      for(let attempt=1;attempt<=maxAttempts;attempt++){
+        try{
+          const res=await fetch(`${API}/api/health`);
+          if(!res.ok)throw new Error(`Health check failed with ${res.status}`);
+
+          if(!cancelled)setBackendStatus("ready");
+          return;
+        }catch(error){
+          if(attempt===maxAttempts){
+            if(!cancelled)setBackendStatus("failed");
+            return;
+          }
+
+          await new Promise(resolve=>setTimeout(resolve,delayMs));
+        }
+      }
+    };
+
+    waitForBackend();
+    return()=>{cancelled=true};
+  },[]);
+
+  // ─── Checking state ──────────────────────────────────────
+  if(backendStatus==="checking"){
+    return <>
+      <style>{CSS}</style>
+      <div style={statusScreenStyle}>
+        <div style={{color:T.acc,display:"flex"}}>{I.spin}</div>
+        <div style={{fontSize:"14px",fontWeight:500}}>Starting local services...</div>
+        <div style={{fontSize:"12px",color:T.t3}}>Please wait while the backend becomes available...</div>
+      </div>
+    </>;
+  }
+
+  // ─── Failed state ────────────────────────────────────────
+  if(backendStatus==="failed"){
+    return <>
+      <style>{CSS}</style>
+      <div style={statusScreenStyle}>
+        <div style={{fontSize:"16px",fontWeight:600,color:T.err}}>Backend failed to start</div>
+        <div style={{fontSize:"12px",color:T.t3,maxWidth:"420px",lineHeight:1.6}}>
+          The local backend could not be reached. Make sure it is running, then try again.
+        </div>
+        <Btn variant="secondary" onClick={()=>window.location.reload()} style={{marginTop:"6px"}}>
+          Retry
+        </Btn>
+      </div>
+    </>;
+  }
+
+  // ─── Ready state (main app) ──────────────────────────────
   return <>
     <style>{CSS}</style>
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+    <div style={{display:"flex",flexDirection:"column",minHeight:"100vh"}}>
       <Header/>
-      <div style={{padding:"9px 32px",borderBottom:`1px solid ${T.bdSub}`,display:"flex",alignItems:"center",gap:"8px",fontSize:"12px",fontFamily:T.fM,color:T.t3}}>
-        <span style={{color:T.t2}}>Draft</span><span style={{opacity:0.4}}>/</span><span>New Transmittal</span>
+      <div style={{display:"flex",alignItems:"center",gap:"8px",padding:"9px 32px",borderBottom:`1px solid ${T.bdSub}`,fontSize:"12px",fontFamily:T.fM,color:T.t3}}>
+        <span style={{color:T.t2}}>Draft</span>
+        <span style={{opacity:0.4}}>/</span>
+        <span>New Transmittal</span>
         {draft.jobNum&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.acc}}>{draft.jobNum}</span></>}
       </div>
-      <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 280px",gap:"24px",padding:"24px 32px",maxWidth:"1280px",width:"100%",margin:"0 auto"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:"24px",flex:1,padding:"24px 32px",maxWidth:"1280px",width:"100%",margin:"0 auto"}}>
         <div style={{display:"flex",flexDirection:"column",gap:"18px"}}>
           <ProjectSection draft={draft} u={u}/>
           <OptionsSection checks={checks} toggle={toggle}/>
@@ -395,7 +471,7 @@ export default function App(){
           <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating}/>
         </div>
       </div>
-      <footer style={{padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,display:"flex",justifyContent:"space-between",fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
+      <footer style={{display:"flex",justifyContent:"space-between",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
         <span>R3P TRANSMITTAL BUILDER v3.0</span><span>ROOT3POWER ENGINEERING</span>
       </footer>
     </div>

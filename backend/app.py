@@ -67,7 +67,7 @@ def _save_upload(upload: UploadFile, dest_dir: str, filename: str = None) -> str
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": "3.0.0"}
+    return {"status": "healthy", "service": "transmittal-builder-backend", "version": "3.0.0"}
 
 
 # ─── POST /api/parse-index ────────────────────────────────────

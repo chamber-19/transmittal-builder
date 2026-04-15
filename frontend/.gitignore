@@ -1,1 +1,8 @@
 node_modules/
+
+# Vite build output
+dist/
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
