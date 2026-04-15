@@ -132,23 +132,43 @@ That's it! The Tauri shell will:
 
 ### Python environment requirements
 
-Tauri searches for a Python interpreter in this order: `python`, `python3`, `py`.
-The first one found on `PATH` is used to run uvicorn.
+> **The Phase 2 dev flow assumes a Miniconda-based Python installation.**
+> Full production-safe backend packaging (sidecar binary) is planned for Phase 3.
 
-- **Conda / virtualenv users:** Activate your environment in the terminal
-  **before** running `npm run desktop` so that the correct Python is on `PATH`.
-- **System Python users:** Make sure `uvicorn` is installed globally or the
-  backend dependencies are in the system Python:
+Tauri searches for a Python interpreter in this order:
+
+1. **`$CONDA_PREFIX`** — the active conda environment (set automatically by
+   `conda activate`). This is the recommended approach.
+2. **Well-known Miniconda / Anaconda install directories** under your home
+   folder (`~/miniconda3`, `~/Miniconda3`, `~/anaconda3`, `~/Anaconda3`).
+3. **`python` on `PATH`** — final fallback.
+
+The first candidate that passes a `python --version` check is used.
+
+- **Miniconda users (recommended):** Activate your conda environment in the
+  terminal **before** running `npm run desktop`:
+  ```bash
+  conda activate base        # or your project environment
+  cd frontend
+  npm run desktop
+  ```
+- **System Python users:** Ensure `python` is on `PATH` and backend
+  dependencies are installed:
   ```bash
   pip install -r backend/requirements.txt
   ```
+
+> **Why Miniconda?** Future backend work will include scientific Python
+> dependencies (e.g. scikit-learn) that benefit from conda's binary package
+> management.
 
 ### Troubleshooting backend auto-start
 
 | Symptom | Fix |
 |---------|-----|
-| "Python not found" in terminal | Install Python 3.10+ and ensure `python` (or `python3`/`py`) is on PATH |
+| "Python not found" in terminal | Activate your Miniconda environment (`conda activate`) and retry, or install Python 3.10+ and ensure `python` is on PATH |
 | "Could not find backend/app.py" | Run `npm run desktop` from the `frontend/` directory |
+| "Backend process exited early" | Check terminal output for import errors; run `pip install -r backend/requirements.txt` inside your conda env |
 | Backend starts but crashes | Check terminal output for import errors; run `pip install -r backend/requirements.txt` |
 | "Backend Unavailable" in the UI | Check terminal for errors; the backend has ~20 s to become reachable |
 
@@ -242,6 +262,10 @@ Windows-first Tauri desktop application.
 
 - **Dev-only:** The backend auto-start is designed for local development.
   Production/installer builds do not yet bundle the Python backend (see Phase 3).
+- **Miniconda assumed:** The dev workflow assumes the developer has Miniconda
+  (or Anaconda) installed. Activating a conda environment before launching
+  `npm run desktop` is the recommended approach. A plain `python` on PATH
+  works as a fallback, but future dependencies may require conda.
 - **No auto-install:** Python and the backend's pip dependencies must be
   installed before running the desktop app.
 - **Process cleanup:** The backend child process is killed when the Tauri
