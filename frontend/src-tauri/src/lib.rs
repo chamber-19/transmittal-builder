@@ -105,8 +105,8 @@ pub fn run() {
             };
 
             println!(
-                "[tauri] Starting backend: {python} -m uvicorn app:app \
-                 --host 127.0.0.1 --port 8000 --reload"
+                "[tauri] Starting backend: {} -m uvicorn app:app --host 127.0.0.1 --port 8000 --reload",
+                python
             );
             println!("[tauri] Backend directory: {}", backend_dir.display());
 
