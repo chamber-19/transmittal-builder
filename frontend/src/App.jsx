@@ -165,7 +165,7 @@ function Toast({message,type,onDismiss,duration}){
 
 // ─── File Chip ───────────────────────────────────────────────
 function FileChip({name,type,onRemove}){
-  const c={xl:{bg:T.okBg,t:T.ok,b:"rgba(107,158,107,0.3)",icon:I.xl,label:"INDEX"},doc:{bg:T.infoBg,t:T.info,b:"rgba(92,142,184,0.3)",icon:I.doc,label:"TEMPLATE"}}[type]||{};
+  const c={xl:{bg:T.okBg,t:T.ok,b:"rgba(107,158,107,0.3)",icon:I.xl,label:"INDEX"},doc:{bg:T.infoBg,t:T.info,b:"rgba(92,142,184,0.3)",icon:I.doc,label:"TEMPLATE"},pdf:{bg:T.errBg,t:T.err,b:"rgba(184,92,92,0.3)",icon:I.pdf,label:"PDF"}}[type]||{};
   return <div style={{display:"inline-flex",alignItems:"center",gap:"6px",padding:"5px 10px 5px 8px",borderRadius:T.rS,background:c.bg,border:`1px solid ${c.b}`}}>
     <span style={{display:"flex",color:c.t}}>{c.icon}</span>
     <span style={{fontSize:"9px",fontWeight:700,fontFamily:T.fM,color:c.t,letterSpacing:"0.06em"}}>{c.label}</span>
@@ -386,16 +386,8 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
     {(templateFile||indexFile||pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0))&&<div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"16px"}}>
       {templateFile&&<FileChip name={templateFile.name} type="doc" onRemove={clearTemplate}/>}
       {indexFile&&<FileChip name={indexFile.name} type="xl" onRemove={clearIndex}/>}
-      {pdfFiles.map(f=><div key={f.name} style={{display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 8px",borderRadius:T.rS,background:T.bgEl,border:`1px solid ${T.bdSub}`,fontSize:"12px",fontFamily:T.fM,color:T.t2}}>
-        <span style={{display:"flex",color:T.t3}}>{I.pdf}</span><span style={{maxWidth:"120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
-        <button onClick={()=>removePdf(f.name)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"0",display:"flex",opacity:0.5}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.5"}}>{I.x}</button>
-      </div>)}
-      {localPdfPaths&&localPdfPaths.map(p=>{const n=p.replace(/\\/g,"/").split("/").pop();return <div key={p} style={{display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 8px",borderRadius:T.rS,background:T.bgEl,border:`1px solid ${T.bdSub}`,fontSize:"12px",fontFamily:T.fM,color:T.t2}}>
-        <span style={{display:"flex",color:T.t3}}>{I.pdf}</span>
-        <span style={{maxWidth:"120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n}</span>
-        <button onClick={()=>removeLocalPdf(p)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"0",display:"flex",opacity:0.5}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.5"}}>{I.x}</button>
-      </div>;})}
-    </div>}
+      {pdfFiles.map(f=><FileChip key={f.name} name={f.name} type="pdf" onRemove={()=>removePdf(f.name)}/>)}
+      {localPdfPaths&&localPdfPaths.map(p=>{const n=p.replace(/\\/g,"/").split("/").pop();return <FileChip key={p} name={n} type="pdf" onRemove={()=>removeLocalPdf(p)}/>;})}    </div>}
     {indexWarnings&&indexWarnings.length>0&&<div style={{marginBottom:"12px",padding:"8px 12px",borderRadius:T.rS,background:T.warnBg,border:`1px solid rgba(196,162,77,0.3)`,fontSize:"12px",color:T.warn}}>{indexWarnings.join(" · ")}</div>}
     {indexFile&&documents.length>0&&(pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0))&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",marginBottom:"12px",borderRadius:T.rS,background:T.bgEl,border:`1px solid ${T.bdSub}`}}>
       <span style={{fontSize:"12px",color:T.t2}}>Include all drawings from index</span>
