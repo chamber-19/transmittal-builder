@@ -58,10 +58,13 @@ def _get_copy_intent_abbrev(checks: dict) -> str | None:
 
 def _parse_date_to_yyyymmdd(date_str: str) -> str:
     """Best-effort parse a date string to YYYYMMDD format."""
+    if not date_str or not isinstance(date_str, str):
+        return datetime.now().strftime("%Y%m%d")
+    date_str = date_str.strip()
     for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%m-%d-%Y", "%d/%m/%Y"):
         try:
-            return datetime.strptime(date_str.strip(), fmt).strftime("%Y%m%d")
-        except (ValueError, AttributeError):
+            return datetime.strptime(date_str, fmt).strftime("%Y%m%d")
+        except ValueError:
             continue
     # Fallback: today's date
     return datetime.now().strftime("%Y%m%d")
@@ -889,7 +892,7 @@ async def api_render(
 
         # Return package ZIP
         import zipfile
-        zip_name = f"{job_label}-XMTL-{xmtl_num_padded}_Package.zip"
+        zip_name = f"{job_label}-XMTL-{xmtl_num_padded}-Package.zip"
         zip_path = os.path.join(work_dir, zip_name)
 
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:

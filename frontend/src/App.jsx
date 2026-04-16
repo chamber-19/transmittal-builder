@@ -365,7 +365,7 @@ function OptionsSection({checks,toggle,showToast}){
     // Enforce single copy-intent selection
     if(ciKeys.includes(k)&&!checks[k]){
       const alreadySelected=ciKeys.filter(c=>checks[c]);
-      if(alreadySelected.length>=1){
+      if(alreadySelected.length>0){
         showToast("Only 1 transmittal issue type can be selected","error",4000);
         return;
       }
@@ -824,7 +824,7 @@ export default function App(){
       if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
 
       const blob=await res.blob();
-      const filename=`R3P-${draft.jobNum||"XXXX"}-XMTL-${draft.xmtlNum||"001"}_Package.zip`;
+      const filename=`R3P-${draft.jobNum||"XXXX"}-XMTL-${draft.xmtlNum||"001"}-Package.zip`;
       const url=URL.createObjectURL(blob);
       const a=document.createElement("a");
       a.href=url;
