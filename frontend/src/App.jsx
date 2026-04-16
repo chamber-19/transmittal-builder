@@ -38,7 +38,7 @@ const I={
   zap:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="9,1 3,9 8,9 7,15 13,7 8,7"/></svg>,
   grid:<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="2" width="5" height="5" rx="0.5"/><rect x="11" y="2" width="5" height="5" rx="0.5"/><rect x="2" y="11" width="5" height="5" rx="0.5"/><rect x="11" y="11" width="5" height="5" rx="0.5"/></svg>,
   book:<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 11V2.5A1.5 1.5 0 013.5 1H12v10H3.5A1.5 1.5 0 002 12.5 1.5 1.5 0 003.5 14H12"/></svg>,
-  pdf:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><text x="7" y="9.5" textAnchor="middle" fill="currentColor" fontSize="5" fontWeight="700" fontFamily="sans-serif">PDF</text></svg>,
+  pdf:<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 1H3.5A1.5 1.5 0 002 2.5v9A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V4.5L8.5 1z"/><polyline points="8.5,1 8.5,4.5 12,4.5"/></svg>,
   xl:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><text x="7" y="9.5" textAnchor="middle" fill="currentColor" fontSize="5" fontWeight="700" fontFamily="sans-serif">XL</text></svg>,
   doc:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><text x="7" y="9.5" textAnchor="middle" fill="currentColor" fontSize="4.5" fontWeight="700" fontFamily="sans-serif">DOC</text></svg>,
   spin:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 2a6 6 0 105.3 3.2"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="0.8s" repeatCount="indefinite"/></path></svg>,
@@ -74,6 +74,26 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 `;
 
 let _id=0;const uid=()=>`_${++_id}_${Date.now()}`;
+
+// ─── Filename Parser (port of backend extract_doc_meta) ──────
+const DOC_ID_RE=/(?:R3P[-–—](\d+)[-–—]E(\d+)[-–—](\d+))/i;
+function extractDocMeta(filename){
+  const base=filename.replace(/\.[^.]+$/,"").replace(/^.*[/\\]/,"");
+  const m=DOC_ID_RE.exec(base);
+  if(!m)return{docNo:"",desc:base.trim(),rev:""};
+  const raw=m[0].replace(/[–—]/g,"-").toUpperCase();
+  const prunedDocNo=raw.replace(/^R3P-\d+-/,"");
+  let remainder=base.slice(m.index+m[0].length);
+  remainder=remainder.replace(/^[\s\-_–—:;|]+/,"");
+  return{docNo:prunedDocNo,desc:remainder.trim(),rev:""};
+}
+
+// Sort key for document numbers — E0 before E1, then by number
+function docSortKey(docNo){
+  const m=/E(\d+)[-–—](\d+)/i.exec(docNo||"");
+  if(!m)return docNo||"";
+  return String(Number(m[1])).padStart(4,"0")+"-"+String(Number(m[2])).padStart(6,"0");
+}
 
 // ─── Status screen (shared layout for checking / failed) ─────
 const statusScreenStyle={
@@ -349,7 +369,7 @@ const thS={fontSize:"10px",fontWeight:600,fontFamily:T.fM,letterSpacing:"0.08em"
 const cMono={background:"transparent",border:"none",color:T.t1,fontFamily:T.fM,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 const cBody={background:"transparent",border:"none",color:T.t1,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 
-function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,indexFile,pdfFiles,localPdfPaths,onFileDrop,clearTemplate,clearIndex,removePdf,removeLocalPdf,indexLoading,indexWarnings}){
+function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,indexFile,pdfFiles,localPdfPaths,onFileDrop,clearTemplate,clearIndex,removePdf,removeLocalPdf,indexLoading,indexWarnings,includeAllIndex,onToggleIncludeAll}){
   const inputRef=useRef(null);const[over,setOver]=useState(false);const prevent=e=>{e.preventDefault();e.stopPropagation()};
   return <Card>
     <SL>Documents</SL>
@@ -358,7 +378,7 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
       style={{padding:"28px 20px",border:`1.5px dashed ${over?T.acc:T.bd}`,borderRadius:T.r,textAlign:"center",cursor:"pointer",transition:"all 0.2s",background:over?T.accM:"transparent",marginBottom:"16px"}}>
       <input ref={inputRef} type="file" multiple accept=".pdf,.xlsx,.xls,.docx" style={{display:"none"}} onChange={e=>{onFileDrop([...e.target.files]);e.target.value=""}}/>
       <div style={{color:over?T.acc:T.t3,marginBottom:"6px",display:"flex",justifyContent:"center"}}>{indexLoading?I.spin:I.upload}</div>
-      <div style={{fontSize:"14px",color:T.t1,fontWeight:500,marginBottom:"4px"}}>{indexLoading?"Parsing drawing index...":"Drop all your files here"}</div>
+      <div style={{fontSize:"14px",color:T.t1,fontWeight:500,marginBottom:"4px"}}>{indexLoading?"Parsing drawing index...":"Click to browse or drag and drop your files here"}</div>
       <div style={{fontSize:"12px",color:T.t3,lineHeight:1.7}}><span style={{color:T.t2}}>PDFs</span> → source documents · <span style={{color:T.ok}}>Excel</span> → drawing index & revisions · <span style={{color:T.info}}>DOCX</span> → template</div>
     </div>
     {(templateFile||indexFile||pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0))&&<div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"16px"}}>
@@ -368,19 +388,24 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
         <span style={{display:"flex",color:T.t3}}>{I.pdf}</span><span style={{maxWidth:"120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
         <button onClick={()=>removePdf(f.name)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"0",display:"flex",opacity:0.5}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.5"}}>{I.x}</button>
       </div>)}
-      {localPdfPaths&&localPdfPaths.map(p=>{const n=p.replace(/\\/g,"/").split("/").pop();return <div key={p} style={{display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 8px",borderRadius:T.rS,background:T.okBg,border:`1px solid rgba(107,158,107,0.3)`,fontSize:"12px",fontFamily:T.fM,color:T.ok}}>
-        <span style={{display:"flex",color:T.ok}}>{I.pdf}</span>
-        <span style={{fontSize:"9px",fontWeight:700,letterSpacing:"0.06em",color:T.ok,flexShrink:0}}>LOCAL</span>
+      {localPdfPaths&&localPdfPaths.map(p=>{const n=p.replace(/\\/g,"/").split("/").pop();return <div key={p} style={{display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 8px",borderRadius:T.rS,background:T.bgEl,border:`1px solid ${T.bdSub}`,fontSize:"12px",fontFamily:T.fM,color:T.t2}}>
+        <span style={{display:"flex",color:T.t3}}>{I.pdf}</span>
         <span style={{maxWidth:"120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n}</span>
-        <button onClick={()=>removeLocalPdf(p)} style={{background:"none",border:"none",color:T.ok,cursor:"pointer",padding:"0",display:"flex",opacity:0.5}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.5"}}>{I.x}</button>
+        <button onClick={()=>removeLocalPdf(p)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"0",display:"flex",opacity:0.5}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.5"}}>{I.x}</button>
       </div>;})}
     </div>}
     {indexWarnings&&indexWarnings.length>0&&<div style={{marginBottom:"12px",padding:"8px 12px",borderRadius:T.rS,background:T.warnBg,border:`1px solid rgba(196,162,77,0.3)`,fontSize:"12px",color:T.warn}}>{indexWarnings.join(" · ")}</div>}
+    {indexFile&&documents.length>0&&(pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0))&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",marginBottom:"12px",borderRadius:T.rS,background:T.bgEl,border:`1px solid ${T.bdSub}`}}>
+      <span style={{fontSize:"12px",color:T.t2}}>Include all drawings from index</span>
+      <button onClick={onToggleIncludeAll} style={{position:"relative",width:"36px",height:"20px",borderRadius:"10px",border:"none",background:includeAllIndex?T.acc:T.bd,cursor:"pointer",transition:"background 0.2s",padding:0}}>
+        <span style={{position:"absolute",top:"2px",left:includeAllIndex?"18px":"2px",width:"16px",height:"16px",borderRadius:"50%",background:T.t1,transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.3)"}}/>
+      </button>
+    </div>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
       <SL sub mono>Document Index{documents.length>0&&<span style={{color:T.t3,fontWeight:400}}> · {documents.length} item{documents.length!==1?"s":""}</span>}</SL>
       <Btn variant="ghost" icon={I.plus} onClick={addDoc} style={{padding:"4px 10px",fontSize:"12px"}}>Add Row</Btn>
     </div>
-    {documents.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px solid ${T.bd}`,borderRadius:T.r,background:T.bgEl}}>Drop an Excel drawing index above to populate this table automatically</div>:
+    {documents.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px solid ${T.bd}`,borderRadius:T.r,background:T.bgEl}}>Add documents manually with "Add Row" or drop an Excel drawing index above to auto-populate</div>:
       <><div style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"7px 12px",background:T.bgEl,borderRadius:`${T.rS} ${T.rS} 0 0`,borderBottom:`1px solid ${T.bd}`}}><span style={thS}>Doc No.</span><span style={thS}>Description</span><span style={thS}>Rev</span><span/></div>
       <div style={{border:`1px solid ${T.bd}`,borderTop:"none",borderRadius:`0 0 ${T.rS} ${T.rS}`,overflow:"hidden"}}>{documents.map((d,i)=><div key={d.id} style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"5px 12px",alignItems:"center",borderBottom:i<documents.length-1?`1px solid ${T.bdSub}`:"none",background:i%2===0?"transparent":"rgba(255,255,255,0.008)"}}>
         <input value={d.docNo} onChange={e=>updateDoc(d.id,"docNo",e.target.value)} placeholder="E0-001" style={cMono}/>
@@ -440,8 +465,8 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
   const total=6;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
   const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0);
   const totalPdfCount=pdfFiles.length+(localPdfPaths?localPdfPaths.length:0);
-  const pct=Math.min(100,Math.round((filled/total)*25+(hasT?15:0)+(hasI?15:0)+(hasP?15:0)+(goodContacts>0?15:0)+(activeChecks>0?10:0)+(documents.length>0?5:0)));
-  const canGenerate=hasT&&documents.length>0&&hasP&&filled>=4&&!generating;
+  const pct=Math.min(100,Math.round((filled/total)*25+(hasT?15:0)+(hasI?10:0)+(hasP?20:0)+(goodContacts>0?15:0)+(activeChecks>0?10:0)+(documents.length>0?5:0)));
+  const canGenerate=hasT&&hasP&&filled>=4&&!generating;
   const folderMode=!!projectFolderPath;
 
   return <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
@@ -449,8 +474,8 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
       <div style={{height:"4px",background:T.bgIn,borderRadius:"2px",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pct>=100?T.ok:T.acc,borderRadius:"2px",transition:"width 0.4s ease"}}/></div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Summary</SL><div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:totalPdfCount,ok:hasP},{l:"Options set",v:activeChecks,ok:activeChecks>0},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
-        <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":"muted"}>{String(x.v)}</Badge></div>)}</div></Card>
+      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"optional",ok:hasI,optional:true},{l:"Source PDFs",v:totalPdfCount,ok:hasP},{l:"Options set",v:activeChecks,ok:activeChecks>0},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
+        <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":(x.optional?"info":"muted")}>{String(x.v)}</Badge></div>)}</div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Output</SL>
       {folderMode?<div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
@@ -480,9 +505,8 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
       </Btn>
       {!canGenerate&&!generating&&(<div style={{fontSize:"11px",color:T.t3,textAlign:"center",marginTop:"6px"}}>
         {!hasT?"Upload a template":""}
-        {hasT&&documents.length===0?"Add documents":""}
-        {hasT&&documents.length>0&&!hasP?"Upload or select drawing PDFs":""}
-        {hasT&&documents.length>0&&hasP&&filled<4?"Fill required fields":""}
+        {hasT&&!hasP?"Upload or select drawing PDFs":""}
+        {hasT&&hasP&&filled<4?"Fill required fields":""}
       </div>)}
       <Btn variant="secondary" icon={I.send} onClick={onEmail} style={{width:"100%",justifyContent:"center",marginTop:"8px"}}>Email</Btn>
     </Card>
@@ -523,6 +547,7 @@ export default function App(){
   const[projectRoot,setProjectRoot]=useState(null);             // project root folder name for breadcrumb
   const[pdfSources,setPdfSources]=useState([]);                 // [{path,label,pdf_count,pdf_files}]
   const[localPdfPaths,setLocalPdfPaths]=useState([]);           // absolute paths selected from pdfSources
+  const[includeAllIndex,setIncludeAllIndex]=useState(true);    // Include all index entries in transmittal (vs only matched PDFs)
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
@@ -606,6 +631,7 @@ export default function App(){
 
   // ─── Smart file router ───────────────────────────────────
   const onFileDrop=useCallback(files=>{
+    const newPdfs=[];
     for(const f of files){
       const ext=f.name.split(".").pop().toLowerCase();
       if(ext==="docx"){
@@ -615,11 +641,32 @@ export default function App(){
         setIndexFile(f);
         parseIndex(f);
       }else if(ext==="pdf"){
+        newPdfs.push(f);
         setPdfFiles(prev=>{
           if(prev.some(p=>p.name===f.name))return prev;
           return[...prev,f];
         });
       }
+    }
+    // Auto-populate document rows from PDF filenames when no index is loaded
+    if(newPdfs.length>0){
+      setDocuments(prev=>{
+        // Only auto-add if no index file is loaded (index would have set rows already)
+        // Check existing doc numbers to avoid duplicates
+        const existingDocNos=new Set(prev.map(d=>d.docNo.toUpperCase()));
+        const autoRows=[];
+        for(const f of newPdfs){
+          const meta=extractDocMeta(f.name);
+          if(meta.docNo&&!existingDocNos.has(meta.docNo.toUpperCase())){
+            autoRows.push({id:uid(),docNo:meta.docNo,desc:meta.desc,rev:""});
+            existingDocNos.add(meta.docNo.toUpperCase());
+          }
+        }
+        if(autoRows.length===0)return prev;
+        const merged=[...prev,...autoRows];
+        merged.sort((a,b)=>docSortKey(a.docNo).localeCompare(docSortKey(b.docNo)));
+        return merged;
+      });
     }
   },[parseIndex]);
 
@@ -633,8 +680,16 @@ export default function App(){
   const handleGenerate=useCallback(async()=>{
     const hasUploadedPdfs=pdfFiles.length>0;
     const hasLocalPdfs=localPdfPaths.length>0;
-    if(!templateFile||documents.length===0||(!hasUploadedPdfs&&!hasLocalPdfs))return;
+    if(!templateFile||(!hasUploadedPdfs&&!hasLocalPdfs))return;
     setGenerating(true);
+
+    // Filter documents to matched PDFs when toggle is off
+    let docsToSend=documents;
+    if(!includeAllIndex&&indexFile&&documents.length>0){
+      const allPdfNames=[...pdfFiles.map(f=>f.name),...localPdfPaths.map(p=>p.replace(/\\/g,"/").split("/").pop())];
+      const pdfDocNos=new Set(allPdfNames.map(n=>{const m=extractDocMeta(n);return m.docNo.toUpperCase()}).filter(Boolean));
+      docsToSend=documents.filter(d=>pdfDocNos.has(d.docNo.toUpperCase()));
+    }
 
     const fieldsPayload={
       date:draft.date,job_num:draft.jobNum,transmittal_num:draft.xmtlNum,
@@ -653,7 +708,7 @@ export default function App(){
         form.append("fields",JSON.stringify(fieldsPayload));
         form.append("checks",JSON.stringify(checks));
         form.append("contacts",JSON.stringify(contactsClean));
-        form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
+        form.append("documents",JSON.stringify(docsToSend.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
         form.append("output_dir",projectFolderPath);
         for(const pdf of pdfFiles){form.append("pdfs",pdf)}
         if(hasLocalPdfs){form.append("local_pdf_paths",JSON.stringify(localPdfPaths))}
@@ -682,7 +737,7 @@ export default function App(){
       form.append("fields",JSON.stringify(fieldsPayload));
       form.append("checks",JSON.stringify(checks));
       form.append("contacts",JSON.stringify(contactsClean));
-      form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
+      form.append("documents",JSON.stringify(docsToSend.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
       for(const pdf of pdfFiles){form.append("pdfs",pdf)}
 
       const res=await fetch(`${API}/api/render`,{method:"POST",body:form});
@@ -703,7 +758,7 @@ export default function App(){
     }catch(e){
       showToast(`Generation failed: ${e.message}`,"error",8000);
     }finally{setGenerating(false)}
-  },[templateFile,documents,draft,checks,contacts,pdfFiles,projectFolderPath,u]);
+  },[templateFile,documents,draft,checks,contacts,pdfFiles,localPdfPaths,projectFolderPath,includeAllIndex,indexFile,u]);
 
   // ─── Email (placeholder) ─────────────────────────────────
   const handleEmail=useCallback(()=>{
@@ -803,7 +858,7 @@ export default function App(){
           <OptionsSection checks={checks} toggle={toggle}/>
           <ContactsSection contacts={contacts} updateContact={updateContact} removeContact={removeContact} addContact={addContact} savedLists={savedLists} onSaveList={onSaveList} onLoadList={onLoadList} onDeleteList={onDeleteList}/>
           {pdfSources.length>0&&<PdfSourcesPanel pdfSources={pdfSources} localPdfPaths={localPdfPaths} onTogglePdf={toggleLocalPdf}/>}
-          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} removeLocalPdf={removeLocalPdf} indexLoading={indexLoading} indexWarnings={indexWarnings}/>
+          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} removeLocalPdf={removeLocalPdf} indexLoading={indexLoading} indexWarnings={indexWarnings} includeAllIndex={includeAllIndex} onToggleIncludeAll={()=>setIncludeAllIndex(v=>!v)}/>
         </div>
         <div style={{position:"sticky",top:"24px",alignSelf:"start"}}>
           <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>
