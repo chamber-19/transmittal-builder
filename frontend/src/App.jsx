@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 
 /* ═══════════════════════════════════════════════════════════════
-   R3P TRANSMITTAL BUILDER v3.0 — Wired Frontend
+   R3P TRANSMITTAL BUILDER v4.0 — Wired Frontend
    API: /api/parse-index, /api/render, /api/email,
         /api/scan-projects, /api/scan-folder, /api/render-to-folder
    ═══════════════════════════════════════════════════════════════ */
@@ -68,6 +68,9 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 ::-webkit-scrollbar-thumb{background:${T.bd};border-radius:3px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .fade-in{animation:fadeIn 0.2s ease}
+@keyframes slideDown{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast-slide-down{animation:slideDown 0.25s ease forwards}
+@keyframes progressShrink{from{width:100%}to{width:0%}}
 `;
 
 let _id=0;const uid=()=>`_${++_id}_${Date.now()}`;
@@ -114,12 +117,27 @@ const Divider=()=><div style={{height:"1px",background:T.bd,margin:"18px 0"}}/>;
 const Row=({children,gap="12px"})=>{const c=Array.isArray(children)?children.filter(Boolean).length:1;return <div style={{display:"grid",gridTemplateColumns:`repeat(${c},1fr)`,gap}}>{children}</div>;};
 
 // ─── Toast / Status Bar ──────────────────────────────────────
-function Toast({message,type,onDismiss}){
+function Toast({message,type,onDismiss,duration}){
   if(!message)return null;
-  const c={success:{bg:T.okBg,t:T.ok,b:"rgba(107,158,107,0.3)"},error:{bg:T.errBg,t:T.err,b:"rgba(184,92,92,0.3)"},loading:{bg:T.accM,t:T.acc,b:T.accB},info:{bg:T.infoBg,t:T.info,b:"rgba(92,142,184,0.3)"}}[type]||{};
-  return <div className="fade-in" style={{position:"fixed",bottom:"24px",right:"24px",padding:"10px 16px",borderRadius:T.r,background:c.bg,border:`1px solid ${c.b}`,color:c.t,fontSize:"13px",fontWeight:500,display:"flex",alignItems:"center",gap:"8px",zIndex:999,maxWidth:"400px",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}}>
-    {type==="loading"&&I.spin}<span>{message}</span>
-    {type!=="loading"&&<button onClick={onDismiss} style={{background:"none",border:"none",color:c.t,cursor:"pointer",padding:"0",display:"flex",marginLeft:"8px"}}>{I.x}</button>}
+  const iconMap={success:"✓",error:"⚠",info:"ℹ"};
+  const c={
+    success:{bg:"#1a3a1a",t:"#7fd87f",b:"rgba(107,158,107,0.45)"},
+    error:{bg:"#3a1515",t:"#e87070",b:"rgba(184,92,92,0.45)"},
+    loading:{bg:"#2d2010",t:T.acc,b:T.accB},
+    info:{bg:"#152030",t:"#70a8e8",b:"rgba(92,142,184,0.45)"},
+  }[type]||{bg:T.bgCard,t:T.t1,b:T.bd};
+  const showProgress=type!=="loading"&&duration>0;
+  return <div style={{position:"fixed",top:"70px",left:"50%",transform:"translateX(-50%)",zIndex:9999,minWidth:"320px",maxWidth:"640px",width:"calc(100% - 64px)"}}>
+    <div className="toast-slide-down" style={{borderRadius:T.r,background:c.bg,border:`1px solid ${c.b}`,color:c.t,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",overflow:"hidden"}}>
+      <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"14px 20px",fontSize:"14px",fontWeight:500}}>
+        <span style={{fontSize:"16px",flexShrink:0,lineHeight:1,display:"flex",alignItems:"center"}}>
+          {type==="loading"?I.spin:(iconMap[type]||"ℹ")}
+        </span>
+        <span style={{flex:1}}>{message}</span>
+        {type!=="loading"&&<button onClick={onDismiss} style={{background:"none",border:"none",color:c.t,cursor:"pointer",padding:"0 0 0 8px",display:"flex",flexShrink:0,opacity:0.7}} onMouseEnter={e=>e.currentTarget.style.opacity="1"} onMouseLeave={e=>e.currentTarget.style.opacity="0.7"}>{I.x}</button>}
+      </div>
+      {showProgress&&<div style={{height:"3px",background:c.t,opacity:0.5,animation:`progressShrink ${duration}ms linear forwards`}}/>}
+    </div>
   </div>;
 }
 
@@ -506,7 +524,7 @@ export default function App(){
   const[pdfSources,setPdfSources]=useState([]);                 // [{path,label,pdf_count,pdf_files}]
   const[localPdfPaths,setLocalPdfPaths]=useState([]);           // absolute paths selected from pdfSources
 
-  const showToast=(message,type="info",duration=5000)=>{setToast({message,type});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
+  const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
   // Load saved contacts
   useEffect(()=>{try{const v=localStorage.getItem("r3p_contact_lists");if(v)setSavedLists(JSON.parse(v))}catch(e){}},[]);
@@ -776,7 +794,6 @@ export default function App(){
         <span style={{opacity:0.4}}>/</span>
         <span>New Transmittal</span>
         {draft.jobNum&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.acc}}>{draft.jobNum}</span></>}
-        {projectRoot&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.t2,maxWidth:"240px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projectRoot}</span></>}
         {projectFolderPath&&<><span style={{opacity:0.4}}>/</span><span style={{color:T.ok}}>Folder Mode</span></>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:"24px",flex:1,padding:"24px 32px",maxWidth:"1280px",width:"100%",margin:"0 auto"}}>
@@ -793,9 +810,9 @@ export default function App(){
         </div>
       </div>
       <footer style={{display:"flex",justifyContent:"space-between",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
-        <span>R3P TRANSMITTAL BUILDER v3.0</span><span>ROOT3POWER ENGINEERING</span>
+        <span>R3P TRANSMITTAL BUILDER v4.0 — By Dustin</span><span>© 2025–2026 ROOT3POWER ENGINEERING</span>
       </footer>
     </div>
-    <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)}/>
+    <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)} duration={toast?.duration||5000}/>
   </>;
 }

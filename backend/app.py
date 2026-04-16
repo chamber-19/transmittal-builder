@@ -37,7 +37,7 @@ from core.pdf_merge import docx_to_pdf, merge_source_pdfs
 
 app = FastAPI(
     title="R3P Transmittal Builder",
-    version="3.0.0",
+    version="4.0.0",
     description="Backend API for the ROOT3POWER Transmittal Builder",
 )
 
@@ -71,7 +71,7 @@ def _save_upload(upload: UploadFile, dest_dir: str, filename: str = None) -> str
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "service": "transmittal-builder-backend", "version": "3.0.0"}
+    return {"status": "healthy", "service": "transmittal-builder-backend", "version": "4.0.0"}
 
 
 # ─── POST /api/parse-index ────────────────────────────────────
@@ -179,63 +179,51 @@ def _find_transmittals_subfolder(folder_path: str) -> Optional[str]:
     return None
 
 
-def _collect_pdf_sources(parent_path: str, exclude_path: Optional[str] = None) -> list[dict]:
+def _collect_pdf_sources(parent_path: str, exclude_path: Optional[str] = None, max_depth: int = 4) -> list[dict]:
     """
-    Build a list of PDF source descriptors from immediate subfolders of *parent_path*
-    (and their immediate sub-subfolders), skipping *exclude_path*.
+    Build a list of PDF source descriptors by recursively scanning subfolders of
+    *parent_path* up to *max_depth* levels deep, skipping *exclude_path*.
 
     Each descriptor: {path, label, pdf_count, pdf_files}  where pdf_files is a
-    sorted list of *absolute* paths to the discovered PDFs.
+    sorted list of *absolute* paths to the discovered PDFs and label is the
+    relative folder path using " / " as separator (e.g. "01-ENGINEERING / DRAWINGS / ISSUED").
     """
     sources: list[dict] = []
     exclude_norm = os.path.normpath(exclude_path) if exclude_path else None
+
+    def _scan(dir_path: str, label: str, depth: int) -> None:
+        if depth > max_depth:
+            return
+        pdfs: list[str] = []
+        subdirs: list[tuple[str, str]] = []
+        try:
+            for e in sorted(os.scandir(dir_path), key=lambda x: x.name.lower()):
+                if e.is_file() and e.name.lower().endswith(".pdf"):
+                    pdfs.append(e.path)
+                elif e.is_dir():
+                    norm = os.path.normpath(e.path)
+                    if not (exclude_norm and norm == exclude_norm):
+                        subdirs.append((e.path, e.name))
+        except OSError:
+            return
+        if pdfs:
+            sources.append({
+                "path": dir_path,
+                "label": label,
+                "pdf_count": len(pdfs),
+                "pdf_files": sorted(pdfs),
+            })
+        for sub_path, sub_name in subdirs:
+            _scan(sub_path, f"{label} / {sub_name}", depth + 1)
 
     try:
         for entry in sorted(os.scandir(parent_path), key=lambda e: e.name.lower()):
             if not entry.is_dir():
                 continue
-            if exclude_norm and os.path.normpath(entry.path) == exclude_norm:
+            norm = os.path.normpath(entry.path)
+            if exclude_norm and norm == exclude_norm:
                 continue
-
-            # PDFs directly in this subfolder
-            direct_pdfs: list[str] = []
-            try:
-                for f in os.scandir(entry.path):
-                    if f.is_file() and f.name.lower().endswith(".pdf"):
-                        direct_pdfs.append(f.path)
-            except OSError:
-                pass
-
-            if direct_pdfs:
-                sources.append({
-                    "path": entry.path,
-                    "label": entry.name,
-                    "pdf_count": len(direct_pdfs),
-                    "pdf_files": sorted(direct_pdfs),
-                })
-
-            # One level deeper (e.g. 01-ENGINEERING/DRAWINGS)
-            try:
-                for sub in sorted(os.scandir(entry.path), key=lambda e: e.name.lower()):
-                    if not sub.is_dir():
-                        continue
-                    sub_pdfs: list[str] = []
-                    try:
-                        for f in os.scandir(sub.path):
-                            if f.is_file() and f.name.lower().endswith(".pdf"):
-                                sub_pdfs.append(f.path)
-                    except OSError:
-                        pass
-                    if sub_pdfs:
-                        sources.append({
-                            "path": sub.path,
-                            "label": f"{entry.name} / {sub.name}",
-                            "pdf_count": len(sub_pdfs),
-                            "pdf_files": sorted(sub_pdfs),
-                        })
-            except OSError:
-                pass
-
+            _scan(entry.path, entry.name, 1)
     except OSError:
         pass
 
@@ -391,6 +379,12 @@ def api_scan_folder(req: ScanFolderRequest):
       - Scans sibling folders for PDF sources, index/template files
       - Returns output_dir = the transmittals folder itself
 
+    **Department subfolder** (name starts with two digits + dash, e.g. "01-ENGINEERING"):
+      - Walks up to the project root
+      - Finds the transmittals sibling folder for XMTL numbering
+      - Collects PDF sources from ALL sibling dept folders
+      - Returns output_dir = transmittals sibling (or project root if none)
+
     **Project root** (contains numbered department subfolders like "01-*"):
       - Locates the transmittals subfolder within it
       - Scans department subfolders for PDF sources
@@ -408,9 +402,11 @@ def api_scan_folder(req: ScanFolderRequest):
 
     # ── Classify the selected folder ──────────────────────────
     is_xmtl_folder = _is_transmittals_folder(folder_name, folder_path)
+    # A numbered dept subfolder (e.g. "01-ENGINEERING") that is NOT itself a transmittals folder
+    is_dept_folder = bool(_DEPT_FOLDER_RE.match(folder_name)) and not is_xmtl_folder
 
     has_dept_subfolders = False
-    if not is_xmtl_folder:
+    if not is_xmtl_folder and not is_dept_folder:
         try:
             for e in os.scandir(folder_path):
                 if e.is_dir() and _DEPT_FOLDER_RE.match(e.name):
@@ -437,6 +433,16 @@ def api_scan_folder(req: ScanFolderRequest):
         project_root = candidate if os.path.isdir(candidate) else parent
         job_num, client_site = _parse_project_name(os.path.basename(project_root))
         output_dir = transmittals_folder
+        pdf_sources = _collect_pdf_sources(project_root, transmittals_folder)
+
+    elif is_dept_folder:
+        # ── Case D: selected folder is a numbered dept subfolder ──
+        # (e.g. user selected "01-ENGINEERING" from the dropdown)
+        # Walk up to the project root and anchor the scan there.
+        project_root = os.path.dirname(folder_path)
+        job_num, client_site = _parse_project_name(os.path.basename(project_root))
+        transmittals_folder = _find_transmittals_subfolder(project_root)
+        output_dir = transmittals_folder or project_root
         pdf_sources = _collect_pdf_sources(project_root, transmittals_folder)
 
     elif has_dept_subfolders:
