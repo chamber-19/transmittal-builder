@@ -1,7 +1,15 @@
-# R3P Transmittal Builder v3.0
+# R3P Transmittal Builder v4.0
 
-Standalone application for generating engineering transmittal packages.
-Drop your files, generate a combined PDF, and send it.
+A desktop-first application for generating engineering transmittal packages at ROOT3POWER ENGINEERING. Build professional transmittals by dropping files, auto-populating from project folders, and generating combined PDF packages — all from a single interface.
+
+**Key capabilities:**
+
+- **Project folder integration** — Scan a root directory for R3P project folders, auto-detect job numbers, contacts, existing transmittals, and source PDFs
+- **Smart file routing** — Drag & drop `.docx` templates, `.xlsx` drawing indexes, and `.pdf` source drawings; each is automatically routed to the right slot
+- **Transmittal rendering** — Fill a Word template with project fields, checkboxes, contacts, and a document table, then convert to PDF
+- **Combined PDF output** — Merge the transmittal cover letter with all source drawings into a single combined PDF
+- **Folder or ZIP output** — Save directly to a project's transmittals folder (desktop mode) or download as a ZIP (web mode)
+- **Address book** — Auto-load contacts from `contacts.json` in the project folder; import from saved lists
 
 ---
 
@@ -23,7 +31,7 @@ Transmittal-Builder/
     ├── src/
     │   ├── App.jsx            Main React application
     │   └── main.jsx           React entry point
-    ├── src-tauri/             Tauri desktop shell (Phase 2)
+    ├── src-tauri/             Tauri desktop shell
     │   ├── tauri.conf.json    Window / bundle configuration
     │   ├── Cargo.toml         Rust workspace manifest
     │   ├── build.rs           Tauri build script
@@ -36,7 +44,7 @@ Transmittal-Builder/
     └── vite.config.js
 ```
 
-**Data flow (Phase 2 — dev mode)**
+**Data flow**
 
 ```
 ┌─────────────────────────────┐     HTTP/REST      ┌───────────────────┐
@@ -58,12 +66,27 @@ once the backend is reachable.
 
 ## API Endpoints
 
-| Method | Path               | Description                                    |
-|--------|--------------------|------------------------------------------------|
-| GET    | /api/health        | Health check                                   |
-| POST   | /api/parse-index   | Upload Excel → parsed document rows            |
-| POST   | /api/render        | Render transmittal → DOCX / combined PDF / ZIP |
-| POST   | /api/email         | Send transmittal via SMTP                      |
+| Method | Path                 | Description                                                   |
+|--------|----------------------|---------------------------------------------------------------|
+| GET    | /api/health          | Health check (returns version)                                |
+| GET    | /api/scan-projects   | Scan a root directory for R3P project folders                 |
+| POST   | /api/scan-folder     | Deep-scan a specific project folder for PDFs, contacts, index |
+| POST   | /api/parse-index     | Upload Excel drawing index → parsed document rows             |
+| POST   | /api/render          | Render transmittal → ZIP package (docx + pdf + drawings)      |
+| POST   | /api/render-to-folder| Render transmittal directly to a project folder on disk       |
+| POST   | /api/email           | Send transmittal via SMTP                                     |
+
+---
+
+## Output Filenames
+
+The app produces files using R3P's naming convention:
+
+- **Transmittal letter:** `R3P-{JobNum}-XMTL-{NNN} - DOCUMENT INDEX.docx` / `.pdf`
+- **Combined PDF:** `R3P-{JobNum} - {PROJECT DESC} - {IFP}_{YYYYMMDD}.pdf`
+- **ZIP package:** `R3P-{JobNum}-XMTL-{NNN}-Package.zip`
+
+The copy-intent abbreviation (IFP, IFC, IFA, etc.) is derived from the single selected checkbox.
 
 ---
 
@@ -96,7 +119,7 @@ API docs at <http://localhost:8000/docs>
    pip install -r requirements.txt
    ```
 3. [Rust](https://www.rust-lang.org/tools/install) — `rustup` installs the toolchain
-4. Node.js ≥ 18 and npm
+4. Node.js ≥ 20 and npm
 
 **Additional prerequisites (Windows)**
 
@@ -132,7 +155,7 @@ That's it! The Tauri shell will:
 
 ### Python environment requirements
 
-> **The Phase 2 dev flow assumes a Miniconda-based Python installation.**
+> **The dev flow assumes a Miniconda-based Python installation.**
 > Full production-safe backend packaging (sidecar binary) is planned for Phase 3.
 
 Tauri searches for a Python interpreter in this order:
@@ -157,10 +180,6 @@ The first candidate that passes a `python --version` check is used.
   ```bash
   pip install -r backend/requirements.txt
   ```
-
-> **Why Miniconda?** Future backend work will include scientific Python
-> dependencies (e.g. scikit-learn) that benefit from conda's binary package
-> management.
 
 ### Troubleshooting backend auto-start
 
@@ -243,6 +262,17 @@ Without either converter, `/api/render` still works for `output_format=docx`.
 | Variable        | Description                             |
 |-----------------|-----------------------------------------|
 | VITE_API_URL    | Backend URL (default: `http://127.0.0.1:8000`) |
+
+---
+
+## Version History
+
+| Version | Description |
+|---------|-------------|
+| **4.0** | Project folder integration, folder output mode, collapsible PDF sources, granular readiness indicator, overwrite protection, copy-intent filename convention, single-intent enforcement, context-aware toasts, purple PDF chips, clear all documents, simplified contacts |
+| **3.0** | Tauri desktop shell (Phase 1 & 2), backend auto-start, health check UI, drag & drop, drawing index Excel parsing |
+| **2.0** | ZIP package output, combined PDF merge, frontend/backend split |
+| **1.0** | Initial web-only transmittal builder |
 
 ---
 
