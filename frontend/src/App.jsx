@@ -163,9 +163,24 @@ function Toast({message,type,onDismiss,duration}){
   </div>;
 }
 
+// ─── Confirm Dialog ──────────────────────────────────────────
+function ConfirmDialog({open,title,message,onConfirm,onCancel}){
+  if(!open)return null;
+  return <div style={{position:"fixed",inset:0,zIndex:10000,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)"}}>
+    <div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:T.rL,padding:"28px 32px",maxWidth:"420px",width:"calc(100% - 48px)",boxShadow:"0 16px 48px rgba(0,0,0,0.5)"}}>
+      <div style={{fontSize:"16px",fontWeight:600,color:T.t1,marginBottom:"10px"}}>{title}</div>
+      <div style={{fontSize:"13px",color:T.t2,lineHeight:1.6,marginBottom:"20px"}}>{message}</div>
+      <div style={{display:"flex",justifyContent:"flex-end",gap:"8px"}}>
+        <Btn variant="secondary" onClick={onCancel}>No, Cancel</Btn>
+        <Btn variant="primary" onClick={onConfirm}>Yes, Overwrite</Btn>
+      </div>
+    </div>
+  </div>;
+}
+
 // ─── File Chip ───────────────────────────────────────────────
 function FileChip({name,type,onRemove}){
-  const c={xl:{bg:T.okBg,t:T.ok,b:"rgba(107,158,107,0.3)",icon:I.xl,label:"INDEX"},doc:{bg:T.infoBg,t:T.info,b:"rgba(92,142,184,0.3)",icon:I.doc,label:"TEMPLATE"},pdf:{bg:T.errBg,t:T.err,b:"rgba(184,92,92,0.3)",icon:I.pdf,label:"PDF"}}[type]||{};
+  const c={xl:{bg:T.okBg,t:T.ok,b:"rgba(107,158,107,0.3)",icon:I.xl,label:"INDEX"},doc:{bg:T.infoBg,t:T.info,b:"rgba(92,142,184,0.3)",icon:I.doc,label:"TEMPLATE"},pdf:{bg:"rgba(147,112,219,0.12)",t:"#9370DB",b:"rgba(147,112,219,0.3)",icon:I.pdf,label:"PDF"}}[type]||{};
   return <div style={{display:"inline-flex",alignItems:"center",gap:"6px",padding:"5px 10px 5px 8px",borderRadius:T.rS,background:c.bg,border:`1px solid ${c.b}`}}>
     <span style={{display:"flex",color:c.t}}>{c.icon}</span>
     <span style={{fontSize:"9px",fontWeight:700,fontFamily:T.fM,color:c.t,letterSpacing:"0.06em"}}>{c.label}</span>
@@ -314,9 +329,23 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
 }
 
 // ─── Sections ────────────────────────────────────────────────
-function ProjectSection({draft,u}){return <Card>
+function ProjectSection({draft,u,nextXmtlNum,projectFolderPath}){return <Card>
   <SL>Project Information</SL>
-  <Row><TF label="Job Number" value={draft.jobNum} onChange={v=>u("jobNum",v)} placeholder="R3P-XXXX" mono/><TF label="Transmittal No." value={draft.xmtlNum} onChange={v=>u("xmtlNum",v)} placeholder="XMTL-001" mono/></Row>
+  <Row><TF label="Job Number" value={draft.jobNum} onChange={v=>u("jobNum",v)} placeholder="R3P-XXXX" mono/>
+    <div style={{flex:1,minWidth:0}}>
+      <label style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>Transmittal No.</label>
+      <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+        <input type="text" value={draft.xmtlNum} onChange={e=>u("xmtlNum",e.target.value)} placeholder="XMTL-001"
+          style={{width:"100%",padding:"7px 12px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fM,fontSize:"13px",outline:"none",transition:"border-color 0.15s"}}
+          onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
+        {projectFolderPath&&nextXmtlNum&&draft.xmtlNum!==nextXmtlNum&&<button onClick={()=>u("xmtlNum",nextXmtlNum)} title={`Jump to next available: ${nextXmtlNum}`}
+          style={{flexShrink:0,padding:"4px 8px",fontSize:"10px",fontFamily:T.fM,fontWeight:600,background:T.accM,color:T.acc,border:`1px solid ${T.accB}`,borderRadius:T.rS,cursor:"pointer",whiteSpace:"nowrap"}}>
+          Next: {nextXmtlNum}
+        </button>}
+      </div>
+      {projectFolderPath&&<div style={{fontSize:"10px",color:T.t3,marginTop:"3px"}}>Edit to overwrite an existing transmittal</div>}
+    </div>
+  </Row>
   <div style={{marginTop:"12px"}}><TF label="Client / Site Name" value={draft.client} onChange={v=>u("client",v)} placeholder="Client Name — Site Name"/></div>
   <div style={{marginTop:"12px"}}><TF label="Project Description" value={draft.projectDesc} onChange={v=>u("projectDesc",v)} placeholder="Enter project description"/></div>
   <div style={{marginTop:"12px",maxWidth:"200px"}}><TF label="Date" value={draft.date} onChange={v=>u("date",v)} placeholder="MM/DD/YYYY" mono/></div>
@@ -327,15 +356,27 @@ function ProjectSection({draft,u}){return <Card>
   <div style={{marginTop:"12px",maxWidth:"240px"}}><TF label="Firm Registration" value={draft.firm} onChange={v=>u("firm",v)} placeholder="TX FIRM #XXXXX" mono/></div>
 </Card>;}
 
-function OptionsSection({checks,toggle}){
+function OptionsSection({checks,toggle,showToast}){
   const G=[{label:"Transmitted",keys:[["trans_pdf","PDF"],["trans_cad","CAD"],["trans_originals","Originals"]]},{label:"Sent Via",keys:[["via_email","Email"],["via_ftp","FTP"]]},
     {label:"Copy Intent",keys:[["ci_info","For Information Only"],["ci_approval","For Approval"],["ci_bid","For Bid"],["ci_preliminary","For Preliminary"],["ci_const","For Construction"],["ci_asbuilt","For As-Built"],["ci_fab","For Fabrication"],["ci_record","For Record"],["ci_ref","For Reference"]]},
     {label:"Vendor Response",keys:[["vr_approved","Approved"],["vr_approved_noted","Approved as Noted"],["vr_rejected","Rejected"]]}];
-  return <Card><SL>Transmittal Options</SL><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"20px"}}>{G.map(g=><div key={g.label}><SL sub mono>{g.label}</SL>{g.keys.map(([k,l])=><CB key={k} label={l} checked={checks[k]} onChange={()=>toggle(k)}/>)}</div>)}</div></Card>;
+  const ciKeys=["ci_info","ci_approval","ci_bid","ci_preliminary","ci_const","ci_asbuilt","ci_fab","ci_record","ci_ref"];
+  const handleToggle=(k)=>{
+    // Enforce single copy-intent selection
+    if(ciKeys.includes(k)&&!checks[k]){
+      const alreadySelected=ciKeys.filter(c=>checks[c]);
+      if(alreadySelected.length>=1){
+        showToast("Only 1 transmittal issue type can be selected","error",4000);
+        return;
+      }
+    }
+    toggle(k);
+  };
+  return <Card><SL>Transmittal Options</SL><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"20px"}}>{G.map(g=><div key={g.label}><SL sub mono>{g.label}</SL>{g.keys.map(([k,l])=><CB key={k} label={l} checked={checks[k]} onChange={()=>handleToggle(k)}/>)}</div>)}</div></Card>;
 }
 
-function ContactsSection({contacts,updateContact,removeContact,addContact,savedLists,onSaveList,onLoadList,onDeleteList}){
-  const[showBook,setShowBook]=useState(false);const[listName,setListName]=useState("");
+function ContactsSection({contacts,updateContact,removeContact,addContact,savedLists,onLoadList,onDeleteList}){
+  const[showBook,setShowBook]=useState(false);
   return <Card>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}}>
       <SL>Contacts</SL>
@@ -346,19 +387,14 @@ function ContactsSection({contacts,updateContact,removeContact,addContact,savedL
     </div>
     {showBook&&<div style={{marginBottom:"16px",padding:"14px",background:T.bgEl,borderRadius:T.r,border:`1px solid ${T.bdSub}`}}>
       <SL sub mono>Saved Contact Lists</SL>
-      {savedLists.length===0?<div style={{fontSize:"12px",color:T.t3,marginBottom:"10px",fontStyle:"italic"}}>No saved lists yet</div>:
+      {savedLists.length===0?<div style={{fontSize:"12px",color:T.t3,marginBottom:"10px",fontStyle:"italic"}}>No saved contact lists found. Contacts are automatically saved when you generate a transmittal.</div>:
         <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"10px"}}>{savedLists.map(sl=><div key={sl.name} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:T.bgIn,borderRadius:T.rS,border:`1px solid ${T.bdSub}`}}>
           <div style={{display:"flex",alignItems:"center",gap:"8px"}}><span style={{fontSize:"13px",fontWeight:500,color:T.t1}}>{sl.name}</span><Badge color="muted">{sl.contacts.length}</Badge></div>
-          <div style={{display:"flex",gap:"4px"}}><Btn variant="ghost" icon={I.load} onClick={()=>onLoadList(sl.name)} style={{padding:"4px 8px",fontSize:"11px"}}>Load</Btn><button onClick={()=>onDeleteList(sl.name)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"4px",display:"flex"}}>{I.trash}</button></div>
+          <div style={{display:"flex",gap:"4px"}}><Btn variant="ghost" icon={I.load} onClick={()=>onLoadList(sl.name)} style={{padding:"4px 8px",fontSize:"11px"}}>Import</Btn><button onClick={()=>onDeleteList(sl.name)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"4px",display:"flex"}}>{I.trash}</button></div>
         </div>)}</div>}
-      <div style={{display:"flex",gap:"6px"}}>
-        <input value={listName} onChange={e=>setListName(e.target.value)} placeholder="List name..." style={{flex:1,padding:"5px 10px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontSize:"13px",outline:"none"}}
-          onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}
-          onKeyDown={e=>{if(e.key==="Enter"&&listName.trim()&&contacts.length>0){onSaveList(listName.trim());setListName("")}}}/>
-        <Btn variant="secondary" icon={I.save} onClick={()=>{if(listName.trim()){onSaveList(listName.trim());setListName("")}}} disabled={!listName.trim()||contacts.length===0} style={{fontSize:"12px"}}>Save Current</Btn>
-      </div>
+      <div style={{fontSize:"11px",color:T.t3}}>Import contacts from a previously used transmittal list</div>
     </div>}
-    {contacts.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px dashed ${T.bd}`,borderRadius:T.r}}>No contacts added — use the Address Book to load a saved list or add manually</div>:
+    {contacts.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px dashed ${T.bd}`,borderRadius:T.r}}>No contacts added — contacts auto-load from project folder, or add manually</div>:
       <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>{contacts.map((c,i)=><div key={c.id} style={{padding:"10px 12px",background:T.bgEl,borderRadius:T.r,border:`1px solid ${T.bdSub}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"6px"}}><span style={{fontSize:"10px",fontFamily:T.fM,color:T.t3}}>CONTACT {String(i+1).padStart(2,"0")}</span><button onClick={()=>removeContact(c.id)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"2px",display:"flex"}}>{I.x}</button></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}}><TF compact label="Name" value={c.name} onChange={v=>updateContact(c.id,"name",v)} placeholder="Name"/><TF compact label="Company" value={c.company} onChange={v=>updateContact(c.id,"company",v)} placeholder="Company"/><TF compact label="Email" value={c.email} onChange={v=>updateContact(c.id,"email",v)} placeholder="Email"/><TF compact label="Phone" value={c.phone} onChange={v=>updateContact(c.id,"phone",v)} placeholder="Phone" mono/></div>
@@ -371,8 +407,9 @@ const thS={fontSize:"10px",fontWeight:600,fontFamily:T.fM,letterSpacing:"0.08em"
 const cMono={background:"transparent",border:"none",color:T.t1,fontFamily:T.fM,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 const cBody={background:"transparent",border:"none",color:T.t1,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 
-function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,indexFile,pdfFiles,localPdfPaths,onFileDrop,clearTemplate,clearIndex,removePdf,removeLocalPdf,indexLoading,indexWarnings,includeAllIndex,onToggleIncludeAll}){
+function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templateFile,indexFile,pdfFiles,localPdfPaths,onFileDrop,clearTemplate,clearIndex,removePdf,removeLocalPdf,indexLoading,indexWarnings,includeAllIndex,onToggleIncludeAll}){
   const inputRef=useRef(null);const[over,setOver]=useState(false);const prevent=e=>{e.preventDefault();e.stopPropagation()};
+  const hasAnything=documents.length>0||pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0)||indexFile;
   return <Card>
     <SL>Documents</SL>
     <div onDragOver={e=>{prevent(e);setOver(true)}} onDragLeave={e=>{prevent(e);setOver(false)}}
@@ -397,7 +434,10 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
     </div>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
       <SL sub mono>Document Index{documents.length>0&&<span style={{color:T.t3,fontWeight:400}}> · {documents.length} item{documents.length!==1?"s":""}</span>}</SL>
-      <Btn variant="ghost" icon={I.plus} onClick={addDoc} style={{padding:"4px 10px",fontSize:"12px"}}>Add Row</Btn>
+      <div style={{display:"flex",gap:"6px"}}>
+        {hasAnything&&<Btn variant="ghost" icon={I.trash} onClick={clearAll} style={{padding:"4px 10px",fontSize:"12px",color:T.err}}>Clear All</Btn>}
+        <Btn variant="ghost" icon={I.plus} onClick={addDoc} style={{padding:"4px 10px",fontSize:"12px"}}>Add Row</Btn>
+      </div>
     </div>
     {documents.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px solid ${T.bd}`,borderRadius:T.r,background:T.bgEl}}>Add documents manually with "Add Row" or drop an Excel drawing index above to auto-populate</div>:
       <><div style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"7px 12px",background:T.bgEl,borderRadius:`${T.rS} ${T.rS} 0 0`,borderBottom:`1px solid ${T.bd}`}}><span style={thS}>Doc No.</span><span style={thS}>Description</span><span style={thS}>Rev</span><span/></div>
@@ -413,14 +453,20 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,templateFile,ind
 // ─── PDF Sources Panel ───────────────────────────────────────
 function PdfSourcesPanel({pdfSources,localPdfPaths,onTogglePdf}){
   const[expanded,setExpanded]=useState(null);
+  const[collapsed,setCollapsed]=useState(false);
   if(!pdfSources||pdfSources.length===0)return null;
   const selectedPdfPathsSet=new Set(localPdfPaths);
+  const totalPdfs=pdfSources.reduce((s,src)=>s+src.pdf_count,0);
   return <Card>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
-      <SL>PDF Sources Found</SL>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:collapsed?"0":"12px",cursor:"pointer"}} onClick={()=>setCollapsed(v=>!v)}>
+      <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+        <span style={{fontSize:"10px",color:T.t3,transition:"transform 0.2s",transform:collapsed?"rotate(-90deg)":"rotate(0deg)"}}>▼</span>
+        <SL>PDF Sources Found</SL>
+        {collapsed&&<Badge color="muted">{pdfSources.length} folder{pdfSources.length!==1?"s":""} · {totalPdfs} PDFs</Badge>}
+      </div>
       {localPdfPaths.length>0&&<Badge color="success">{localPdfPaths.length} added</Badge>}
     </div>
-    <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+    {!collapsed&&<><div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
       {pdfSources.map((src,i)=>{
         const isExp=expanded===i;
         return <div key={src.path}>
@@ -450,6 +496,7 @@ function PdfSourcesPanel({pdfSources,localPdfPaths,onTogglePdf}){
       })}
     </div>
     <div style={{marginTop:"8px",fontSize:"11px",color:T.t3}}>Click a folder to browse PDFs · click Add to include in this transmittal</div>
+    </>}
   </Card>;
 }
 
@@ -459,7 +506,23 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
   const total=6;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
   const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0);
   const totalPdfCount=pdfFiles.length+(localPdfPaths?localPdfPaths.length:0);
-  const pct=Math.min(100,Math.round((filled/total)*25+(hasT?15:0)+(hasI?10:0)+(hasP?20:0)+(goodContacts>0?15:0)+(activeChecks>0?10:0)+(documents.length>0?5:0)));
+  // Granular readiness: each field contributes individually
+  let pct=0;
+  if(draft.jobNum)pct+=8;         // Job Number
+  if(draft.xmtlNum)pct+=8;       // Transmittal No.
+  if(draft.client)pct+=6;        // Client/Site
+  if(draft.projectDesc)pct+=6;   // Project Description
+  if(draft.fromName)pct+=4;      // Sender Name
+  if(draft.date)pct+=4;          // Date
+  if(hasT)pct+=15;               // Template loaded
+  if(hasP)pct+=18;               // Source PDFs
+  if(goodContacts>0)pct+=10;     // Contacts
+  if(activeChecks>0)pct+=6;      // Options checkboxes
+  if(documents.length>0)pct+=5;  // Document index rows
+  if(hasI)pct+=5;                // Drawing index (optional but counts)
+  if(draft.fromEmail)pct+=3;     // Sender email
+  if(draft.fromPhone)pct+=2;     // Sender phone
+  pct=Math.min(100,pct);
   const canGenerate=hasT&&hasP&&filled>=4&&!generating;
   const folderMode=!!projectFolderPath;
 
@@ -542,6 +605,7 @@ export default function App(){
   const[pdfSources,setPdfSources]=useState([]);                 // [{path,label,pdf_count,pdf_files}]
   const[localPdfPaths,setLocalPdfPaths]=useState([]);           // absolute paths selected from pdfSources
   const[includeAllIndex,setIncludeAllIndex]=useState(true);    // Include all index entries in transmittal (vs only matched PDFs)
+  const[confirmDialog,setConfirmDialog]=useState(null);       // {title,message,onConfirm} or null
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
@@ -568,7 +632,16 @@ export default function App(){
       setProjectFolderPath(outputDir);
       setNextXmtlNum(xmtlNum);
       setProjectRoot(root||null);
-      setPdfSources(sources||[]);
+      // Deduplicate sources by path and exclude the output directory itself
+      const seen=new Set();
+      const deduped=(sources||[]).filter(s=>{
+        const norm=(s.path||"").replace(/\\/g,"/").toLowerCase();
+        const outNorm=(outputDir||"").replace(/\\/g,"/").toLowerCase();
+        if(seen.has(norm)||norm===outNorm)return false;
+        seen.add(norm);
+        return true;
+      });
+      setPdfSources(deduped);
       u("jobNum",jobNum);
       u("client",clientSite);
       u("xmtlNum",xmtlNum);
@@ -587,7 +660,10 @@ export default function App(){
       const rootName=data.project_root?data.project_root.split(/[/\\]/).pop():null;
       applyProjectData(outputDir,data.job_num||"",data.client_site||"",data.next_xmtl_num||"001",rootName,data.pdf_sources||[]);
 
-      // Auto-load contacts
+      // Reset local PDF paths to avoid stale selections from a previous scan
+      setLocalPdfPaths([]);
+
+      // Auto-load contacts from project (contacts.json found by backend)
       if(data.contacts&&data.contacts.length>0){
         setContacts(data.contacts.map(c=>({...c,id:uid()})));
       }
@@ -617,11 +693,17 @@ export default function App(){
       if(!res.ok)throw new Error(data.detail||"Parse failed");
       setDocuments(data.documents.map(d=>({id:uid(),docNo:d.doc_no,desc:d.desc,rev:d.rev})));
       if(data.warnings?.length)setIndexWarnings(data.warnings);
-      showToast(`Loaded ${data.row_count} documents from "${data.sheet_name}"`,"success");
+      // Context-aware toast message
+      const hasPdfs=pdfFiles.length>0||localPdfPaths.length>0;
+      if(hasPdfs){
+        showToast(`Revisions updated for ${data.row_count} documents from uploaded PDFs`,"success");
+      }else{
+        showToast(`Drawing index loaded — ${data.row_count} documents imported from "${data.sheet_name}"`,"success");
+      }
     }catch(e){
       showToast(`Index parse failed: ${e.message}`,"error");
     }finally{setIndexLoading(false)}
-  },[]);
+  },[pdfFiles,localPdfPaths]);
 
   // ─── Smart file router ───────────────────────────────────
   const onFileDrop=useCallback(files=>{
@@ -669,9 +751,13 @@ export default function App(){
   const removePdf=useCallback(name=>setPdfFiles(p=>p.filter(f=>f.name!==name)),[]);
   const toggleLocalPdf=useCallback(path=>setLocalPdfPaths(p=>p.includes(path)?p.filter(x=>x!==path):[...p,path]),[]);
   const removeLocalPdf=useCallback(path=>setLocalPdfPaths(p=>p.filter(x=>x!==path)),[]);
+  const clearAllDocuments=useCallback(()=>{
+    setDocuments([]);setPdfFiles([]);setLocalPdfPaths([]);setIndexFile(null);setIndexWarnings([]);
+    showToast("All documents and PDFs cleared","info",3000);
+  },[]);
 
   // ─── Generate Transmittal ────────────────────────────────
-  const handleGenerate=useCallback(async()=>{
+  const doGenerate=useCallback(async()=>{
     const hasUploadedPdfs=pdfFiles.length>0;
     const hasLocalPdfs=localPdfPaths.length>0;
     if(!templateFile||(!hasUploadedPdfs&&!hasLocalPdfs))return;
@@ -715,10 +801,8 @@ export default function App(){
         const data=await res.json();
         const folderName=data.xmtl_folder_name||"XMTL folder";
         showToast(`✓ Saved to ${folderName} in project folder`,"success",8000);
-        // Use the next_xmtl_num returned by the backend (already accounts for the new folder)
-        const newNum=data.next_xmtl_num||"001";
-        setNextXmtlNum(newNum);
-        u("xmtlNum",newNum);
+        // Update next available number but keep current XMTL number (user can change manually)
+        if(data.next_xmtl_num)setNextXmtlNum(data.next_xmtl_num);
       }catch(e){
         showToast(`Folder output failed: ${e.message}`,"error",8000);
       }finally{setGenerating(false)}
@@ -740,7 +824,7 @@ export default function App(){
       if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
 
       const blob=await res.blob();
-      const filename=`R3P-${draft.jobNum||"XXXX"}_XMTL-${draft.xmtlNum||"001"}_Package.zip`;
+      const filename=`R3P-${draft.jobNum||"XXXX"}-XMTL-${draft.xmtlNum||"001"}_Package.zip`;
       const url=URL.createObjectURL(blob);
       const a=document.createElement("a");
       a.href=url;
@@ -754,7 +838,25 @@ export default function App(){
     }catch(e){
       showToast(`Generation failed: ${e.message}`,"error",8000);
     }finally{setGenerating(false)}
-  },[templateFile,documents,draft,checks,contacts,pdfFiles,localPdfPaths,projectFolderPath,includeAllIndex,indexFile,u]);
+  },[templateFile,documents,draft,checks,contacts,pdfFiles,localPdfPaths,projectFolderPath,includeAllIndex,indexFile]);
+
+  // ─── Generate with overwrite check ───────────────────────
+  const handleGenerate=useCallback(()=>{
+    // Check if XMTL number is lower than next available (would overwrite)
+    if(projectFolderPath&&nextXmtlNum&&draft.xmtlNum){
+      const current=parseInt(draft.xmtlNum,10);
+      const next=parseInt(nextXmtlNum,10);
+      if(!isNaN(current)&&!isNaN(next)&&current<next){
+        setConfirmDialog({
+          title:"Overwrite Existing Transmittal?",
+          message:`XMTL-${String(current).padStart(3,"0")} already exists in the project folder. Generating will overwrite the existing files. Do you want to continue?`,
+          onConfirm:()=>{setConfirmDialog(null);doGenerate()},
+        });
+        return;
+      }
+    }
+    doGenerate();
+  },[doGenerate,projectFolderPath,nextXmtlNum,draft.xmtlNum]);
 
   // ─── Email (placeholder) ─────────────────────────────────
   const handleEmail=useCallback(()=>{
@@ -762,13 +864,7 @@ export default function App(){
   },[]);
 
   // ─── Contact list persistence ────────────────────────────
-  const onSaveList=useCallback(name=>{
-    const clean=contacts.filter(c=>c.name||c.email).map(({name,company,email,phone})=>({name,company,email,phone}));
-    if(!clean.length)return;
-    persistLists([...savedLists.filter(l=>l.name!==name),{name,contacts:clean,savedAt:new Date().toISOString()}]);
-    showToast(`Saved "${name}" (${clean.length} contacts)`,"success",3000);
-  },[contacts,savedLists,persistLists]);
-  const onLoadList=useCallback(name=>{const list=savedLists.find(l=>l.name===name);if(list){setContacts(list.contacts.map(c=>({...c,id:uid()})));showToast(`Loaded "${name}"`,"success",3000)}},[savedLists]);
+  const onLoadList=useCallback(name=>{const list=savedLists.find(l=>l.name===name);if(list){setContacts(list.contacts.map(c=>({...c,id:uid()})));showToast(`Imported "${name}" contacts`,"success",3000)}},[savedLists]);
   const onDeleteList=useCallback(name=>{persistLists(savedLists.filter(l=>l.name!==name));showToast(`Deleted "${name}"`,"info",3000)},[savedLists,persistLists]);
 
   // ─── Check backend status on load ─────────────────────────
@@ -850,11 +946,11 @@ export default function App(){
       <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:"24px",flex:1,padding:"24px 32px",maxWidth:"1280px",width:"100%",margin:"0 auto"}}>
         <div style={{display:"flex",flexDirection:"column",gap:"18px"}}>
           <ProjectSearchPanel onProjectSelect={handleProjectSelect} showToast={showToast}/>
-          <ProjectSection draft={draft} u={u}/>
-          <OptionsSection checks={checks} toggle={toggle}/>
-          <ContactsSection contacts={contacts} updateContact={updateContact} removeContact={removeContact} addContact={addContact} savedLists={savedLists} onSaveList={onSaveList} onLoadList={onLoadList} onDeleteList={onDeleteList}/>
+          <ProjectSection draft={draft} u={u} nextXmtlNum={nextXmtlNum} projectFolderPath={projectFolderPath}/>
+          <OptionsSection checks={checks} toggle={toggle} showToast={showToast}/>
+          <ContactsSection contacts={contacts} updateContact={updateContact} removeContact={removeContact} addContact={addContact} savedLists={savedLists} onLoadList={onLoadList} onDeleteList={onDeleteList}/>
           {pdfSources.length>0&&<PdfSourcesPanel pdfSources={pdfSources} localPdfPaths={localPdfPaths} onTogglePdf={toggleLocalPdf}/>}
-          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} removeLocalPdf={removeLocalPdf} indexLoading={indexLoading} indexWarnings={indexWarnings} includeAllIndex={includeAllIndex} onToggleIncludeAll={()=>setIncludeAllIndex(v=>!v)}/>
+          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} clearAll={clearAllDocuments} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} removeLocalPdf={removeLocalPdf} indexLoading={indexLoading} indexWarnings={indexWarnings} includeAllIndex={includeAllIndex} onToggleIncludeAll={()=>setIncludeAllIndex(v=>!v)}/>
         </div>
         <div style={{position:"sticky",top:"24px",alignSelf:"start"}}>
           <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>
@@ -865,5 +961,6 @@ export default function App(){
       </footer>
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)} duration={toast?.duration||5000}/>
+    <ConfirmDialog open={!!confirmDialog} title={confirmDialog?.title} message={confirmDialog?.message} onConfirm={confirmDialog?.onConfirm} onCancel={()=>setConfirmDialog(null)}/>
   </>;
 }

@@ -33,6 +33,58 @@ from core.excel_parser import parse_drawing_index
 from core.pdf_merge import docx_to_pdf, merge_source_pdfs
 
 
+# ─── Copy-intent checkbox key → abbreviation mapping ─────────
+
+_COPY_INTENT_ABBREV: dict[str, str] = {
+    "ci_info": "IFI",
+    "ci_approval": "IFA",
+    "ci_bid": "IFB",
+    "ci_preliminary": "IFP",
+    "ci_const": "IFC",
+    "ci_asbuilt": "IFAB",
+    "ci_fab": "IFF",
+    "ci_record": "IFR",
+    "ci_ref": "IFRF",
+}
+
+
+def _get_copy_intent_abbrev(checks: dict) -> str | None:
+    """Return the abbreviation for the single selected copy-intent, or None."""
+    for key, abbrev in _COPY_INTENT_ABBREV.items():
+        if checks.get(key):
+            return abbrev
+    return None
+
+
+def _parse_date_to_yyyymmdd(date_str: str) -> str:
+    """Best-effort parse a date string to YYYYMMDD format."""
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%m-%d-%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(date_str.strip(), fmt).strftime("%Y%m%d")
+        except (ValueError, AttributeError):
+            continue
+    # Fallback: today's date
+    return datetime.now().strftime("%Y%m%d")
+
+
+def _build_combined_pdf_name(job_label: str, project_desc: str, checks: dict,
+                              date_str: str) -> str:
+    """
+    Build the combined PDF filename in the format:
+    R3P-25074 - NANULAK 180MW BESS SUBSTATION - IFP_20251017.pdf
+    """
+    intent = _get_copy_intent_abbrev(checks)
+    date_part = _parse_date_to_yyyymmdd(date_str)
+    parts = [job_label]
+    if project_desc.strip():
+        parts.append(project_desc.strip().upper())
+    if intent:
+        parts.append(f"{intent}_{date_part}")
+    else:
+        parts.append(date_part)
+    return " - ".join(parts) + ".pdf"
+
+
 # ─── App Setup ────────────────────────────────────────────────
 
 app = FastAPI(
@@ -637,12 +689,15 @@ async def api_render_to_folder(
         # Determine output filenames
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
         xmtl_num = fields_dict.get("transmittal_num", "").strip() or _get_next_xmtl_num(output_dir)
+        project_desc = fields_dict.get("project_desc", "").strip()
+        date_str = fields_dict.get("date", "")
         # Pad to 3 digits if purely numeric; non-numeric values (e.g. "ABC") are
         # passed through unchanged — this is intentional for non-standard numbering.
         xmtl_num_padded = xmtl_num.zfill(3) if xmtl_num.isdigit() else xmtl_num
         # Avoid doubling any leading "R3P-" that the client already included
         job_label = job_num if job_num.upper().startswith("R3P-") else f"R3P-{job_num}"
-        base_name = f"{job_label}_XMTL-{xmtl_num_padded}"
+        # Transmittal letter: R3P-JobNumber-XMTL-016 - DOCUMENT INDEX
+        base_name = f"{job_label}-XMTL-{xmtl_num_padded} - DOCUMENT INDEX"
 
         # Create the XMTL output sub-folder
         xmtl_folder_name = f"XMTL-{xmtl_num_padded}"
@@ -666,7 +721,10 @@ async def api_render_to_folder(
             raise HTTPException(500, f"Transmittal PDF generation failed: {error}")
 
         # Create merged drawings PDF
-        drawings_combined_name = f"{base_name}_Drawings_Combined.pdf"
+        # Combined: R3P-25074 - PROJECT DESC - IFP_20251017.pdf
+        drawings_combined_name = _build_combined_pdf_name(
+            job_label, project_desc, checks_dict, date_str,
+        )
         drawings_combined_tmp = os.path.join(work_dir, drawings_combined_name)
         try:
             merge_source_pdfs(saved_pdfs, drawings_combined_tmp)
@@ -791,10 +849,13 @@ async def api_render(
         # Build output filename
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
         xmtl_num = fields_dict.get("transmittal_num", "").strip() or "001"
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        project_desc = fields_dict.get("project_desc", "").strip()
+        date_str = fields_dict.get("date", "")
+        xmtl_num_padded = xmtl_num.zfill(3) if xmtl_num.isdigit() else xmtl_num
         # Avoid doubling any leading "R3P-" that the client already included
         job_label = job_num if job_num.upper().startswith("R3P-") else f"R3P-{job_num}"
-        base_name = f"{job_label}_XMTL-{xmtl_num}_{timestamp}"
+        # Transmittal letter: R3P-JobNumber-XMTL-016 - DOCUMENT INDEX
+        base_name = f"{job_label}-XMTL-{xmtl_num_padded} - DOCUMENT INDEX"
 
         # Render the .docx
         docx_out = os.path.join(work_dir, f"{base_name}.docx")
@@ -816,7 +877,10 @@ async def api_render(
             raise HTTPException(500, f"Transmittal PDF generation failed: {error}")
 
         # Create merged drawings-only PDF
-        drawings_combined_name = f"{base_name}_Drawings_Combined.pdf"
+        # Combined: R3P-25074 - PROJECT DESC - IFP_20251017.pdf
+        drawings_combined_name = _build_combined_pdf_name(
+            job_label, project_desc, checks_dict, date_str,
+        )
         drawings_combined_path = os.path.join(work_dir, drawings_combined_name)
         try:
             merge_source_pdfs(saved_pdfs, drawings_combined_path)
@@ -825,7 +889,7 @@ async def api_render(
 
         # Return package ZIP
         import zipfile
-        zip_name = f"{base_name}_Package.zip"
+        zip_name = f"{job_label}-XMTL-{xmtl_num_padded}_Package.zip"
         zip_path = os.path.join(work_dir, zip_name)
 
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
