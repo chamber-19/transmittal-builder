@@ -366,7 +366,7 @@ function OptionsSection({checks,toggle,showToast}){
     if(ciKeys.includes(k)&&!checks[k]){
       const alreadySelected=ciKeys.filter(c=>checks[c]);
       if(alreadySelected.length>0){
-        showToast("Only 1 transmittal issue type can be selected","error",4000);
+        showToast("Only 1 copy intent can be selected","error",4000);
         return;
       }
     }
@@ -387,7 +387,7 @@ function ContactsSection({contacts,updateContact,removeContact,addContact,savedL
     </div>
     {showBook&&<div style={{marginBottom:"16px",padding:"14px",background:T.bgEl,borderRadius:T.r,border:`1px solid ${T.bdSub}`}}>
       <SL sub mono>Saved Contact Lists</SL>
-      {savedLists.length===0?<div style={{fontSize:"12px",color:T.t3,marginBottom:"10px",fontStyle:"italic"}}>No saved contact lists found. Contacts are automatically saved when you generate a transmittal.</div>:
+      {savedLists.length===0?<div style={{fontSize:"12px",color:T.t3,marginBottom:"10px",fontStyle:"italic"}}>No saved contact lists yet. Add contacts manually or import from a project folder.</div>:
         <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"10px"}}>{savedLists.map(sl=><div key={sl.name} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:T.bgIn,borderRadius:T.rS,border:`1px solid ${T.bdSub}`}}>
           <div style={{display:"flex",alignItems:"center",gap:"8px"}}><span style={{fontSize:"13px",fontWeight:500,color:T.t1}}>{sl.name}</span><Badge color="muted">{sl.contacts.length}</Badge></div>
           <div style={{display:"flex",gap:"4px"}}><Btn variant="ghost" icon={I.load} onClick={()=>onLoadList(sl.name)} style={{padding:"4px 8px",fontSize:"11px"}}>Import</Btn><button onClick={()=>onDeleteList(sl.name)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"4px",display:"flex"}}>{I.trash}</button></div>
