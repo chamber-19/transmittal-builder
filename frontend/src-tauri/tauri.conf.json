@@ -12,12 +12,25 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "R3P Transmittal Builder",
         "width": 1280,
         "height": 900,
         "minWidth": 960,
         "minHeight": 600,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "visible": false
+      },
+      {
+        "label": "updater",
+        "title": "Transmittal Builder — Update",
+        "url": "updater.html",
+        "width": 520,
+        "height": 320,
+        "decorations": false,
+        "resizable": false,
+        "center": true,
+        "visible": false
       }
     ],
     "security": {
@@ -26,11 +39,23 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
-      "icons/128x128@2x.png"
-    ]
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "binaries/transmittal-backend/**/*"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "perUser",
+        "installerIcon": "icons/icon.ico",
+        "displayLanguageSelector": false,
+        "languages": ["English"]
+      }
+    }
   }
 }

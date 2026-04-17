@@ -1,0 +1,127 @@
+name: Release
+
+# Builds the NSIS installer and publishes a GitHub Release on every v* tag.
+#
+# Prerequisites:
+#   - Repository secret GITHUB_TOKEN (automatic) for creating releases.
+#
+# Artifacts produced:
+#   - R3P-Transmittal-Builder_<version>_x64-setup.exe  (NSIS installer)
+#   - latest.json                                        (update manifest)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write   # needed to create the GitHub Release
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Tool setup ───────────────────────────────────────────────────
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            frontend/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      # ── 3. Python backend → PyInstaller sidecar ─────────────────────────
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build PyInstaller sidecar
+        run: |
+          cd backend
+          pyinstaller transmittal_backend.spec
+
+      - name: Copy sidecar to Tauri resources
+        run: |
+          $dest = "frontend\src-tauri\binaries\transmittal-backend"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Copy-Item -Recurse -Force "backend\dist\transmittal-backend\*" $dest
+          Write-Host "Sidecar copied to $dest"
+        shell: pwsh
+
+      # ── 4. Frontend build ────────────────────────────────────────────────
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Vite frontend
+        run: |
+          cd frontend
+          npm run build
+
+      # ── 5. Tauri build ───────────────────────────────────────────────────
+      - name: Build Tauri app (NSIS installer)
+        run: |
+          cd frontend
+          npx tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ""   # No code-signing yet; see RELEASING.md
+
+      # ── 6. Locate built artefacts ────────────────────────────────────────
+      - name: Locate NSIS installer
+        id: find_installer
+        run: |
+          $exe = Get-ChildItem -Recurse `
+            "frontend\src-tauri\target\release\bundle\nsis\*.exe" |
+            Select-Object -First 1
+          if (-not $exe) { throw "NSIS installer not found!" }
+          echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          echo "name=$($exe.Name)"     >> $env:GITHUB_OUTPUT
+          Write-Host "Installer: $($exe.FullName)"
+        shell: pwsh
+
+      # ── 7. Generate latest.json ──────────────────────────────────────────
+      - name: Generate latest.json
+        run: node scripts/generate-latest-json.mjs
+        env:
+          INSTALLER_NAME: ${{ steps.find_installer.outputs.name }}
+          TAG_NAME:       ${{ github.ref_name }}
+
+      # ── 8. Create GitHub Release ─────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name:     "R3P Transmittal Builder ${{ github.ref_name }}"
+          body_path: RELEASE_NOTES.md
+          fail_on_unmatched_files: true
+          files: |
+            ${{ steps.find_installer.outputs.path }}
+            latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

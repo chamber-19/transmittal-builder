@@ -7,3 +7,20 @@ dist/
 build/
 .venv/
 venv/
+
+# PyInstaller sidecar build artefacts (built fresh by CI)
+backend/dist/
+backend/build/
+backend/__pycache__/
+
+# Tauri sidecar binaries (populated by CI before tauri build)
+# Keep the directory structure but not the built executables
+frontend/src-tauri/binaries/transmittal-backend/*.exe
+frontend/src-tauri/binaries/transmittal-backend/_internal/
+
+# Tauri build output
+frontend/src-tauri/target/
+
+# Generated update manifest (created by generate-latest-json.mjs)
+latest.json
+RELEASE_NOTES.md

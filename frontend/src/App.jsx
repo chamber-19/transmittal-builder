@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { initBackendUrl, getBackendUrl } from "./api/backend.js";
 
 /* ═══════════════════════════════════════════════════════════════
    R3P TRANSMITTAL BUILDER v4.0 — Wired Frontend
@@ -6,7 +7,10 @@ import { useState, useCallback, useRef, useEffect } from "react";
         /api/scan-projects, /api/scan-folder, /api/render-to-folder
    ═══════════════════════════════════════════════════════════════ */
 
-const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"; // Backend URL
+// Module-level URL; updated asynchronously via initBackendUrl() on mount.
+// All fetch callbacks read this variable at call time, so they always use
+// the current value (which will be the sidecar port in production).
+let API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 // Detect Tauri desktop environment
 const isTauri = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
@@ -604,6 +608,11 @@ export default function App(){
   const[confirmDialog,setConfirmDialog]=useState(null);       // {title,message,onConfirm} or null
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
+
+  // Initialize backend URL from Tauri sidecar (no-op in dev/web).
+  // Must run before the health-check loop starts; the health-check retries
+  // every 500 ms so by the second attempt API will point at the sidecar port.
+  useEffect(()=>{initBackendUrl().then(url=>{ API=url; });},[]);
 
   // Load saved contacts
   useEffect(()=>{try{const v=localStorage.getItem("r3p_contact_lists");if(v)setSavedLists(JSON.parse(v))}catch(e){}},[]);

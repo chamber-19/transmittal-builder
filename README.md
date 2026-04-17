@@ -13,6 +13,24 @@ A desktop-first application for generating engineering transmittal packages at R
 
 ---
 
+## Installation (non-developers)
+
+> **R3P staff:** The installer lives on the shared Google Drive at:
+> ```
+> G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\
+> ```
+> Double-click the latest `.exe` file, follow the prompts, and the app installs
+> to your local profile (no administrator rights needed).
+>
+> The app checks for updates every time it opens.  If a newer version is
+> available it downloads and installs automatically — no action required.
+>
+> **Note:** You must be connected to the office network (VPN or on-site) with
+> Google Drive for Desktop running.  The app will not open while offline.
+
+---
+
+
 ## Architecture
 
 ```

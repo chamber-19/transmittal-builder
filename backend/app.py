@@ -959,3 +959,41 @@ async def api_email(req: EmailRequest):
 def cleanup_temp_dirs():
     for d in _temp_dirs:
         shutil.rmtree(d, ignore_errors=True)
+
+
+# ─── PyInstaller / sidecar entry point ───────────────────────
+# When the backend is bundled as a standalone executable by PyInstaller
+# and launched by the Tauri Rust shell, this block runs:
+#   1. Reads TRANSMITTAL_BACKEND_PORT env var (set by Rust) or picks a
+#      free OS port.
+#   2. Prints the actual port on stdout so Rust can capture it.
+#   3. Starts uvicorn on that port.
+# In normal development (`uvicorn app:app --port 8000`) this block is
+# never reached.
+
+if __name__ == "__main__":
+    import socket
+    import uvicorn
+
+    port_env = os.environ.get("TRANSMITTAL_BACKEND_PORT", "0")
+    try:
+        port = int(port_env)
+    except ValueError:
+        port = 0
+
+    if port == 0:
+        # Ask the OS for a free port.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _s:
+            _s.bind(("127.0.0.1", 0))
+            port = _s.getsockname()[1]
+
+    # ── First line of stdout must be the port number ───────────────
+    # The Tauri Rust launcher reads this before the server is ready.
+    print(port, flush=True)
+
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=port,
+        log_level="warning",
+    )
