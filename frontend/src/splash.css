@@ -208,23 +208,6 @@
 }
 
 
-/* ── Electric arc (CLANK-moment crackle around sprocket rim) ─────────────── */
-/* Default: hidden (stroke-dashoffset = circumference ≈ 440px for r=70) */
-.forge-scene #electric-arc {
-  opacity: 0;
-}
-.forge-scene.arc-crackle #electric-arc {
-  animation: arc-draw 0.75s ease-out forwards;
-}
-
-@keyframes arc-draw {
-  0%   { stroke-dashoffset: 440; opacity: 0; }
-  15%  { opacity: 1; }
-  55%  { stroke-dashoffset: 0;   opacity: 1; }
-  80%  { stroke-dashoffset: 0;   opacity: 0.7; }
-  100% { stroke-dashoffset: 0;   opacity: 0; }
-}
-
 /* ── Impact flash pulse (synced to hammer impact at 50% of 1.4s = 0.7s) ──── */
 .forge-scene #impact-flash {
   transform-box: fill-box;

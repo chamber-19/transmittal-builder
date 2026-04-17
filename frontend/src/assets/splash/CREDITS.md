@@ -14,12 +14,12 @@
 ### sprocket-hammer.svg
 - **Description**: Hand-written SVG depicting a 16-tooth engineering sprocket (rotating CCW
   during WELDING phase) with a hammer poised to strike the top tooth at 12 o'clock. Includes
-  tooth-tip glow circles, a rim-glow path, electric-arc overlay, impact flash, and 10 spark
+  tooth-tip glow circles, a rim-glow path, impact flash, and 10 spark
   elements. All paths are native vector (no embedded rasters).
 - **Author**: Original work © R3P / ROOT3POWER ENGINEERING
 - **License**: Proprietary — all rights reserved.
 - **Elements**: `#sprocket`, `#hammer`, `#rim-glow`, `.tooth-glow-0`–`.tooth-glow-15`,
-  `#electric-arc`, `.spark-1`–`.spark-10`, `#impact-flash`. Animated entirely via
+  `.spark-1`–`.spark-10`, `#impact-flash`. Animated entirely via
   `splash.css` keyframes.
 
 ## Sound Effects
