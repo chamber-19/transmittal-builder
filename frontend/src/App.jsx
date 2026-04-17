@@ -75,28 +75,6 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 
 let _id=0;const uid=()=>`_${++_id}_${Date.now()}`;
 
-// ─── Filename Parser (port of backend extract_doc_meta) ──────
-// Matches R3P-{jobnum}-E{dept}-{docnum} format, supporting Unicode dashes (–, —) from copy-paste
-const DOC_ID_RE=/(?:R3P[-–—](\d+)[-–—]E(\d+)[-–—](\d+))/i;
-function extractDocMeta(filename){
-  const base=filename.replace(/\.[^.]+$/,"").replace(/^.*[/\\]/,"");
-  const m=DOC_ID_RE.exec(base);
-  // Fallback: non-R3P filenames use the full base name as description
-  if(!m)return{docNo:"",desc:base.trim(),rev:""};
-  const raw=m[0].replace(/[–—]/g,"-").toUpperCase();
-  const prunedDocNo=raw.replace(/^R3P-\d+-/,"");
-  let remainder=base.slice(m.index+m[0].length);
-  remainder=remainder.replace(/^[\s\-_–—:;|]+/,"");
-  return{docNo:prunedDocNo,desc:remainder.trim(),rev:""};
-}
-
-// Sort key for document numbers — E0 before E1, then by number
-function docSortKey(docNo){
-  const m=/E(\d+)[-–—](\d+)/i.exec(docNo||"");
-  if(!m)return docNo||"";
-  return String(Number(m[1])).padStart(4,"0")+"-"+String(Number(m[2])).padStart(6,"0");
-}
-
 // ─── Status screen (shared layout for checking / failed) ─────
 const statusScreenStyle={
   display:"flex",
@@ -407,7 +385,7 @@ const thS={fontSize:"10px",fontWeight:600,fontFamily:T.fM,letterSpacing:"0.08em"
 const cMono={background:"transparent",border:"none",color:T.t1,fontFamily:T.fM,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 const cBody={background:"transparent",border:"none",color:T.t1,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 
-function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templateFile,indexFile,pdfFiles,localPdfPaths,onFileDrop,clearTemplate,clearIndex,removePdf,removeLocalPdf,indexLoading,indexWarnings,includeAllIndex,onToggleIncludeAll}){
+function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templateFile,indexFile,pdfFiles,localPdfPaths,onFileDrop,clearTemplate,clearIndex,removePdf,removeLocalPdf,indexLoading,indexWarnings}){
   const inputRef=useRef(null);const[over,setOver]=useState(false);const prevent=e=>{e.preventDefault();e.stopPropagation()};
   const hasAnything=documents.length>0||pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0)||indexFile;
   return <Card>
@@ -426,12 +404,6 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templat
       {pdfFiles.map(f=><FileChip key={f.name} name={f.name} type="pdf" onRemove={()=>removePdf(f.name)}/>)}
       {localPdfPaths&&localPdfPaths.map(p=>{const n=p.replace(/\\/g,"/").split("/").pop();return <FileChip key={p} name={n} type="pdf" onRemove={()=>removeLocalPdf(p)}/>;})}    </div>}
     {indexWarnings&&indexWarnings.length>0&&<div style={{marginBottom:"12px",padding:"8px 12px",borderRadius:T.rS,background:T.warnBg,border:`1px solid rgba(196,162,77,0.3)`,fontSize:"12px",color:T.warn}}>{indexWarnings.join(" · ")}</div>}
-    {indexFile&&documents.length>0&&(pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0))&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",marginBottom:"12px",borderRadius:T.rS,background:T.bgEl,border:`1px solid ${T.bdSub}`}}>
-      <span style={{fontSize:"12px",color:T.t2}}>Include all drawings from index</span>
-      <button onClick={onToggleIncludeAll} style={{position:"relative",width:"36px",height:"20px",borderRadius:"10px",border:"none",background:includeAllIndex?T.acc:T.bd,cursor:"pointer",transition:"background 0.2s",padding:0}}>
-        <span style={{position:"absolute",top:"2px",left:includeAllIndex?"18px":"2px",width:"16px",height:"16px",borderRadius:"50%",background:T.t1,transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.3)"}}/>
-      </button>
-    </div>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
       <SL sub mono>Document Index{documents.length>0&&<span style={{color:T.t3,fontWeight:400}}> · {documents.length} item{documents.length!==1?"s":""}</span>}</SL>
       <div style={{display:"flex",gap:"6px"}}>
@@ -523,7 +495,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
   if(draft.fromEmail)pct+=3;     // Sender email
   if(draft.fromPhone)pct+=2;     // Sender phone
   pct=Math.min(100,pct);
-  const canGenerate=hasT&&hasP&&filled>=4&&!generating;
+  const canGenerate=hasT&&documents.length>0&&filled>=4&&!generating;
   const folderMode=!!projectFolderPath;
 
   return <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
@@ -531,7 +503,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
       <div style={{height:"4px",background:T.bgIn,borderRadius:"2px",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pct>=100?T.ok:T.acc,borderRadius:"2px",transition:"width 0.4s ease"}}/></div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Summary</SL><div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"optional",ok:hasI,optional:true},{l:"Source PDFs",v:totalPdfCount,ok:hasP},{l:"Options set",v:activeChecks,ok:activeChecks>0},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
+      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:totalPdfCount||"optional",ok:hasP,optional:true},{l:"Options set",v:activeChecks,ok:activeChecks>0},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
         <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":(x.optional?"info":"muted")}>{String(x.v)}</Badge></div>)}</div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Output</SL>
@@ -542,14 +514,14 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
         <div style={{display:"flex",flexDirection:"column",gap:"4px",marginTop:"4px"}}>
           <Badge color="info">Transmittal DOCX</Badge>
           <Badge color="info">Transmittal PDF</Badge>
-          <Badge color="info">Combined PDF</Badge>
+          {hasP&&<Badge color="info">Combined PDF</Badge>}
           <Badge color="accent">contacts.json</Badge>
         </div>
       </div>:<div style={{fontSize:"13px",color:T.t2,lineHeight:1.6}}>Includes:
         <div style={{display:"flex",flexDirection:"column",gap:"6px",marginTop:"8px"}}>
           <Badge color="info">Transmittal DOCX</Badge>
           <Badge color="info">Transmittal PDF</Badge>
-          <Badge color="info">Combined PDF</Badge>
+          {hasP&&<Badge color="info">Combined PDF</Badge>}
         </div>
         <div style={{fontSize:"11px",color:T.t3,marginTop:"8px"}}>Select a project above for folder output</div>
       </div>}
@@ -562,8 +534,8 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
       </Btn>
       {!canGenerate&&!generating&&(<div style={{fontSize:"11px",color:T.t3,textAlign:"center",marginTop:"6px"}}>
         {!hasT?"Upload a template":""}
-        {hasT&&!hasP?"Upload or select drawing PDFs":""}
-        {hasT&&hasP&&filled<4?"Fill required fields":""}
+        {hasT&&documents.length===0?"Upload a drawing index":""}
+        {hasT&&documents.length>0&&filled<4?"Fill required fields":""}
       </div>)}
       <Btn variant="secondary" icon={I.send} onClick={onEmail} style={{width:"100%",justifyContent:"center",marginTop:"8px"}}>Email</Btn>
     </Card>
@@ -604,7 +576,6 @@ export default function App(){
   const[projectRoot,setProjectRoot]=useState(null);             // project root folder name for breadcrumb
   const[pdfSources,setPdfSources]=useState([]);                 // [{path,label,pdf_count,pdf_files}]
   const[localPdfPaths,setLocalPdfPaths]=useState([]);           // absolute paths selected from pdfSources
-  const[includeAllIndex,setIncludeAllIndex]=useState(true);    // Include all index entries in transmittal (vs only matched PDFs)
   const[confirmDialog,setConfirmDialog]=useState(null);       // {title,message,onConfirm} or null
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
@@ -707,7 +678,6 @@ export default function App(){
 
   // ─── Smart file router ───────────────────────────────────
   const onFileDrop=useCallback(files=>{
-    const newPdfs=[];
     for(const f of files){
       const ext=f.name.split(".").pop().toLowerCase();
       if(ext==="docx"){
@@ -717,34 +687,17 @@ export default function App(){
         setIndexFile(f);
         parseIndex(f);
       }else if(ext==="pdf"){
-        newPdfs.push(f);
+        if(documents.length===0&&!indexFile){
+          showToast("Load a drawing index first before adding source PDFs","warning",5000);
+          return;
+        }
         setPdfFiles(prev=>{
           if(prev.some(p=>p.name===f.name))return prev;
           return[...prev,f];
         });
       }
     }
-    // Auto-populate document rows from PDF filenames when no index is loaded
-    if(newPdfs.length>0){
-      setDocuments(prev=>{
-        // Only auto-add if no index file is loaded (index would have set rows already)
-        // Check existing doc numbers to avoid duplicates
-        const existingDocNos=new Set(prev.map(d=>d.docNo.toUpperCase()));
-        const autoRows=[];
-        for(const f of newPdfs){
-          const meta=extractDocMeta(f.name);
-          if(meta.docNo&&!existingDocNos.has(meta.docNo.toUpperCase())){
-            autoRows.push({id:uid(),docNo:meta.docNo,desc:meta.desc,rev:""});
-            existingDocNos.add(meta.docNo.toUpperCase());
-          }
-        }
-        if(autoRows.length===0)return prev;
-        const merged=[...prev,...autoRows];
-        merged.sort((a,b)=>docSortKey(a.docNo).localeCompare(docSortKey(b.docNo)));
-        return merged;
-      });
-    }
-  },[parseIndex]);
+  },[parseIndex,documents,indexFile]);
 
   const clearTemplate=useCallback(()=>setTemplateFile(null),[]);
   const clearIndex=useCallback(()=>{setIndexFile(null);setDocuments([]);setIndexWarnings([])},[]);
@@ -758,20 +711,8 @@ export default function App(){
 
   // ─── Generate Transmittal ────────────────────────────────
   const doGenerate=useCallback(async()=>{
-    const hasUploadedPdfs=pdfFiles.length>0;
-    const hasLocalPdfs=localPdfPaths.length>0;
-    if(!templateFile||(!hasUploadedPdfs&&!hasLocalPdfs))return;
+    if(!templateFile||documents.length===0)return;
     setGenerating(true);
-
-    // Filter documents to only those matching uploaded PDFs when toggle is off
-    let docsToSend=documents;
-    if(!includeAllIndex&&indexFile&&documents.length>0){
-      const allPdfNames=[...pdfFiles.map(f=>f.name),...localPdfPaths.map(p=>p.replace(/\\/g,"/").split("/").pop())];
-      const pdfDocNos=new Set(
-        allPdfNames.map(n=>extractDocMeta(n).docNo.toUpperCase()).filter(Boolean)
-      );
-      docsToSend=documents.filter(d=>pdfDocNos.has(d.docNo.toUpperCase()));
-    }
 
     const fieldsPayload={
       date:draft.date,job_num:draft.jobNum,transmittal_num:draft.xmtlNum,
@@ -780,6 +721,7 @@ export default function App(){
       from_email:draft.fromEmail,from_phone:draft.fromPhone,firm:draft.firm,
     };
     const contactsClean=contacts.filter(c=>c.name||c.email).map(({name,company,email,phone})=>({name,company,email,phone}));
+    const hasLocalPdfs=localPdfPaths.length>0;
 
     // ── Folder output mode ─────────────────────────────────
     if(projectFolderPath){
@@ -790,7 +732,7 @@ export default function App(){
         form.append("fields",JSON.stringify(fieldsPayload));
         form.append("checks",JSON.stringify(checks));
         form.append("contacts",JSON.stringify(contactsClean));
-        form.append("documents",JSON.stringify(docsToSend.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
+        form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
         form.append("output_dir",projectFolderPath);
         for(const pdf of pdfFiles){form.append("pdfs",pdf)}
         if(hasLocalPdfs){form.append("local_pdf_paths",JSON.stringify(localPdfPaths))}
@@ -817,7 +759,7 @@ export default function App(){
       form.append("fields",JSON.stringify(fieldsPayload));
       form.append("checks",JSON.stringify(checks));
       form.append("contacts",JSON.stringify(contactsClean));
-      form.append("documents",JSON.stringify(docsToSend.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
+      form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
       for(const pdf of pdfFiles){form.append("pdfs",pdf)}
 
       const res=await fetch(`${API}/api/render`,{method:"POST",body:form});
@@ -838,7 +780,7 @@ export default function App(){
     }catch(e){
       showToast(`Generation failed: ${e.message}`,"error",8000);
     }finally{setGenerating(false)}
-  },[templateFile,documents,draft,checks,contacts,pdfFiles,localPdfPaths,projectFolderPath,includeAllIndex,indexFile]);
+  },[templateFile,documents,draft,checks,contacts,pdfFiles,localPdfPaths,projectFolderPath]);
 
   // ─── Generate with overwrite check ───────────────────────
   const handleGenerate=useCallback(()=>{
@@ -950,7 +892,7 @@ export default function App(){
           <OptionsSection checks={checks} toggle={toggle} showToast={showToast}/>
           <ContactsSection contacts={contacts} updateContact={updateContact} removeContact={removeContact} addContact={addContact} savedLists={savedLists} onLoadList={onLoadList} onDeleteList={onDeleteList}/>
           {pdfSources.length>0&&<PdfSourcesPanel pdfSources={pdfSources} localPdfPaths={localPdfPaths} onTogglePdf={toggleLocalPdf}/>}
-          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} clearAll={clearAllDocuments} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} removeLocalPdf={removeLocalPdf} indexLoading={indexLoading} indexWarnings={indexWarnings} includeAllIndex={includeAllIndex} onToggleIncludeAll={()=>setIncludeAllIndex(v=>!v)}/>
+          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} clearAll={clearAllDocuments} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} removeLocalPdf={removeLocalPdf} indexLoading={indexLoading} indexWarnings={indexWarnings}/>
         </div>
         <div style={{position:"sticky",top:"24px",alignSelf:"start"}}>
           <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>

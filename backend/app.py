@@ -686,9 +686,6 @@ async def api_render_to_folder(
                 saved_pdfs.append(dest)
                 seen_names.add(bname)
 
-        if not saved_pdfs:
-            raise HTTPException(400, "At least one source PDF is required.")
-
         # Determine output filenames
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
         xmtl_num = fields_dict.get("transmittal_num", "").strip() or _get_next_xmtl_num(output_dir)
@@ -723,17 +720,6 @@ async def api_render_to_folder(
         if not transmittal_pdf_tmp:
             raise HTTPException(500, f"Transmittal PDF generation failed: {error}")
 
-        # Create merged drawings PDF
-        # Combined: R3P-25074 - PROJECT DESC - IFP_20251017.pdf
-        drawings_combined_name = _build_combined_pdf_name(
-            job_label, project_desc, checks_dict, date_str,
-        )
-        drawings_combined_tmp = os.path.join(work_dir, drawings_combined_name)
-        try:
-            merge_source_pdfs(saved_pdfs, drawings_combined_tmp)
-        except Exception as e:
-            raise HTTPException(500, f"Drawing PDF merge failed: {e}")
-
         # Copy final files into the XMTL output folder
         files_written: list[str] = []
 
@@ -745,7 +731,18 @@ async def api_render_to_folder(
 
         _copy_to_xmtl(docx_tmp, f"{base_name}.docx")
         _copy_to_xmtl(transmittal_pdf_tmp, f"{base_name}.pdf")
-        _copy_to_xmtl(drawings_combined_tmp, drawings_combined_name)
+
+        # Create and copy merged drawings PDF only when source PDFs were provided
+        if saved_pdfs:
+            drawings_combined_name = _build_combined_pdf_name(
+                job_label, project_desc, checks_dict, date_str,
+            )
+            drawings_combined_tmp = os.path.join(work_dir, drawings_combined_name)
+            try:
+                merge_source_pdfs(saved_pdfs, drawings_combined_tmp)
+            except Exception as e:
+                raise HTTPException(500, f"Drawing PDF merge failed: {e}")
+            _copy_to_xmtl(drawings_combined_tmp, drawings_combined_name)
 
         # Save contacts.json in the XMTL folder
         clean_contacts = [
@@ -871,24 +868,10 @@ async def api_render(
             out_path=docx_out,
         )
 
-        if not saved_pdfs:
-            raise HTTPException(400, "At least one source PDF is required to build the drawing package.")
-
         # Create transmittal PDF
         transmittal_pdf_path, error = docx_to_pdf(docx_out, work_dir)
         if not transmittal_pdf_path:
             raise HTTPException(500, f"Transmittal PDF generation failed: {error}")
-
-        # Create merged drawings-only PDF
-        # Combined: R3P-25074 - PROJECT DESC - IFP_20251017.pdf
-        drawings_combined_name = _build_combined_pdf_name(
-            job_label, project_desc, checks_dict, date_str,
-        )
-        drawings_combined_path = os.path.join(work_dir, drawings_combined_name)
-        try:
-            merge_source_pdfs(saved_pdfs, drawings_combined_path)
-        except Exception as e:
-            raise HTTPException(500, f"Drawing PDF merge failed: {e}")
 
         # Return package ZIP
         import zipfile
@@ -898,7 +881,17 @@ async def api_render(
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.write(docx_out, arcname=f"{base_name}.docx")
             zf.write(transmittal_pdf_path, arcname=f"{base_name}.pdf")
-            zf.write(drawings_combined_path, arcname=drawings_combined_name)
+            # Include merged drawings PDF only when source PDFs were provided
+            if saved_pdfs:
+                drawings_combined_name = _build_combined_pdf_name(
+                    job_label, project_desc, checks_dict, date_str,
+                )
+                drawings_combined_path = os.path.join(work_dir, drawings_combined_name)
+                try:
+                    merge_source_pdfs(saved_pdfs, drawings_combined_path)
+                except Exception as e:
+                    raise HTTPException(500, f"Drawing PDF merge failed: {e}")
+                zf.write(drawings_combined_path, arcname=drawings_combined_name)
 
         return FileResponse(
             zip_path,
