@@ -156,15 +156,15 @@ function Toast({message,type,onDismiss,duration}){
 }
 
 // ─── Confirm Dialog ──────────────────────────────────────────
-function ConfirmDialog({open,title,message,onConfirm,onCancel}){
+function ConfirmDialog({open,title,message,onConfirm,onCancel,confirmLabel,cancelLabel}){
   if(!open)return null;
   return <div style={{position:"fixed",inset:0,zIndex:10000,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)"}}>
     <div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:T.rL,padding:"28px 32px",maxWidth:"420px",width:"calc(100% - 48px)",boxShadow:"0 16px 48px rgba(0,0,0,0.5)"}}>
       <div style={{fontSize:"16px",fontWeight:600,color:T.t1,marginBottom:"10px"}}>{title}</div>
       <div style={{fontSize:"13px",color:T.t2,lineHeight:1.6,marginBottom:"20px"}}>{message}</div>
       <div style={{display:"flex",justifyContent:"flex-end",gap:"8px"}}>
-        <Btn variant="secondary" onClick={onCancel}>No, Cancel</Btn>
-        <Btn variant="primary" onClick={onConfirm}>Yes, Overwrite</Btn>
+        <Btn variant="secondary" onClick={onCancel}>{cancelLabel||"No, Cancel"}</Btn>
+        <Btn variant="primary" onClick={onConfirm}>{confirmLabel||"Yes, Continue"}</Btn>
       </div>
     </div>
   </div>;
@@ -321,7 +321,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
 }
 
 // ─── Sections ────────────────────────────────────────────────
-function ProjectSection({draft,u,nextXmtlNum,projectFolderPath}){return <Card>
+function ProjectSection({draft,u,nextXmtlNum,projectFolderPath,onNextXmtl}){return <Card>
   <SL>Project Information</SL>
   <Row><TF label="Job Number" value={draft.jobNum} onChange={v=>u("jobNum",v)} placeholder="R3P-XXXX" mono/>
     <div style={{flex:1,minWidth:0}}>
@@ -330,7 +330,7 @@ function ProjectSection({draft,u,nextXmtlNum,projectFolderPath}){return <Card>
         <input type="text" value={draft.xmtlNum} onChange={e=>u("xmtlNum",e.target.value)} placeholder="XMTL-001"
           style={{width:"100%",padding:"7px 12px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fM,fontSize:"13px",outline:"none",transition:"border-color 0.15s"}}
           onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
-        {projectFolderPath&&nextXmtlNum&&draft.xmtlNum!==nextXmtlNum&&<button onClick={()=>u("xmtlNum",nextXmtlNum)} title={`Jump to next available: ${nextXmtlNum}`}
+        {projectFolderPath&&nextXmtlNum&&draft.xmtlNum!==nextXmtlNum&&<button onClick={onNextXmtl} title={`Jump to next available: ${nextXmtlNum}`}
           style={{flexShrink:0,padding:"4px 8px",fontSize:"10px",fontFamily:T.fM,fontWeight:600,background:T.accM,color:T.acc,border:`1px solid ${T.accB}`,borderRadius:T.rS,cursor:"pointer",whiteSpace:"nowrap"}}>
           Next: {nextXmtlNum}
         </button>}
@@ -493,21 +493,21 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
   const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0);
   const totalPdfCount=pdfFiles.length+(localPdfPaths?localPdfPaths.length:0);
   // Granular readiness: each field contributes individually
+  // PDFs are optional and don't reduce readiness when absent
   let pct=0;
-  if(draft.jobNum)pct+=8;         // Job Number
-  if(draft.xmtlNum)pct+=8;       // Transmittal No.
-  if(draft.client)pct+=6;        // Client/Site
-  if(draft.projectDesc)pct+=6;   // Project Description
-  if(draft.fromName)pct+=4;      // Sender Name
-  if(draft.date)pct+=4;          // Date
-  if(hasT)pct+=15;               // Template loaded
-  if(hasP)pct+=18;               // Source PDFs
-  if(goodContacts>0)pct+=10;     // Contacts
-  if(activeChecks>0)pct+=6;      // Options checkboxes
-  if(documents.length>0)pct+=5;  // Document index rows
-  if(hasI)pct+=5;                // Drawing index (optional but counts)
-  if(draft.fromEmail)pct+=3;     // Sender email
-  if(draft.fromPhone)pct+=2;     // Sender phone
+  if(draft.jobNum)pct+=10;        // Job Number
+  if(draft.xmtlNum)pct+=10;      // Transmittal No.
+  if(draft.client)pct+=7;        // Client/Site
+  if(draft.projectDesc)pct+=7;   // Project Description
+  if(draft.fromName)pct+=5;      // Sender Name
+  if(draft.date)pct+=5;          // Date
+  if(hasT)pct+=18;               // Template loaded
+  if(goodContacts>0)pct+=12;     // Contacts
+  if(activeChecks>0)pct+=7;      // Options checkboxes
+  if(documents.length>0)pct+=6;  // Document index rows
+  if(hasI)pct+=6;                // Drawing index (optional but counts)
+  if(draft.fromEmail)pct+=4;     // Sender email
+  if(draft.fromPhone)pct+=3;     // Sender phone
   pct=Math.min(100,pct);
   const canGenerate=hasT&&documents.length>0&&filled>=4&&!generating;
   const folderMode=!!projectFolderPath;
@@ -524,7 +524,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
       {folderMode?<div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
         <div style={{display:"flex",alignItems:"center",gap:"6px"}}><span style={{color:T.ok,display:"flex"}}>{I.folder}</span><span style={{fontSize:"12px",fontWeight:600,color:T.ok}}>Folder Mode</span></div>
         <div style={{fontSize:"11px",fontFamily:T.fM,color:T.t3,wordBreak:"break-all",marginBottom:"4px"}}>{projectFolderPath}</div>
-        <Badge color="success">XMTL-{(nextXmtlNum||"???")}</Badge>
+        <Badge color="success">XMTL-{(draft.xmtlNum||"???")}</Badge>
         <div style={{display:"flex",flexDirection:"column",gap:"4px",marginTop:"4px"}}>
           <Badge color="info">Transmittal DOCX</Badge>
           <Badge color="info">Transmittal PDF</Badge>
@@ -851,6 +851,7 @@ export default function App(){
         setConfirmDialog({
           title:"Overwrite Existing Transmittal?",
           message:`XMTL-${String(current).padStart(3,"0")} already exists in the project folder. Generating will overwrite the existing files. Do you want to continue?`,
+          confirmLabel:"Yes, Overwrite",
           onConfirm:()=>{setConfirmDialog(null);doGenerate()},
         });
         return;
@@ -858,6 +859,33 @@ export default function App(){
     }
     doGenerate();
   },[doGenerate,projectFolderPath,nextXmtlNum,draft.xmtlNum]);
+
+  // ─── Next XMTL number with fresh session prompt ─────────
+  const handleNextXmtl=useCallback(()=>{
+    if(!nextXmtlNum)return;
+    setConfirmDialog({
+      title:"Start Fresh Session?",
+      message:`You're moving to XMTL-${nextXmtlNum}. Would you like to clear the current form data and start fresh, or keep your existing data?`,
+      confirmLabel:"Start Fresh",
+      cancelLabel:"Keep Current Data",
+      onConfirm:()=>{
+        setConfirmDialog(null);
+        u("xmtlNum",nextXmtlNum);
+        setDocuments([]);
+        setPdfFiles([]);
+        setLocalPdfPaths([]);
+        setIndexFile(null);
+        setChecks({...defaultChecks});
+        setIndexWarnings([]);
+        showToast(`Starting fresh for XMTL-${nextXmtlNum}`,"success",3000);
+      },
+      onCancel:()=>{
+        setConfirmDialog(null);
+        u("xmtlNum",nextXmtlNum);
+        showToast(`Updated to XMTL-${nextXmtlNum}`,"success",3000);
+      },
+    });
+  },[nextXmtlNum,u]);
 
   // ─── Email (placeholder) ─────────────────────────────────
   const handleEmail=useCallback(()=>{
@@ -947,7 +975,7 @@ export default function App(){
       <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:"24px",flex:1,padding:"24px 32px",maxWidth:"1280px",width:"100%",margin:"0 auto"}}>
         <div style={{display:"flex",flexDirection:"column",gap:"18px"}}>
           <ProjectSearchPanel onProjectSelect={handleProjectSelect} showToast={showToast}/>
-          <ProjectSection draft={draft} u={u} nextXmtlNum={nextXmtlNum} projectFolderPath={projectFolderPath}/>
+          <ProjectSection draft={draft} u={u} nextXmtlNum={nextXmtlNum} projectFolderPath={projectFolderPath} onNextXmtl={handleNextXmtl}/>
           <OptionsSection checks={checks} toggle={toggle} showToast={showToast}/>
           <ContactsSection contacts={contacts} updateContact={updateContact} removeContact={removeContact} addContact={addContact} savedLists={savedLists} onLoadList={onLoadList} onDeleteList={onDeleteList}/>
           {pdfSources.length>0&&<PdfSourcesPanel pdfSources={pdfSources} localPdfPaths={localPdfPaths} onTogglePdf={toggleLocalPdf}/>}
@@ -962,6 +990,6 @@ export default function App(){
       </footer>
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)} duration={toast?.duration||5000}/>
-    <ConfirmDialog open={!!confirmDialog} title={confirmDialog?.title} message={confirmDialog?.message} onConfirm={confirmDialog?.onConfirm} onCancel={()=>setConfirmDialog(null)}/>
+    <ConfirmDialog open={!!confirmDialog} title={confirmDialog?.title} message={confirmDialog?.message} onConfirm={confirmDialog?.onConfirm} onCancel={confirmDialog?.onCancel||(()=>setConfirmDialog(null))} confirmLabel={confirmDialog?.confirmLabel} cancelLabel={confirmDialog?.cancelLabel}/>
   </>;
 }
