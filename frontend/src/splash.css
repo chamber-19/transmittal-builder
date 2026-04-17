@@ -238,8 +238,8 @@
 
 @keyframes hammer-strike {
   0%   { transform: rotate(-30deg); }   /* raised — matches hammer-idle resting angle */
-  10%  { transform: rotate(-30deg); }   /* settle window — ease-in-out absorbs the prior angle */
-  15%  { transform: rotate(-30deg); }   /* brief hold */
+  10%  { transform: rotate(-30deg); }   /* settle window — holds at -30° so any prior angle snaps smoothly */
+  15%  { transform: rotate(-30deg); }   /* brief hold before descent */
   48%  { transform: rotate(0deg);   }   /* descent → strike (ease-in) */
   58%  { transform: rotate(4deg);   }   /* overshoot on impact */
   72%  { transform: rotate(-8deg);  }   /* first rebound */
