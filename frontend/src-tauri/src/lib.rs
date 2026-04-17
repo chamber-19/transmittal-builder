@@ -27,6 +27,7 @@ use std::time::{Duration, Instant};
 
 use tauri::Manager;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use tauri::Emitter;
 
 // ── Backend state ─────────────────────────────────────────────────────────
 

@@ -20,6 +20,7 @@ use std::path::PathBuf;
 use semver::Version;
 use serde::Deserialize;
 use tauri::AppHandle;
+use tauri::Emitter;
 
 const DEFAULT_UPDATE_PATH: &str = r"G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder";
 

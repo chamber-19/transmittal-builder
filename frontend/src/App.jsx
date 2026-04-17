@@ -916,11 +916,18 @@ export default function App(){
   const onLoadList=useCallback(name=>{const list=savedLists.find(l=>l.name===name);if(list){setContacts(list.contacts.map(c=>({...c,id:uid()})));showToast(`Imported "${name}" contacts`,"success",3000)}},[savedLists]);
   const onDeleteList=useCallback(name=>{persistLists(savedLists.filter(l=>l.name!==name));showToast(`Deleted "${name}"`,"info",3000)},[savedLists,persistLists]);
 
-  // ─── Check backend status on load ─────────────────────────
+ // ─── Check backend status on load ─────────────────────────
   useEffect(()=>{
     let cancelled=false;
 
     const waitForBackend=async()=>{
+      // Resolve the real backend URL first (sidecar port in prod, default in dev).
+      try {
+        API = await initBackendUrl();
+      } catch {
+        // fall back to whatever API already was
+      }
+
       const maxAttempts=40;
       const delayMs=500;
 
@@ -965,7 +972,7 @@ export default function App(){
       <div style={statusScreenStyle}>
         <div style={{fontSize:"16px",fontWeight:600,color:T.err}}>Backend Unavailable</div>
         <div style={{fontSize:"12px",color:T.t3,maxWidth:"480px",lineHeight:1.7}}>
-          The Python backend at <span style={{fontFamily:T.fM,color:T.t2}}>127.0.0.1:8000</span> could not be reached.
+          The Python backend at <span style={{fontFamily:T.fM,color:T.t2}}>{new URL(API).host}</span> could not be reached.
           <br/><br/>
           <strong style={{color:T.t2}}>Desktop mode:</strong> Check the terminal for backend startup errors.
           Make sure Python and <span style={{fontFamily:T.fM}}>uvicorn</span> are installed in the active environment.

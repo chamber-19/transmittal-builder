@@ -14,8 +14,6 @@
 # port number from stdout.  The Rust launcher sets CREATE_NO_WINDOW so
 # the console window never appears to the end user.
 
-block_cipher = None
-
 a = Analysis(
     ['app.py'],
     pathex=['.'],
@@ -25,7 +23,7 @@ a = Analysis(
         ('emails', 'emails'),
     ],
     hiddenimports=[
-        # uvicorn internals that are loaded dynamically
+        # uvicorn internals loaded dynamically
         'uvicorn.logging',
         'uvicorn.loops',
         'uvicorn.loops.auto',
@@ -38,9 +36,10 @@ a = Analysis(
         'uvicorn.protocols.websockets.auto',
         'uvicorn.lifespan',
         'uvicorn.lifespan.on',
-        # FastAPI / pydantic
+        # FastAPI / pydantic / templates
         'pydantic',
         'pydantic.deprecated.class_validators',
+        'jinja2',
         # openpyxl, pandas engines
         'openpyxl',
         'pandas',
@@ -49,13 +48,10 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zlib_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
@@ -67,9 +63,6 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    # console=True keeps the process as a console-subsystem binary so
-    # the parent Rust process can capture stdout (the port number).
-    # CREATE_NO_WINDOW on the Rust side prevents a visible terminal.
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
