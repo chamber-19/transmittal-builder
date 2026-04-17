@@ -45,7 +45,7 @@ const I={
   pdf:<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 1H3.5A1.5 1.5 0 002 2.5v9A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V4.5L8.5 1z"/><polyline points="8.5,1 8.5,4.5 12,4.5"/></svg>,
   xl:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><text x="7" y="9.5" textAnchor="middle" fill="currentColor" fontSize="5" fontWeight="700" fontFamily="sans-serif">XL</text></svg>,
   doc:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><text x="7" y="9.5" textAnchor="middle" fill="currentColor" fontSize="4.5" fontWeight="700" fontFamily="sans-serif">DOC</text></svg>,
-  spin:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 2a6 6 0 105.3 3.2"><animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="0.8s" repeatCount="indefinite"/></path></svg>,
+  spin:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{animation:"_spin 0.8s linear infinite",transformOrigin:"8px 8px",display:"block"}}><path d="M8 2a6 6 0 105.3 3.2"/></svg>,
   folder:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4.5A1.5 1.5 0 013.5 3h3l1.5 1.5H13A1.5 1.5 0 0114.5 6v5.5A1.5 1.5 0 0113 13H3A1.5 1.5 0 011.5 11.5v-7z"/></svg>,
   search:<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="6" r="4"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>,
 };
@@ -75,6 +75,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 @keyframes slideDown{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .toast-slide-down{animation:slideDown 0.25s ease forwards}
 @keyframes progressShrink{from{width:100%}to{width:0%}}
+@keyframes _spin{to{transform:rotate(360deg)}}
 `;
 
 let _id=0;const uid=()=>`_${++_id}_${Date.now()}`;
@@ -207,6 +208,8 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
   const[searching,setSearching]=useState(false);
   const[open,setOpen]=useState(false);
   const[selectedPath,setSelectedPath]=useState(null);
+  const[rootHint,setRootHint]=useState(false);
+  const[hintDismissed,setHintDismissed]=useState(false);
   const debounceRef=useRef(null);
   const panelRef=useRef(null);
 
@@ -219,6 +222,27 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
     const picked=await pickFolder();
     if(picked)saveRoot(picked);
   };
+
+  // Check whether the chosen root looks like a single project folder
+  // (≥2 immediate children match the /^\d{2}-/ dept-folder pattern).
+  useEffect(()=>{
+    setRootHint(false);
+    setHintDismissed(false);
+    if(!root||!isTauri)return;
+    let cancelled=false;
+    const check=async()=>{
+      try{
+        const{invoke}=await import("@tauri-apps/api/core");
+        const children=await invoke("peek_subfolders",{path:root});
+        if(cancelled)return;
+        const deptFolderRe=/^\d{2}-/;
+        const matches=children.filter(n=>deptFolderRe.test(n)).length;
+        setRootHint(matches>=2);
+      }catch{/* ignore — hint is advisory only */}
+    };
+    check();
+    return()=>{cancelled=true};
+  },[root]);
 
   const doSearch=useCallback(async(r,q)=>{
     if(!r)return;
@@ -292,6 +316,13 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
       </div>
       <Btn variant="secondary" icon={I.folder} onClick={handleBrowse} style={{padding:"5px 10px",fontSize:"12px",flexShrink:0}}>Browse</Btn>
     </div>
+
+    {/* Single-project hint */}
+    {rootHint&&!hintDismissed&&<div style={{display:"flex",alignItems:"flex-start",gap:"8px",marginBottom:"8px",padding:"7px 10px",background:T.warnBg,border:`1px solid rgba(196,162,77,0.3)`,borderRadius:T.rS,fontSize:"11px",color:T.warn,lineHeight:1.45}}>
+      <span style={{flexShrink:0}}>⚠️</span>
+      <span style={{flex:1}}>This folder looks like a single project. Did you mean to point at its parent directory (the one containing all your projects)?</span>
+      <button onClick={()=>setHintDismissed(true)} aria-label="Dismiss hint" style={{flexShrink:0,background:"none",border:"none",color:T.warn,cursor:"pointer",padding:"0 2px",lineHeight:1,fontSize:"13px",opacity:0.7}}>✕</button>
+    </div>}
 
     {/* Search input + dropdown */}
     {root&&<div style={{position:"relative"}}>

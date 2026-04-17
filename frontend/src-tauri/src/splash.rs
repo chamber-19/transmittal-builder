@@ -28,6 +28,7 @@ pub enum StatusKind {
 
 #[derive(Serialize, Clone, Debug)]
 pub struct StatusPayload {
+    pub phase: String,
     pub message: String,
     pub kind: StatusKind,
 }
@@ -70,8 +71,9 @@ pub fn request_skip_splash(state: tauri::State<SplashState>) {
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 /// Emit a `splash://status` event to all windows (including the splash).
-pub fn emit_status(app: &AppHandle, message: &str, kind: StatusKind) {
+pub fn emit_status(app: &AppHandle, phase: &str, message: &str, kind: StatusKind) {
     let payload = StatusPayload {
+        phase: phase.to_string(),
         message: message.to_string(),
         kind,
     };

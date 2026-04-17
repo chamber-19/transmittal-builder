@@ -42,6 +42,23 @@ fn get_backend_url(state: tauri::State<BackendState>) -> String {
     state.url.lock().unwrap().clone()
 }
 
+/// Tauri command: list the immediate subdirectory names inside `path`.
+///
+/// Returns an empty list if the path does not exist or cannot be read.
+/// Used by the frontend to detect when a user points the projects root at a
+/// single project folder instead of the parent that contains all projects.
+#[tauri::command]
+fn peek_subfolders(path: String) -> Vec<String> {
+    match std::fs::read_dir(&path) {
+        Err(_) => vec![],
+        Ok(entries) => entries
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+            .filter_map(|e| e.file_name().into_string().ok())
+            .collect(),
+    }
+}
+
 const BACKEND_ADDR: &str = "127.0.0.1:8000";
 
 /// Returns `true` when something is already listening on [`BACKEND_ADDR`].
@@ -180,6 +197,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             get_backend_url,
+            peek_subfolders,
             splash::request_skip_splash,
         ])
         .manage(BackendState {
@@ -228,12 +246,13 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
     // ── 1. Backend ────────────────────────────────────────────────────────
     splash::emit_status(
         &app,
+        "backend",
         "Starting backend service",
         splash::StatusKind::Pending,
     );
     let backend_url = do_spawn_backend(&child_arc);
     println!("[tauri] Backend URL: {backend_url}");
-    splash::emit_status(&app, "Starting backend service", splash::StatusKind::Ok);
+    splash::emit_status(&app, "backend", "Starting backend service", splash::StatusKind::Ok);
 
     // Store backend URL in managed state.
     if let Some(state) = app.try_state::<BackendState>() {
@@ -250,8 +269,8 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
     #[cfg(debug_assertions)]
     {
         // Dev mode: skip the actual network check; emit fake Ok statuses.
-        splash::emit_status(&app, "Mounting shared drive", splash::StatusKind::Ok);
-        splash::emit_status(&app, "Checking for updates", splash::StatusKind::Ok);
+        splash::emit_status(&app, "mount", "Mounting shared drive", splash::StatusKind::Ok);
+        splash::emit_status(&app, "updates", "Checking for updates", splash::StatusKind::Ok);
         outcome = UpdateOutcome::UpToDate;
     }
 
@@ -260,6 +279,7 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
         UpdateOutcome::Offline { .. } => {
             splash::emit_status(
                 &app,
+                "final",
                 "Cannot reach R3P shared drive",
                 splash::StatusKind::Error,
             );
@@ -268,13 +288,14 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
         UpdateOutcome::UpdateAvailable { .. } => {
             splash::emit_status(
                 &app,
+                "final",
                 "Update detected, loading updater\u{2026}",
                 splash::StatusKind::Warn,
             );
             0
         }
         UpdateOutcome::UpToDate => {
-            splash::emit_status(&app, "Ready", splash::StatusKind::Ok);
+            splash::emit_status(&app, "final", "Ready", splash::StatusKind::Ok);
             0
         }
     };
@@ -379,33 +400,33 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
 #[cfg(not(debug_assertions))]
 fn run_update_check_with_status(app: &tauri::AppHandle) -> UpdateOutcome {
     // Step A: check drive reachability.
-    splash::emit_status(app, "Mounting shared drive", splash::StatusKind::Pending);
+    splash::emit_status(app, "mount", "Mounting shared drive", splash::StatusKind::Pending);
     let update_path = updater::get_update_path();
     if !update_path.exists() {
-        splash::emit_status(app, "Mounting shared drive", splash::StatusKind::Error);
+        splash::emit_status(app, "mount", "Mounting shared drive", splash::StatusKind::Error);
         return UpdateOutcome::Offline { path: update_path };
     }
-    splash::emit_status(app, "Mounting shared drive", splash::StatusKind::Ok);
+    splash::emit_status(app, "mount", "Mounting shared drive", splash::StatusKind::Ok);
 
     // Step B: version comparison.
-    splash::emit_status(app, "Checking for updates", splash::StatusKind::Pending);
+    splash::emit_status(app, "updates", "Checking for updates", splash::StatusKind::Pending);
     match updater::check_for_update() {
         updater::UpdateCheckResult::Offline { path } => {
-            splash::emit_status(app, "Checking for updates", splash::StatusKind::Error);
+            splash::emit_status(app, "updates", "Checking for updates", splash::StatusKind::Error);
             UpdateOutcome::Offline { path }
         }
         updater::UpdateCheckResult::UpdateAvailable {
             latest,
             update_path,
         } => {
-            splash::emit_status(app, "Checking for updates", splash::StatusKind::Warn);
+            splash::emit_status(app, "updates", "Checking for updates", splash::StatusKind::Warn);
             UpdateOutcome::UpdateAvailable {
                 latest,
                 update_path,
             }
         }
         updater::UpdateCheckResult::UpToDate => {
-            splash::emit_status(app, "Checking for updates", splash::StatusKind::Ok);
+            splash::emit_status(app, "updates", "Checking for updates", splash::StatusKind::Ok);
             UpdateOutcome::UpToDate
         }
     }

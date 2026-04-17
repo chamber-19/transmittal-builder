@@ -3,11 +3,10 @@
 ## Logo Attributions
 
 ### Rust Logo (rust-logo.svg)
-- **Description**: SVG recreation of Ferris the Rust crab mascot
-- **Source**: Based on the official Ferris mascot at https://www.rustacean.net/
-- **License**: CC0 1.0 Universal (Public Domain Dedication)
-- **Note**: Recreation for "Built with Rust" attribution purposes, as recommended
-  by the Rust project's mascot usage guidelines.
+- **Description**: 10-tooth gear SVG approximating the official Rust brand mark
+- **Source**: Based on the Rust programming language logo at https://www.rust-lang.org/
+- **License**: The Rust logo is copyright the Rust Foundation, dual-licensed under Apache 2.0 / MIT.
+- **Note**: Recreation for "Built with Rust" attribution purposes per the rust-lang.org media guide.
 
 ### Tauri Logo (tauri-logo.svg)
 - **Description**: SVG recreation of the Tauri v2 logo

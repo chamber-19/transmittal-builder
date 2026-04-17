@@ -112,8 +112,11 @@ function Splash() {
   const [titleVisible, setTitleVisible] = useState(false);
   const [taglineVisible, setTaglineVisible] = useState(false);
 
-  // Terminal lines: { prefix, pClass, msg, mClass, done }
+  // Terminal lines: { phase, prefix, pClass, msg, mClass, done }
   const [lines, setLines] = useState([]);
+
+  // Stable map of phase id → array index, for in-place dedup updates.
+  const linesByPhaseRef = useRef({});
 
   // Queue of incoming status events from Rust
   const statusQueueRef = useRef([]);
@@ -187,13 +190,41 @@ function Splash() {
 
   // Wire typeLineIn via the ref so both callbacks share access.
   typeLineInRef.current = (item) => {
-    isTypingRef.current = true;
-    const prefix = prefixForKind(item.kind);
-    const fullText = item.message;
-    const pClass = prefixClass(item.kind);
-    const mClass = msgClass(item.kind);
+    const { phase, message, kind } = item;
 
-    setLines((prev) => [...prev, { prefix, pClass, msg: "", mClass, done: false }]);
+    // ── In-place update: phase already has a line ──────────────────────────
+    // This happens when Rust sends Pending then Ok/Warn/Error for the same
+    // phase.  Update the prefix/colour without retyping the text.
+    if (phase && linesByPhaseRef.current[phase] !== undefined) {
+      const idx = linesByPhaseRef.current[phase];
+      setLines((prev) => {
+        const arr = [...prev];
+        arr[idx] = {
+          ...arr[idx],
+          prefix: prefixForKind(kind),
+          pClass: prefixClass(kind),
+          mClass: msgClass(kind),
+          done: true,
+        };
+        return arr;
+      });
+      // Not typing — immediately drain the next queued item.
+      drainQueue();
+      return;
+    }
+
+    // ── New phase: append and type the text character by character ─────────
+    isTypingRef.current = true;
+    const prefix = prefixForKind(kind);
+    const fullText = message;
+    const pClass = prefixClass(kind);
+    const mClass = msgClass(kind);
+
+    setLines((prev) => {
+      const newIdx = prev.length;
+      if (phase) linesByPhaseRef.current[phase] = newIdx;
+      return [...prev, { phase, prefix, pClass, msg: "", mClass, done: false }];
+    });
 
     let charIdx = 0;
     const advance = () => {
@@ -240,17 +271,40 @@ function Splash() {
     // Flush any queued status lines
     while (statusQueueRef.current.length > 0) {
       const item = statusQueueRef.current.shift();
-      const prefix = prefixForKind(item.kind);
-      setLines((prev) => [
-        ...prev,
-        {
-          prefix,
-          pClass: prefixClass(item.kind),
-          msg: item.message,
-          mClass: msgClass(item.kind),
-          done: true,
-        },
-      ]);
+      const { phase, message, kind } = item;
+
+      if (phase && linesByPhaseRef.current[phase] !== undefined) {
+        // Update existing line in place
+        const idx = linesByPhaseRef.current[phase];
+        setLines((prev) => {
+          const arr = [...prev];
+          arr[idx] = {
+            ...arr[idx],
+            prefix: prefixForKind(kind),
+            pClass: prefixClass(kind),
+            mClass: msgClass(kind),
+            done: true,
+          };
+          return arr;
+        });
+      } else {
+        // New phase — append with final text (no typing)
+        setLines((prev) => {
+          const newIdx = prev.length;
+          if (phase) linesByPhaseRef.current[phase] = newIdx;
+          return [
+            ...prev,
+            {
+              phase,
+              prefix: prefixForKind(kind),
+              pClass: prefixClass(kind),
+              msg: message,
+              mClass: msgClass(kind),
+              done: true,
+            },
+          ];
+        });
+      }
     }
 
     // Stop sparks
@@ -276,9 +330,11 @@ function Splash() {
       tauriRef.current = api;
       api
         .listen("splash://status", (ev) => {
-          const { message, kind } = ev.payload ?? {};
+          const { message, kind, phase } = ev.payload ?? {};
           if (!message) return;
-          statusQueueRef.current.push({ message, kind: kind ?? "pending" });
+          // Use the phase id from Rust; null for events without a phase so that
+          // no unintended deduplication occurs (in-place update requires a non-null phase).
+          statusQueueRef.current.push({ phase: phase ?? null, message, kind: kind ?? "pending" });
           drainQueue();
         })
         .then((fn) => {
@@ -531,7 +587,7 @@ function Splash() {
             const isLast = i === lines.length - 1;
             const showCursor = isLast && !line.done && !skippedRef.current;
             return (
-              <div key={i} className="terminal-line">
+              <div key={line.phase ?? i} className="terminal-line">
                 <span className={line.pClass}>{line.prefix}</span>
                 <span className={line.mClass}>
                   {line.msg}
