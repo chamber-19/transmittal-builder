@@ -11,7 +11,7 @@
 
 import { StrictMode, useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { listen } from "@tauri-apps/api/event";
+import { listen, emit } from "@tauri-apps/api/event";
 
 // ── Design tokens (mirrors App.jsx) ─────────────────────────────────────
 const T = {
@@ -50,6 +50,12 @@ function Updater() {
       if (p >= 100) {
         setStatus("Launching installer…");
       }
+    });
+
+    // Signal Rust that both listeners are registered and it is safe to
+    // start emitting update_info / update_progress events.
+    Promise.all([unlisten1, unlisten2]).then(() => {
+      emit("updater_ready");
     });
 
     return () => {

@@ -180,6 +180,8 @@ If a release has a critical bug:
 │        │    Copy installer from G:\ to %TEMP%                    │
 │        │    Launch installer /PASSIVE /NORESTART                 │
 │        │    Exit current app → installer upgrades files          │
+│        │    NOTE: installer runs silently in background.         │
+│        │    Relaunch the app manually when the upgrade is done.  │
 │        │                                                           │
 │   NO   └─── Show error dialog:                                    │
 │              "Cannot reach R3P shared drive..."                   │

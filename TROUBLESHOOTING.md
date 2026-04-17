@@ -203,3 +203,68 @@ error: icon file not found: icons/nsis-header.bmp
 - `frontend/package.json` → `"version"`
 
 Update all three before tagging a release. See `RELEASING.md §2 — Step 1`.
+
+---
+
+## 9. Force-update flow — updater log
+
+**Symptom:** The app shows "Update detected, loading updater…" on the splash
+screen but the updater window never appears, or the progress bar does not
+animate, or the installer is never launched.
+
+**Cause:** The update flow runs in a background thread and its output
+(`println!`/`eprintln!`) is swallowed by the Windows GUI subsystem.  All
+updater activity is written to a log file instead.
+
+**Log file location:**
+```
+%LOCALAPPDATA%\R3P Transmittal Builder\updater.log
+```
+For most users this resolves to:
+```
+C:\Users\<username>\AppData\Local\R3P Transmittal Builder\updater.log
+```
+
+**View the log in PowerShell:**
+```powershell
+Get-Content "$env:LOCALAPPDATA\R3P Transmittal Builder\updater.log" | Select-Object -Last 50
+```
+
+**Decode a timestamp line:**
+```powershell
+# Each log line starts with [<unix-epoch-seconds>]
+# e.g. [1713340345] Copy complete: 34567890 bytes in 420 ms → C:\...\transmittal-update.exe
+[DateTimeOffset]::FromUnixTimeSeconds(1713340345).LocalDateTime
+```
+
+**What a healthy update log looks like:**
+```
+[...] Update path: G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder
+[...] latest.json: read OK
+[...] Version check: installed=4.0.0, remote=4.0.1
+[...] Update available: 4.0.0 → 4.0.1
+[...] Update available: 4.0.0 → 4.0.1 (path: G:\...)
+[...] Copy: src=G:\...\R3P Transmittal Builder_4.0.1_x64-setup.exe, dest=C:\...\transmittal-update.exe, total_bytes=34567890
+[...] Copy progress: 5% (...)
+[...] ...
+[...] Copy progress: 100% (...)
+[...] Copy complete: 34567890 bytes in 420 ms → C:\...\transmittal-update.exe
+[...] Launching installer: C:\...\transmittal-update.exe
+[...] Installer launched (PID 12345) -- exiting
+```
+
+**Common failure patterns:**
+
+| Log ends at… | Likely cause | Fix |
+|---|---|---|
+| `Update path: G:\...` and nothing after | Drive not reachable (path exists check passed but file read failed) | Ensure Drive for Desktop is running; try the env var override |
+| `latest.json read error: …` | `latest.json` missing or locked | Re-run `publish-to-drive.ps1` |
+| `Version check: installed=X, remote=X` | Versions match — no update triggered | Bump `version` in `latest.json` on the drive |
+| `Copy: src=…` then `Copy failed: …` | Installer file missing on drive | Re-run `publish-to-drive.ps1 -Tag <tag>` |
+| `Launching installer: …` then nothing | Installer spawn failed (AV blocked?) | Check AV exclusions for `%TEMP%\transmittal-update.exe` |
+
+**Auto-relaunch note:** The installer runs silently in the background using
+`/PASSIVE /NORESTART`.  The current app process exits as soon as the installer
+is launched.  After the installer finishes, users must relaunch the app
+manually from the Start Menu or Desktop shortcut.
+

@@ -21,13 +21,12 @@ mod updater;
 
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use tauri::Manager;
+use tauri::{Emitter, Listener, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-use tauri::Emitter;
 
 // ── Backend state ─────────────────────────────────────────────────────────
 
@@ -342,24 +341,67 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
             latest,
             update_path,
         } => {
-            // Show the updater progress window.
-            if let Some(updater_win) = app.get_webview_window("updater") {
-                let _ = updater_win.emit(
-                    "update_info",
-                    serde_json::json!({
-                        "version": latest.version,
-                        "notes":   latest.notes,
-                    }),
-                );
-                let _ = updater_win.show();
-            }
+            updater::log_updater(&format!(
+                "Update available: {} → {} (path: {})",
+                env!("CARGO_PKG_VERSION"),
+                latest.version,
+                update_path.display(),
+            ));
 
-            splash::close_splash(&app);
+            // 1. Register the 'updater_ready' listener BEFORE scheduling the
+            //    window show so we never miss the event if React mounts fast.
+            let (ready_tx, ready_rx) = mpsc::channel::<()>();
+            let _ = app.once("updater_ready", move |_| {
+                // If the receiver was dropped we've already timed out; ignore.
+                let _ = ready_tx.send(());
+            });
 
-            // Copy installer then launch it.
+            // 2. Marshal all window show / hide operations onto the Tauri
+            //    main thread.  Calling WebviewWindow::show() or close() from
+            //    a background thread deadlocks the Windows event loop in
+            //    release builds.
+            let app_for_ui = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                if let Some(updater_win) = app_for_ui.get_webview_window("updater") {
+                    let _ = updater_win.show();
+                }
+                splash::close_splash(&app_for_ui);
+            });
+
+            // 3. Wait for the React bundle to mount and register its event
+            //    listeners (up to 2 s; fall through immediately on timeout).
+            let _ = ready_rx.recv_timeout(Duration::from_secs(2));
+            let updater_shown_at = Instant::now();
+
+            // 4. Emit update_info now that React listeners are registered.
+            let _ = app.emit(
+                "update_info",
+                serde_json::json!({
+                    "version": latest.version,
+                    "notes":   latest.notes,
+                }),
+            );
+
+            // 5. Copy installer on this worker thread (app.emit is
+            //    thread-safe so progress events reach the updater window).
+            updater::log_updater(&format!(
+                "Copy start: installer={}, dest=%TEMP%\\transmittal-update.exe",
+                latest.installer,
+            ));
             match updater::copy_installer_with_progress(&update_path, &latest.installer, &app) {
                 Ok(dest_path) => {
-                    println!("[updater] Launching installer: {}", dest_path.display());
+                    // 6. Enforce ≥1.5 s of visible updater display so users
+                    //    can read the version/notes and see the progress bar.
+                    let min_display = Duration::from_millis(1_500);
+                    let elapsed = updater_shown_at.elapsed();
+                    if elapsed < min_display {
+                        thread::sleep(min_display - elapsed);
+                    }
+
+                    updater::log_updater(&format!(
+                        "Launching installer: {}",
+                        dest_path.display()
+                    ));
                     let mut cmd = Command::new(&dest_path);
                     cmd.args(["/PASSIVE", "/NORESTART"]);
                     #[cfg(windows)]
@@ -368,18 +410,23 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
                         cmd.creation_flags(0x0000_0008); // DETACHED_PROCESS
                     }
                     match cmd.spawn() {
-                        Ok(_) => {
-                            println!("[updater] Installer launched -- exiting");
+                        Ok(child) => {
+                            updater::log_updater(&format!(
+                                "Installer launched (PID {}) -- exiting",
+                                child.id()
+                            ));
                             app.exit(0);
                         }
                         Err(e) => {
-                            eprintln!("[updater] Failed to launch installer: {e}");
+                            updater::log_updater(&format!(
+                                "Failed to launch installer: {e}"
+                            ));
                             app.exit(1);
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("[updater] Copy failed: {e}");
+                    updater::log_updater(&format!("Copy failed: {e}"));
                     app.exit(1);
                 }
             }

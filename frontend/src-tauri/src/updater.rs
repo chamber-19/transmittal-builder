@@ -12,6 +12,12 @@
 // The shared-drive path defaults to:
 //   G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder
 // Override for dev/testing by setting `TRANSMITTAL_UPDATE_PATH`.
+//
+// File logging (release builds only):
+//   %LOCALAPPDATA%\R3P Transmittal Builder\updater.log
+//   Each line: [<unix-epoch-seconds>] <message>
+//   To convert a timestamp in PowerShell:
+//     [DateTimeOffset]::FromUnixTimeSeconds(<secs>).LocalDateTime
 
 // In debug builds these items are only used in release code paths; suppress
 // the resulting dead-code warnings without affecting release builds.
@@ -58,15 +64,63 @@ pub fn get_update_path() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from(DEFAULT_UPDATE_PATH))
 }
 
+// ── File logging ──────────────────────────────────────────────────────────
+
+/// Append a timestamped message to the updater log file (release builds only).
+///
+/// Log location: `%LOCALAPPDATA%\R3P Transmittal Builder\updater.log`
+/// Timestamp format: Unix epoch seconds.  To decode in PowerShell:
+///   `[DateTimeOffset]::FromUnixTimeSeconds(<secs>).LocalDateTime`
+///
+/// Silently ignores I/O errors so a missing/unwritable log never aborts the
+/// update flow.
+#[cfg(not(debug_assertions))]
+pub fn log_updater(msg: &str) {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let base = std::env::var("LOCALAPPDATA")
+        .or_else(|_| std::env::var("TEMP"))
+        .unwrap_or_else(|_| String::from("C:\\Temp"));
+    let log_path = PathBuf::from(base)
+        .join("R3P Transmittal Builder")
+        .join("updater.log");
+
+    // Ensure the directory exists (it should already, but be safe).
+    if let Some(parent) = log_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+
+    if let Ok(mut f) = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
+        let _ = writeln!(f, "[{secs}] {msg}");
+    }
+}
+
+/// No-op in debug builds — updater code paths are not exercised in dev mode.
+#[cfg(debug_assertions)]
+pub fn log_updater(_msg: &str) {}
+
+// ── Update check ──────────────────────────────────────────────────────────
+
 /// Check whether an update is available.
 ///
 /// This is intentionally synchronous — it runs in the setup hook before the
 /// main window is shown, so blocking briefly is acceptable.
 pub fn check_for_update() -> UpdateCheckResult {
     let update_path = get_update_path();
+    log_updater(&format!("Update path: {}", update_path.display()));
 
     // Hard-block if the path does not exist (offline / Drive not mounted).
     if !update_path.exists() {
+        log_updater("latest.json: path not reachable (offline)");
         return UpdateCheckResult::Offline { path: update_path };
     }
 
@@ -74,14 +128,17 @@ pub fn check_for_update() -> UpdateCheckResult {
     let content = match fs::read_to_string(&latest_json_path) {
         Ok(c) => c,
         Err(e) => {
+            log_updater(&format!("latest.json read error: {e}"));
             eprintln!("[updater] Cannot read latest.json: {e}");
             return UpdateCheckResult::Offline { path: update_path };
         }
     };
+    log_updater("latest.json: read OK");
 
     let latest: LatestJson = match serde_json::from_str(&content) {
         Ok(j) => j,
         Err(e) => {
+            log_updater(&format!("latest.json parse error: {e}"));
             eprintln!("[updater] Cannot parse latest.json: {e}");
             // Treat a malformed manifest as up-to-date so the app still opens.
             return UpdateCheckResult::UpToDate;
@@ -93,6 +150,10 @@ pub fn check_for_update() -> UpdateCheckResult {
     let remote = match Version::parse(&latest.version) {
         Ok(v) => v,
         Err(e) => {
+            log_updater(&format!(
+                "Invalid version in latest.json ('{}'): {e}",
+                latest.version
+            ));
             eprintln!(
                 "[updater] Invalid version in latest.json ('{}'): {e}",
                 latest.version
@@ -101,7 +162,16 @@ pub fn check_for_update() -> UpdateCheckResult {
         }
     };
 
+    log_updater(&format!(
+        "Version check: installed={current_str}, remote={}",
+        latest.version
+    ));
+
     if remote > current {
+        log_updater(&format!(
+            "Update available: {current_str} → {}",
+            latest.version
+        ));
         println!(
             "[updater] Update available: {current_str} → {}",
             latest.version
@@ -111,6 +181,7 @@ pub fn check_for_update() -> UpdateCheckResult {
             update_path,
         }
     } else {
+        log_updater(&format!("Up to date ({current_str})"));
         println!("[updater] Up to date ({current_str})");
         UpdateCheckResult::UpToDate
     }
@@ -125,6 +196,8 @@ pub fn copy_installer_with_progress(
     installer_name: &str,
     app: &AppHandle,
 ) -> Result<PathBuf, String> {
+    use std::time::Instant;
+
     let src = update_path.join(installer_name);
     let temp_dir = std::env::var("TEMP")
         .or_else(|_| std::env::var("TMP"))
@@ -132,6 +205,11 @@ pub fn copy_installer_with_progress(
     let dest = PathBuf::from(&temp_dir).join("transmittal-update.exe");
 
     let total_bytes = fs::metadata(&src).map(|m| m.len()).unwrap_or(0);
+    log_updater(&format!(
+        "Copy: src={}, dest={}, total_bytes={total_bytes}",
+        src.display(),
+        dest.display(),
+    ));
 
     let mut reader = fs::File::open(&src)
         .map_err(|e| format!("Cannot open installer '{installer_name}': {e}"))?;
@@ -140,6 +218,8 @@ pub fn copy_installer_with_progress(
 
     let mut buf = [0u8; 65_536];
     let mut copied: u64 = 0;
+    let mut last_logged_pct: i64 = -1;
+    let copy_start = Instant::now();
 
     loop {
         let n = reader
@@ -167,8 +247,20 @@ pub fn copy_installer_with_progress(
                 "percent":      percent,
             }),
         );
+
+        // Log progress every ~5%.
+        let pct_bucket = (percent as i64) / 5 * 5;
+        if pct_bucket > last_logged_pct {
+            last_logged_pct = pct_bucket;
+            log_updater(&format!("Copy progress: {pct_bucket}% ({copied}/{total_bytes} bytes)"));
+        }
     }
 
+    let elapsed_ms = copy_start.elapsed().as_millis();
+    log_updater(&format!(
+        "Copy complete: {copied} bytes in {elapsed_ms} ms → {}",
+        dest.display(),
+    ));
     println!(
         "[updater] Installer copied to '{}' ({} bytes)",
         dest.display(),
