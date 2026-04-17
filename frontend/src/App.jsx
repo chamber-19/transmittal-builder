@@ -488,26 +488,37 @@ function PdfSourcesPanel({pdfSources,localPdfPaths,onTogglePdf}){
 
 // ─── Sidebar ─────────────────────────────────────────────────
 function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templateFile,indexFile,onGenerate,onEmail,generating,projectFolderPath,nextXmtlNum}){
-  const filled=[draft.jobNum,draft.xmtlNum,draft.client,draft.projectDesc,draft.fromName,draft.date].filter(Boolean).length;
-  const total=6;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
+  const filled=[draft.jobNum,draft.xmtlNum,draft.client,draft.projectDesc,draft.fromName,draft.date,draft.fromTitle,draft.fromEmail,draft.fromPhone,draft.firm].filter(Boolean).length;
+  const total=10;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
   const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0);
   const totalPdfCount=pdfFiles.length+(localPdfPaths?localPdfPaths.length:0);
+  // Per-group option checks (each group counts once regardless of how many selected within it)
+  const hasTransmitted=checks.trans_pdf||checks.trans_cad||checks.trans_originals;
+  const hasSentVia=checks.via_email||checks.via_ftp;
+  const hasCopyIntent=checks.ci_info||checks.ci_approval||checks.ci_bid||checks.ci_preliminary||checks.ci_const||checks.ci_asbuilt||checks.ci_fab||checks.ci_record||checks.ci_ref;
+  const hasVendorResponse=checks.vr_approved||checks.vr_approved_noted||checks.vr_rejected;
+  const optionGroupsFilled=[hasTransmitted,hasSentVia,hasCopyIntent,hasVendorResponse].filter(Boolean).length;
   // Granular readiness: each field contributes individually
   // PDFs are optional and don't reduce readiness when absent
   let pct=0;
-  if(draft.jobNum)pct+=10;        // Job Number
-  if(draft.xmtlNum)pct+=10;      // Transmittal No.
-  if(draft.client)pct+=7;        // Client/Site
-  if(draft.projectDesc)pct+=7;   // Project Description
-  if(draft.fromName)pct+=5;      // Sender Name
-  if(draft.date)pct+=5;          // Date
-  if(hasT)pct+=18;               // Template loaded
-  if(goodContacts>0)pct+=12;     // Contacts
-  if(activeChecks>0)pct+=7;      // Options checkboxes
-  if(documents.length>0)pct+=6;  // Document index rows
-  if(hasI)pct+=6;                // Drawing index (optional but counts)
-  if(draft.fromEmail)pct+=4;     // Sender email
-  if(draft.fromPhone)pct+=3;     // Sender phone
+  if(draft.jobNum)pct+=7;         // Job Number
+  if(draft.xmtlNum)pct+=7;       // Transmittal No.
+  if(draft.client)pct+=5;         // Client/Site
+  if(draft.projectDesc)pct+=5;    // Project Description
+  if(draft.fromName)pct+=4;       // Sender Name
+  if(draft.date)pct+=4;           // Date
+  if(draft.fromTitle)pct+=2;      // Sender Title
+  if(draft.fromEmail)pct+=3;      // Sender Email
+  if(draft.fromPhone)pct+=2;      // Sender Phone
+  if(draft.firm)pct+=2;           // Firm Registration
+  if(hasT)pct+=14;                // Template loaded
+  if(goodContacts>0)pct+=9;       // Contacts
+  if(hasTransmitted)pct+=8;       // Transmitted group (at least 1)
+  if(hasSentVia)pct+=5;           // Sent Via group (at least 1)
+  if(hasCopyIntent)pct+=8;        // Copy Intent group (at least 1)
+  if(hasVendorResponse)pct+=5;    // Vendor Response group (at least 1)
+  if(documents.length>0)pct+=6;   // Document index rows
+  if(hasI)pct+=4;                 // Drawing index (optional but counts)
   pct=Math.min(100,pct);
   const canGenerate=hasT&&documents.length>0&&filled>=4&&!generating;
   const folderMode=!!projectFolderPath;
@@ -517,7 +528,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
       <div style={{height:"4px",background:T.bgIn,borderRadius:"2px",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pct>=100?T.ok:T.acc,borderRadius:"2px",transition:"width 0.4s ease"}}/></div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Summary</SL><div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:totalPdfCount||"optional",ok:hasP,optional:true},{l:"Options set",v:activeChecks,ok:activeChecks>0},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
+      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:totalPdfCount||"optional",ok:hasP,optional:true},{l:"Option groups",v:`${optionGroupsFilled} / 4`,ok:optionGroupsFilled===4},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
         <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":(x.optional?"info":"muted")}>{String(x.v)}</Badge></div>)}</div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Output</SL>
