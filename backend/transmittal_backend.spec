@@ -47,22 +47,20 @@ a = Analysis(
         # pydantic / templates
         'pydantic',
         'pydantic.deprecated.class_validators',
-        'jinja2',
+        # jinja2, docxtpl, pdf2docx are pulled in transitively by installed
+        # packages (docxtpl→jinja2, pdf2docx). PyInstaller resolves them via
+        # the installed packages' own hooks, so listing them here only causes
+        # "Hidden import 'X' not found" errors when the package's top-level
+        # module name differs from the import path PyInstaller expects.
         # openpyxl, pandas engines
         'openpyxl',
         'openpyxl.styles',
         'openpyxl.utils',
         'pandas',
-        # docxtpl (python-docx template engine)
-        'docxtpl',
+        # python-docx
         'docx',
         # pypdf
         'pypdf',
-        'pypdf._page',
-        'pypdf._reader',
-        'pypdf._writer',
-        # pdf2docx
-        'pdf2docx',
         # python-multipart (FastAPI file upload)
         'multipart',
         'multipart.multipart',
