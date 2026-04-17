@@ -566,71 +566,24 @@
 }
 
 /* ── Accessibility: prefers-reduced-motion ──────────────────────────────── */
-/* Disable all sprocket/hammer animations; show static final frame.        */
+/*
+ * The hero forge scene (sprocket, hammer, rim glow, sparks) is the splash's
+ * core brand animation — played once per version to signal startup. It is
+ * intentionally exempt from prefers-reduced-motion because it is functional
+ * identity, not decorative filler.
+ *
+ * Incidental motion (status spinner frame cycling, checkmark pop-pulse,
+ * cursor blink) IS reduced here because those are decorative affordances
+ * that add nothing semantic when animated.
+ */
 @media (prefers-reduced-motion: reduce) {
-  /* Hammer: rests at slight overhead angle — no swing */
-  .forge-scene #hammer,
-  .forge-scene.phase-fade-in #hammer,
-  .forge-scene.phase-sparks #hammer,
-  .forge-scene.phase-welding #hammer,
-  .forge-scene.phase-clank #hammer,
-  .forge-scene.phase-final #hammer {
-    animation: none !important;
-    transform: rotate(-20deg) !important;
-    transition: none !important;
-  }
-
-  /* Sprocket: static, no rotation */
-  .forge-scene #sprocket,
-  .forge-scene.phase-fade-in #sprocket,
-  .forge-scene.phase-sparks #sprocket,
-  .forge-scene.phase-welding #sprocket,
-  .forge-scene.phase-clank #sprocket {
-    animation: none !important;
-    transform: none !important;
-    transition: none !important;
-  }
-
-  /* Rim/tooth glow: show amber teeth statically */
-  .forge-scene #rim-glow {
-    animation: none !important;
-    fill: #C8823A !important;
-    opacity: 0.18 !important;
-  }
-  .forge-scene [class^="tooth-glow-"] {
-    animation: none !important;
-    opacity: 0.4 !important;
-  }
-
-  /* Sparks: hidden */
-  .forge-scene .spark-1,  .forge-scene .spark-2,
-  .forge-scene .spark-3,  .forge-scene .spark-4,
-  .forge-scene .spark-5,  .forge-scene .spark-6,
-  .forge-scene .spark-7,  .forge-scene .spark-8,
-  .forge-scene .spark-9,  .forge-scene .spark-10 {
-    animation: none !important;
-    opacity: 0 !important;
-  }
-
-  /* Arc crackle: hidden */
-  .forge-scene #electric-arc {
-    animation: none !important;
-    opacity: 0 !important;
-  }
-
-  /* Impact flash: hidden */
-  .forge-scene #impact-flash {
-    animation: none !important;
-    opacity: 0 !important;
-  }
-
   /* Terminal cursor: no blink */
   .cursor {
     animation: none !important;
     opacity: 1 !important;
   }
 
-  /* Status spinner: no cycling (JS also skips frame updates) */
+  /* Status spinner: no cycling (JS can keep running — CSS masks it) */
   .terminal-line .status-spinner {
     animation: none !important;
   }
