@@ -157,7 +157,7 @@ function Splash() {
   // Skipped when prefers-reduced-motion is active (static […] shown instead).
   const hasPendingRef = useRef(false);
   useEffect(() => {
-    const hasPending = lines.some((l) => !l.done || l.kind === "pending");
+    const hasPending = lines.some((l) => !l.done);
     hasPendingRef.current = hasPending;
     if (hasPending && !reducedMotion) {
       if (!spinnerTimerRef.current) {
