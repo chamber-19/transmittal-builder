@@ -17,7 +17,7 @@
   position: relative;
   font-family: 'Inter', system-ui, sans-serif;
   user-select: none;
-  cursor: pointer;
+  cursor: default;
 }
 
 /* Very faint diagonal hatching — old-technical-drawing feel (~3% opacity) */
@@ -143,48 +143,54 @@
   overflow: visible;
 }
 
-/* ── Sprocket (transform-box: fill-box so origin = bounding-box center) ── */
-/* Slow continuous CCW rotation across all phases — no spin-up, no decelerate. */
+/* ── Sprocket — continuous CCW rotation (no spin-up, no decelerate) ─────── */
+/* 4.5s per revolution = ~80°/sec visual speed — brisk enough that the
+   gear always reads as actively running, never idle. */
 .forge-scene #sprocket {
   transform-box: fill-box;
   transform-origin: 50% 50%;
   will-change: transform;
-  animation: sprocket-spin 7s linear infinite;
+  animation: sprocket-spin 4.5s linear infinite;
 }
 
-/* Continuous CCW spin: ~7s per revolution. Negative degrees = counter-clockwise. */
 @keyframes sprocket-spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(-360deg); }
 }
 
-/* ── Hammer (transform-box: fill-box so origin = grip end at ~85%) ──────── */
-/* Slow back-and-forth swing across all active phases — pendulum cadence so the
-   hammer never freezes mid-splash. Impact instant is at 50% of the cycle (1.1s). */
+/* ── Hammer — fast pendulum swing (1.4s per cycle, impact at 50% = 0.7s) ── */
+/* Shorter cycle + gentler ease-in eliminates the "hovering at top" dead zone
+   that made the scene read as stuck. Lift back up uses linear timing so the
+   hammer doesn't asymptote into the raised position. */
 .forge-scene #hammer {
   transform-box: fill-box;
   transform-origin: center 85%;
   will-change: transform;
-  animation: hammer-swing 2.2s ease-in-out infinite;
+  animation: hammer-swing 1.4s linear infinite;
 }
 
-/* Single back-and-forth swing: rise → fall → strike → rebound → rise. */
+/* Single back-and-forth swing: rise → fall → strike → rebound → rise.
+   Each segment declares its own timing function:
+     0→50%   plain ease-in (gravity-like fall, no hover at top)
+     50→57%  snappy spring-out on impact (small overshoot to sell the hit)
+     57→70%  ease-out rebound
+     70→100% linear lift (constant speed up, no asymptotic approach to raised) */
 @keyframes hammer-swing {
-  0%   { transform: rotate(-35deg); }   /* raised */
-  50%  { transform: rotate(0deg);   }   /* descent → strike (face contacts top tooth) */
-  56%  { transform: rotate(3deg);   }   /* slight overshoot on impact */
-  68%  { transform: rotate(-8deg);  }   /* first rebound */
-  100% { transform: rotate(-35deg); }   /* back to raised */
+  0%   { transform: rotate(-32deg); animation-timing-function: ease-in; }
+  50%  { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
+  57%  { transform: rotate(2deg);   animation-timing-function: ease-out; }
+  70%  { transform: rotate(-6deg);  animation-timing-function: linear; }
+  100% { transform: rotate(-32deg); }
 }
 
-/* ── Strike-point tooth heat (synced with hammer-swing impact at 50% of 2.2s) ── */
+/* ── Strike-point tooth heat (synced to hammer impact at 50% of 1.4s = 0.7s) ── */
 .forge-scene .tooth-glow-0 {
-  animation: tooth-heat-pulse 2.2s 1.1s ease-out infinite;
+  animation: tooth-heat-pulse 1.4s 0.7s ease-out infinite;
 }
 /* Neighboring teeth glow faintly as the sprocket rotates past the strike point */
 .forge-scene .tooth-glow-15,
 .forge-scene .tooth-glow-1 {
-  animation: tooth-heat-pulse 2.2s 1.12s ease-out infinite;
+  animation: tooth-heat-pulse 1.4s 0.72s ease-out infinite;
   opacity: 0;
 }
 
@@ -202,7 +208,7 @@
 }
 
 
-/* ── Electric arc (CLANK phase crackle around sprocket rim) ─────────────── */
+/* ── Electric arc (CLANK-moment crackle around sprocket rim) ─────────────── */
 /* Default: hidden (stroke-dashoffset = circumference ≈ 440px for r=70) */
 .forge-scene #electric-arc {
   opacity: 0;
@@ -219,12 +225,12 @@
   100% { stroke-dashoffset: 0;   opacity: 0; }
 }
 
-/* ── Impact flash pulse (synced to hammer-swing impact at 50% of 2.2s) ────── */
+/* ── Impact flash pulse (synced to hammer impact at 50% of 1.4s = 0.7s) ──── */
 .forge-scene #impact-flash {
   transform-box: fill-box;
   transform-origin: center;
   opacity: 0;
-  animation: impact-pulse 2.2s 1.1s ease-out infinite;
+  animation: impact-pulse 1.4s 0.7s ease-out infinite;
 }
 
 @keyframes impact-pulse {
@@ -235,15 +241,15 @@
 }
 
 /* ── SVG spark elements (pre-placed at strike point, fly outward via CSS) ─── */
-/* Sparks fire on every hammer strike — 2.2s period, 1.1s delay = impact instant. */
-.forge-scene .spark-1 { animation: spark-fly-1 2.2s 1.10s ease-out infinite; }
-.forge-scene .spark-2 { animation: spark-fly-2 2.2s 1.11s ease-out infinite; }
-.forge-scene .spark-3 { animation: spark-fly-3 2.2s 1.10s ease-out infinite; }
-.forge-scene .spark-4 { animation: spark-fly-4 2.2s 1.12s ease-out infinite; }
-.forge-scene .spark-5 { animation: spark-fly-5 2.2s 1.11s ease-out infinite; }
-.forge-scene .spark-6 { animation: spark-fly-6 2.2s 1.10s ease-out infinite; }
-.forge-scene .spark-7 { animation: spark-fly-7 2.2s 1.13s ease-out infinite; }
-.forge-scene .spark-8 { animation: spark-fly-8 2.2s 1.10s ease-out infinite; }
+/* Sparks fire on every hammer strike — 1.4s period, 0.7s delay = impact instant. */
+.forge-scene .spark-1 { animation: spark-fly-1 1.4s 0.70s ease-out infinite; }
+.forge-scene .spark-2 { animation: spark-fly-2 1.4s 0.71s ease-out infinite; }
+.forge-scene .spark-3 { animation: spark-fly-3 1.4s 0.70s ease-out infinite; }
+.forge-scene .spark-4 { animation: spark-fly-4 1.4s 0.72s ease-out infinite; }
+.forge-scene .spark-5 { animation: spark-fly-5 1.4s 0.71s ease-out infinite; }
+.forge-scene .spark-6 { animation: spark-fly-6 1.4s 0.70s ease-out infinite; }
+.forge-scene .spark-7 { animation: spark-fly-7 1.4s 0.73s ease-out infinite; }
+.forge-scene .spark-8 { animation: spark-fly-8 1.4s 0.70s ease-out infinite; }
 
 /* 8 pre-computed trajectories (angle, distance — hard-coded, no JS random).
    Visible window is short (~0–35% of cycle) so each burst reads as a quick crackle. */
@@ -377,7 +383,7 @@
   will-change: width;
 }
 
-/* ── Version metadata row (replaces old Rust/Tauri tagline) ─────────────── */
+/* ── Version metadata row ────────────────────────────────────────────────── */
 .version-meta {
   position: absolute;
   bottom: 6px;
@@ -416,10 +422,10 @@
 
 /* ── Accessibility: prefers-reduced-motion ──────────────────────────────── */
 /*
- * The hero forge scene (sprocket, hammer, rim glow, sparks) is the splash's
- * core brand animation — played once per version to signal startup. It is
- * intentionally exempt from prefers-reduced-motion because it is functional
- * identity, not decorative filler.
+ * The hero forge scene (sprocket, hammer, sparks) is the splash's core brand
+ * animation — played once per version to signal startup. It is intentionally
+ * exempt from prefers-reduced-motion because it is functional identity, not
+ * decorative filler.
  *
  * Incidental motion (status spinner frame cycling, checkmark pop-pulse,
  * cursor blink) IS reduced here because those are decorative affordances
@@ -447,4 +453,3 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-

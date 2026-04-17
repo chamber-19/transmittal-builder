@@ -2,41 +2,36 @@
   role="img" aria-label="Engineering sprocket with hammer — forging animation">
 
   <defs>
-    <!-- Spark glow -->
-    <filter id="spark-glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="2.5" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
     <!-- Impact flash radial -->
     <radialGradient id="impact-rg" cx="50%" cy="50%" r="50%">
       <stop offset="0%"   stop-color="#fff5e0" stop-opacity="0.9"/>
       <stop offset="60%"  stop-color="#ffcc66" stop-opacity="0.4"/>
       <stop offset="100%" stop-color="#C8823A" stop-opacity="0"/>
     </radialGradient>
-    <!-- Sprocket metal gradient -->
-    <radialGradient id="sprocket-rg" cx="50%" cy="40%" r="60%">
+
+    <!-- Sprocket metal gradient — user-space so the light source stays fixed
+         in the SVG viewBox as the sprocket rotates. The bright spot (centered
+         at x=200, y=160 = above the sprocket hub) always appears to come from
+         above, like a forge flame lighting the top of the gear. -->
+    <radialGradient id="sprocket-rg" cx="200" cy="160" r="80" gradientUnits="userSpaceOnUse">
       <stop offset="0%"   stop-color="#5a5550"/>
       <stop offset="100%" stop-color="#3a3530"/>
     </radialGradient>
-    <!-- Hub gradient -->
-    <radialGradient id="hub-rg" cx="40%" cy="35%" r="65%">
+
+    <!-- Hub gradient — also user-space for consistent lighting -->
+    <radialGradient id="hub-rg" cx="194" cy="174" r="22" gradientUnits="userSpaceOnUse">
       <stop offset="0%"   stop-color="#3a3530"/>
       <stop offset="100%" stop-color="#1a1510"/>
     </radialGradient>
-    <!-- Ambient shadow under sprocket -->
-    <filter id="sprocket-shadow" x="-20%" y="-20%" width="140%" height="160%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.5"/>
-    </filter>
   </defs>
 
-  <!-- ── Ambient ground shadow ───────────────────────────────────────── -->
-  <ellipse cx="200" cy="264" rx="68" ry="8" fill="#000" opacity="0.35"/>
+  <!-- ── Ambient ground shadow (static — replaces the removed drop-shadow filter) -->
+  <ellipse cx="200" cy="264" rx="68" ry="10" fill="#000" opacity="0.45"/>
 
-  <!-- ── Sprocket group — rotated by CSS (CCW during WELDING) ──────── -->
-  <!-- transform-box: fill-box; transform-origin: 50% 50% on #sprocket in CSS -->
-  <g id="sprocket" filter="url(#sprocket-shadow)">
+  <!-- ── Sprocket group — rotated continuously by CSS (CCW) ──────────────── -->
+  <g id="sprocket">
 
-    <!-- Rim glow element (for heat cycle — lit by CSS animation) -->
+    <!-- Rim glow element (display:none via CSS — retained for backward compat) -->
     <path id="rim-glow"
       d="M 200,115 A 65,65 0 1 1 199.999,115"
       fill="#8a5520" opacity="0"/>
@@ -71,14 +66,11 @@
     "/>
 
     <!-- Three spokes at 90°/210°/330° — nod to ROOT3POWER -->
-    <!-- 90° spoke (pointing right, 3 o'clock) -->
     <rect x="218" y="177" width="32" height="6" rx="3"
           fill="#4a4540" stroke="#3a3530" stroke-width="1"/>
-    <!-- 210° spoke (lower-left) -->
     <rect x="-16" y="-3" width="32" height="6" rx="3"
           fill="#4a4540" stroke="#3a3530" stroke-width="1"
           transform="translate(183,209.5) rotate(120)"/>
-    <!-- 330° spoke (upper-left) -->
     <rect x="-16" y="-3" width="32" height="6" rx="3"
           fill="#4a4540" stroke="#3a3530" stroke-width="1"
           transform="translate(183,150.5) rotate(240)"/>
@@ -111,19 +103,14 @@
 
   </g><!-- end #sprocket -->
 
-  <!-- ── Hammer — strikes the top tooth (k=0) at (200, 115) ────────── -->
-  <!--
-    Transform pivot: transform-box: fill-box; transform-origin: center 85%
-    Group spans from top-of-head (y≈91) to bottom-of-haft (y≈196) height≈105.
-    85% from top ≈ y=180 = grip area. Rotation -35° raises head up-left.
-  -->
+  <!-- ── Hammer — strikes the top tooth (k=0) at (200, 115) ──────────────── -->
   <g id="hammer">
-    <!-- Haft (oak-brown handle) — extends down from head, grip at bottom -->
+    <!-- Haft (oak-brown handle) -->
     <rect x="196" y="115" width="9"  height="81" rx="2" fill="#6b4a2a"/>
     <!-- Haft grain highlight -->
     <rect x="199" y="115" width="2"  height="81" rx="1" fill="#8b6a40" opacity="0.5"/>
 
-    <!-- Head (steel, flat-face hammer) — bottom face at y=115 (strike point) -->
+    <!-- Head (steel, flat-face hammer) -->
     <rect x="171" y="91"  width="58" height="24" rx="2" fill="#4a4540"/>
 
     <!-- Head — top rim light (bright edge) -->
@@ -136,12 +123,7 @@
     <rect x="171" y="91"  width="4"  height="24" rx="1" fill="#3a3830" opacity="0.6"/>
   </g>
 
-  <!-- ── Electric arc (CLANK phase crackle around sprocket rim) ─────── -->
-  <!--
-    Full-circle arc around outer rim (radius 70, center 200,180).
-    stroke-dasharray ≈ 440 (circumference of radius-70 circle).
-    CSS animates dashoffset 440→0 during arc-crackle phase.
-  -->
+  <!-- ── Electric arc (CLANK-moment crackle around sprocket rim) ─────────── -->
   <path id="electric-arc"
     d="M 130,180 A 70,70 0 1 1 270,180 A 70,70 0 1 1 130,180"
     fill="none"
@@ -152,15 +134,14 @@
     stroke-dashoffset="440"
     opacity="0"/>
 
-  <!-- ── Impact flash (circle at strike point) ──────────────────────── -->
+  <!-- ── Impact flash (circle at strike point) ───────────────────────────── -->
   <circle id="impact-flash"
     cx="200" cy="115"
     r="28"
     fill="url(#impact-rg)"
     opacity="0"/>
 
-  <!-- ── Spark elements (pre-placed at strike point, fly outward) ───── -->
-  <!-- Strike point: (200, 115) — tooth k=0 / where hammer face meets -->
+  <!-- ── Spark elements (pre-placed at strike point, fly outward) ────────── -->
   <circle class="spark-1"  cx="200" cy="115" r="2.5" fill="#ffcc66" opacity="0"/>
   <circle class="spark-2"  cx="200" cy="115" r="2.0" fill="#C8823A" opacity="0"/>
   <circle class="spark-3"  cx="200" cy="115" r="3.0" fill="#ffcc66" opacity="0"/>
@@ -169,7 +150,6 @@
   <circle class="spark-6"  cx="200" cy="115" r="2.8" fill="#ffcc66" opacity="0"/>
   <circle class="spark-7"  cx="200" cy="115" r="1.5" fill="#fff5e0" opacity="0"/>
   <circle class="spark-8"  cx="200" cy="115" r="2.0" fill="#C8823A" opacity="0"/>
-  <!-- Extra sparks for clank burst -->
   <circle class="spark-9"  cx="200" cy="115" r="2.5" fill="#ffcc66" opacity="0"/>
   <circle class="spark-10" cx="200" cy="115" r="1.8" fill="#fff5e0" opacity="0"/>
 

@@ -1,17 +1,21 @@
 /**
  * splash.jsx — Forge-branded animated splash screen.
  *
- * Animation sequence (~13 seconds):
- *   0.0–1.5s  FADE_IN:  Background + anvil + R3P header fade in; sprocket/hammer begin.
- *   1.5–2.5s  SPARKS:   Hammer idle sway transitions; phase list starts streaming.
- *   2.5–8.5s  WELDING:  Hammer strike loop (~1.6 s per cycle); sparks radiate;
- *                        bolt flashes white-hot then cools; locked segments → amber.
- *   8.5–9.5s  CLANK:    Final decisive strike; bolt fully locked amber; arc crackle.
- *   9.5–10.5s FINAL:    Hammer at rest; bolt holds steady amber glow + breathing.
- *   10.5–11.5s FADE_OUT: Scene fades to black.
+ * The forge scene (sprocket, hammer, sparks, tooth-glow, impact-flash) runs as
+ * a single continuous CSS loop. It is isolated in a memoized component so
+ * state updates elsewhere in <Splash> do not trigger React reconciliation on
+ * the SVG branch — this is critical for keeping the animation smooth during
+ * the initial Tauri startup when ~20 state updates per second land on the
+ * parent from the spinner + progress crawler + status events.
+ *
+ * Chrome sequence (driven by setTimeout in the sequencer useEffect):
+ *   t=   50 ms  content fades in
+ *   t=  850 ms  progress bar + version meta fade in
+ *   t= 8500 ms  clank impact (flash overlay + electric arc)
+ *   t=10500 ms  content fades out
  */
 
-import { StrictMode, useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { createRoot } from "react-dom/client";
 import "./splash.css";
 import sprocketHammerSvg from "./assets/splash/sprocket-hammer.svg?raw";
@@ -25,10 +29,6 @@ const APP_VERSION =
   import.meta.env.VITE_APP_VERSION ??
   "4.1.0";
 
-// Maximum number of Rust phases whose completion locks a bolt segment to amber.
-// Corresponds to CSS classes .bolt-locked-1 / .bolt-locked-2 / .bolt-locked-3.
-const MAX_LOCKED_PHASES = 3;
-
 // ── Runtime Tauri guard ────────────────────────────────────────────────────
 // window.__TAURI_INTERNALS__ is injected by the Tauri webview; absent in any
 // plain browser.  All IPC calls (listen / invoke) must be guarded by this flag
@@ -38,16 +38,13 @@ const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
 
 // ── Browser-preview URL param overrides ──────────────────────────────────
 // Parsed once at module load.  Completely ignored when running inside Tauri.
-//   ?phase=welding  — jump directly to that phase and stay there indefinitely
 //   ?loop=1         — replay the full sequence on every cycle instead of ending
 //   ?mode=short|full — override short/full mode without rebuilding Tauri
 const _previewParams = !isTauri ? new URLSearchParams(window.location.search) : null;
-const PREVIEW_FORCED_PHASE = _previewParams?.get("phase") ?? null;
 const PREVIEW_LOOP_MODE    = _previewParams?.get("loop") === "1";
 const PREVIEW_FORCED_MODE  = _previewParams?.get("mode") ?? null;
-if (!isTauri && (PREVIEW_FORCED_PHASE || PREVIEW_LOOP_MODE || PREVIEW_FORCED_MODE)) {
+if (!isTauri && (PREVIEW_LOOP_MODE || PREVIEW_FORCED_MODE)) {
   const parts = [
-    PREVIEW_FORCED_PHASE && `phase=${PREVIEW_FORCED_PHASE}`,
     PREVIEW_LOOP_MODE    && "loop=1",
     PREVIEW_FORCED_MODE  && `mode=${PREVIEW_FORCED_MODE}`,
   ].filter(Boolean);
@@ -55,8 +52,6 @@ if (!isTauri && (PREVIEW_FORCED_PHASE || PREVIEW_LOOP_MODE || PREVIEW_FORCED_MOD
 }
 
 // Dynamic import so the app never crashes if Tauri IPC is absent (browser preview).
-// Returns null immediately when isTauri is false — the module itself loads fine
-// from Vite but calling listen/invoke would throw without __TAURI_INTERNALS__.
 const getTauriApi = async () => {
   if (!isTauri) return null;
   try {
@@ -83,17 +78,6 @@ function usePrefersReducedMotion() {
   }, []);
   return reduced;
 }
-
-
-const PHASE = {
-  INIT:      0,
-  FADE_IN:   1,   // 0–1.5 s   — background + anvil fade in; sprocket/hammer begin gently
-  SPARKS:    2,   // 1.5–2.5 s — hammer idle sway transitions to strike
-  WELDING:   3,   // 2.5–8.5 s — hammer strike loop; bolt heats/cools
-  CLANK:     4,   // 8.5–9.5 s — final decisive strike; arc crackle
-  FINAL:     5,   // 9.5–10.5 s — hammer rests; bolt breathing amber glow
-  FADE_OUT:  6,   // 10.5–11.5 s — fade to black
-};
 
 // Braille spinner frames — classic terminal look, cycles at ~90 ms/frame.
 const SPINNER_FRAMES = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
@@ -135,10 +119,25 @@ function msgClass(kind) {
   }
 }
 
+// ── ForgeScene: memoized SVG container ───────────────────────────────────
+// CRITICAL: this component is wrapped in memo() so it only re-renders when
+// `arcCrackle` actually changes. Without this, every spinner tick and progress
+// crawler tick would reconcile the SVG branch and starve the CSS animation
+// of main-thread time during the first 3s of startup — which was the visible
+// "sprocket hangs up during stage 01 then unfreezes at stage 03" bug.
+const ForgeScene = memo(function ForgeScene({ arcCrackle }) {
+  return (
+    <div
+      className={`forge-scene${arcCrackle ? " arc-crackle" : ""}`}
+      dangerouslySetInnerHTML={{ __html: sprocketHammerSvg }}
+      aria-hidden="true"
+    />
+  );
+});
+
 // ── Main component ────────────────────────────────────────────────────────
 function Splash({ onLoopRestart = null }) {
   const reducedMotion                       = usePrefersReducedMotion();
-  const [phase, setPhase]                   = useState(PHASE.INIT);
   const [contentVisible, setContentVisible] = useState(false);
   const [fadingOut, setFadingOut]           = useState(false);
   const [chromeVisible, setChromeVisible]   = useState(false);
@@ -154,9 +153,6 @@ function Splash({ onLoopRestart = null }) {
   const [spinnerFrame, setSpinnerFrame] = useState(0);
   const spinnerTimerRef = useRef(null);
 
-  // Stable map of phase id → array index, for in-place dedup updates.
-  const linesByPhaseRef = useRef({});
-
   // Progress bar: count phases that have transitioned away from Pending (max 4).
   const [completedPhaseCount, setCompletedPhaseCount] = useState(0);
   const completedPhasesRef = useRef(new Set());
@@ -166,9 +162,6 @@ function Splash({ onLoopRestart = null }) {
   const startTimeRef = useRef(Date.now());
 
   // ── Minimum-duration queue ────────────────────────────────────────────────
-  // Each entry: { phase, message, kind }
-  // We enforce MIN_PENDING_MS before applying an Ok/warn/error on a phase that
-  // was just set to Pending, and MIN_GAP_MS between consecutive transitions.
   const pendingStartRef  = useRef({});   // phase → Date.now() when Pending emitted
   const lastTransitionRef = useRef(0);   // Date.now() of last apply call
 
@@ -176,18 +169,12 @@ function Splash({ onLoopRestart = null }) {
   const statusQueueRef = useRef([]);
   const tauriRef        = useRef(null);
   const clankImpactTimerRef = useRef(null);
-  // Stable ref to the loop-restart callback so the phase sequencer effect
-  // can call it without needing it in its dependency array.
   const onLoopRestartRef = useRef(onLoopRestart);
   useEffect(() => { onLoopRestartRef.current = onLoopRestart; }, [onLoopRestart]);
 
   // ── Spinner tick ──────────────────────────────────────────────────────────
-  // Start/stop the braille spinner based on whether any line is pending.
-  // Skipped when prefers-reduced-motion is active (static […] shown instead).
-  const hasPendingRef = useRef(false);
   useEffect(() => {
     const hasPending = lines.some((l) => !l.done);
-    hasPendingRef.current = hasPending;
     if (hasPending && !reducedMotion) {
       if (!spinnerTimerRef.current) {
         spinnerTimerRef.current = setInterval(() => {
@@ -218,17 +205,10 @@ function Splash({ onLoopRestart = null }) {
     const TOTAL_ANIMATION_MS = 10500;
     const id = setInterval(() => {
       setDisplayProgress((p) => {
-        // Final event → let the phase count drive us to 100%
         if (completedPhaseCount >= 4) return 100;
-        
-        // Time-based floor: bar always reflects total elapsed progress, capped at 95%
         const elapsed = Date.now() - startTimeRef.current;
         const timeBased = Math.min((elapsed / TOTAL_ANIMATION_MS) * 100, 95);
-        
-        // Event floor: each completed phase snaps the bar up to 25/50/75%
         const eventFloor = (completedPhaseCount / 4) * 100;
-        
-        // Never regress, never pretend to be done
         return Math.max(p, eventFloor, Math.min(timeBased, 95));
       });
     }, 100);
@@ -236,16 +216,10 @@ function Splash({ onLoopRestart = null }) {
   }, [completedPhaseCount]);
 
   // ── Splash ready: show window after first CSS paint ───────────────────────
-  // The splash window is created with visible:false to prevent a transparent-
-  // ghost flash before React mounts.  We show it here after a double RAF so
-  // the background colour is guaranteed to have painted.
   useEffect(() => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         getTauriApi().then((api) =>
-          // Failures are intentionally ignored: if Tauri IPC is unavailable
-          // (browser preview) or the window is already closing, the visible:false
-          // window stays hidden, which is acceptable.
           api?.invoke("splash_ready").catch(() => {})
         );
       });
@@ -253,21 +227,16 @@ function Splash({ onLoopRestart = null }) {
   }, []);
 
   // ── Line-in engine ───────────────────────────────────────────────────────
-  // drainQueue is called when a new event arrives OR when an async apply
-  // completes.  drainingRef prevents concurrent processing — if a setTimeout
-  // is already in flight we let the queue accumulate and process the next
-  // item only after the in-flight timer fires.
   const drainingRef   = useRef(false);
   const typeLineInRef = useRef(null);
 
   const drainQueue = useCallback(() => {
-    if (drainingRef.current) return; // a timer is already in flight
+    if (drainingRef.current) return;
     const next = statusQueueRef.current.shift();
     if (!next) return;
     typeLineInRef.current?.(next);
-  }, []); // reads only refs — stable for component lifetime
+  }, []);
 
-  // applyLineUpdate: actually write the status to React state, then drain next.
   const applyLineUpdate = useCallback((item) => {
     const { phase, message, kind } = item;
     const pClass = prefixClass(kind);
@@ -290,13 +259,9 @@ function Splash({ onLoopRestart = null }) {
         return arr;
       }
 
-      // New phase — append
-      const newIdx = prev.length;
-      if (phase) linesByPhaseRef.current[phase] = newIdx;
       return [...prev, { phase, kind, pClass, msg: message, mClass, done: kind !== "pending" }];
     });
 
-    // Track phase completion outside setLines (uses a Set keyed on phase id).
     if (phase && kind !== "pending" && !completedPhasesRef.current.has(phase)) {
       completedPhasesRef.current.add(phase);
       setCompletedPhaseCount((n) => Math.min(n + 1, 4));
@@ -307,19 +272,13 @@ function Splash({ onLoopRestart = null }) {
     drainQueue();
   }, [drainQueue]);
 
-  // Wire typeLineIn via the ref so both callbacks share access.
   typeLineInRef.current = (item) => {
     const { phase, kind } = item;
     const now = Date.now();
-
-    // Mark as in-flight so new events don't kick off a second drain.
     drainingRef.current = true;
 
     if (kind === "pending") {
-      // Record when Pending started for this phase.
       if (phase) pendingStartRef.current[phase] = now;
-
-      // Enforce MIN_GAP_MS between consecutive phase transitions.
       const gapNeeded = MIN_GAP_MS - (now - lastTransitionRef.current);
       if (gapNeeded > 0) {
         setTimeout(() => applyLineUpdate(item), gapNeeded);
@@ -329,12 +288,9 @@ function Splash({ onLoopRestart = null }) {
       return;
     }
 
-    // For ok/warn/error: enforce MIN_PENDING_MS since Pending was applied.
     const pendingStart = phase ? (pendingStartRef.current[phase] ?? now) : now;
     const pendingAge = now - pendingStart;
     const pendingWait = Math.max(0, MIN_PENDING_MS - pendingAge);
-
-    // Also enforce MIN_GAP_MS from the last transition.
     const gapNeeded = MIN_GAP_MS - (now - lastTransitionRef.current);
     const totalWait = Math.max(pendingWait, gapNeeded);
 
@@ -351,30 +307,23 @@ function Splash({ onLoopRestart = null }) {
     const previewTimers = [];
     getTauriApi().then((api) => {
       if (!api) {
-        // Browser preview — no Tauri IPC
         console.log("[splash] Running in browser preview mode (no Tauri IPC)");
-
-        // ?mode=short forces short-mode; everything else uses full mode.
         if (PREVIEW_FORCED_MODE === "short") setIsFirstRun(false);
         else setIsFirstRun(true);
 
-        // Inject fake status events that mirror the Rust startup_sequence,
-        // unless a forced phase is active (the scene stays static, no terminal).
-        if (!PREVIEW_FORCED_PHASE) {
-          const push = (phase, message, kind) => {
-            statusQueueRef.current.push({ phase, message, kind });
-            drainQueue();
-          };
-          previewTimers.push(
-            setTimeout(() => push("svc",     "Starting backend service", "pending"), 1500),
-            setTimeout(() => push("svc",     "Starting backend service", "ok"),      2000),
-            setTimeout(() => push("drive",   "Mounting shared drive",    "pending"), 2300),
-            setTimeout(() => push("drive",   "Mounting shared drive",    "ok"),      2800),
-            setTimeout(() => push("updates", "Checking for updates",     "pending"), 3100),
-            setTimeout(() => push("updates", "Checking for updates",     "ok"),      3600),
-            setTimeout(() => push("final",   "Ready",                    "ok"),      8500),
-          );
-        }
+        const push = (phase, message, kind) => {
+          statusQueueRef.current.push({ phase, message, kind });
+          drainQueue();
+        };
+        previewTimers.push(
+          setTimeout(() => push("svc",     "Starting backend service", "pending"), 1500),
+          setTimeout(() => push("svc",     "Starting backend service", "ok"),      2000),
+          setTimeout(() => push("drive",   "Mounting shared drive",    "pending"), 2300),
+          setTimeout(() => push("drive",   "Mounting shared drive",    "ok"),      2800),
+          setTimeout(() => push("updates", "Checking for updates",     "pending"), 3100),
+          setTimeout(() => push("updates", "Checking for updates",     "ok"),      3600),
+          setTimeout(() => push("final",   "Ready",                    "ok"),      8500),
+        );
         return;
       }
       tauriRef.current = api;
@@ -383,8 +332,6 @@ function Splash({ onLoopRestart = null }) {
           .listen("splash://status", (ev) => {
             const { message, kind, phase } = ev.payload ?? {};
             if (!message) return;
-            // Use the phase id from Rust; null for events without a phase so that
-            // no unintended deduplication occurs (in-place update requires a non-null phase).
             statusQueueRef.current.push({ phase: phase ?? null, message, kind: kind ?? "pending" });
             drainQueue();
           })
@@ -395,10 +342,9 @@ function Splash({ onLoopRestart = null }) {
         console.warn("[splash] Tauri IPC unavailable, running in preview mode", err);
       }
 
-      // Query first-run flag to decide full (9.5 s) vs. short (3.2 s) mode.
       api.invoke("splash_is_first_run")
         .then((val) => setIsFirstRun(Boolean(val)))
-        .catch(() => setIsFirstRun(true)); // Default to full mode on error
+        .catch(() => setIsFirstRun(true));
     });
     return () => {
       if (unlisten) unlisten();
@@ -406,113 +352,48 @@ function Splash({ onLoopRestart = null }) {
     };
   }, [drainQueue]);
 
-  // ── Phase sequencer ───────────────────────────────────────────────────────
+  // ── Chrome sequencer ─────────────────────────────────────────────────────
   useEffect(() => {
-    // ── Browser-preview: forced phase — jump directly and stay ─────────────
-    // ?phase=welding (etc.) skips auto-advance entirely; scene stays frozen for
-    // unlimited inspection time.  No fake status events are injected either.
-    if (!isTauri && PREVIEW_FORCED_PHASE) {
-      const phaseMap = {
-        "fade-in": PHASE.FADE_IN,
-        "sparks":  PHASE.SPARKS,
-        "welding": PHASE.WELDING,
-        "clank":   PHASE.CLANK,
-        "final":   PHASE.FINAL,
-      };
-      const target = phaseMap[PREVIEW_FORCED_PHASE.toLowerCase()];
-      if (target !== undefined) {
-        setPhase(target);
-        setContentVisible(true);
-        const tt = setTimeout(() => setChromeVisible(true), 300);
-        return () => clearTimeout(tt);
-      }
-    }
+    const t1 = setTimeout(() => setContentVisible(true), 50);
+    const tChrome = setTimeout(() => setChromeVisible(true), 850);
 
-    // Phase 1: Fade-in (0–1.5 s) — background + anvil fade in; sprocket/hammer begin
-    const t1 = setTimeout(() => {
-      setPhase(PHASE.FADE_IN);
-      setContentVisible(true);
-      // Stagger chrome so sprocket/hammer has begun gentle motion first
-      setTimeout(() => setChromeVisible(true), 800);
-    }, 50);
-
-    // Phase 2: Sparks begin (1.5 s) — hammer idle → strike transition
-    const t2 = setTimeout(() => {
-      setPhase(PHASE.SPARKS);
-    }, 1500);
-
-    // Phase 3: Heavy welding (2.5 s) — hammer strike loop; sparks; bolt heats/cools
-    const t3 = setTimeout(() => {
-      setPhase(PHASE.WELDING);
-    }, 2500);
-
-    // Phase 4: Clank (8.5 s) — final decisive strike; arc crackle; bolt fully locked
-    const t4 = setTimeout(() => {
-      setPhase(PHASE.CLANK);
-      // hammer-final-strike is 0.45s ease-in to 0°; fire visual effects at impact, not at phase start
-      const impactDelay = 420;
-      const t4a = setTimeout(() => {
-        setFlash(true);
-        setTimeout(() => setFlash(false), 400);
-        setArcCrackle(true);
-        setTimeout(() => setArcCrackle(false), 800);
-      }, impactDelay);
-      clankImpactTimerRef.current = t4a;
+    const tClank = setTimeout(() => {
+      setFlash(true);
+      setTimeout(() => setFlash(false), 400);
+      setArcCrackle(true);
+      setTimeout(() => setArcCrackle(false), 800);
     }, 8500);
 
-    // Phase 5: Final (9.5 s) — hammer rests; bolt breathing amber glow
-    const t5 = setTimeout(() => {
-      setPhase(PHASE.FINAL);
-    }, 9500);
-
-    // Phase 6: Fade-out (10.5 s) — or loop if ?loop=1 in browser preview
-    const t6 = setTimeout(() => {
+    const tFadeOut = setTimeout(() => {
       if (!isTauri && PREVIEW_LOOP_MODE && onLoopRestartRef.current) {
-        // Restart the full sequence by remounting the Splash component.
         onLoopRestartRef.current();
       } else {
-        setPhase(PHASE.FADE_OUT);
         setFadingOut(true);
       }
     }, 10500);
 
     return () => {
-      [t1, t2, t3, t4, t5, t6].forEach(clearTimeout);
+      [t1, tChrome, tClank, tFadeOut].forEach(clearTimeout);
       if (clankImpactTimerRef.current) clearTimeout(clankImpactTimerRef.current);
     };
   }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
-  // Content container class
   let contentClass = "splash-content";
   if (contentVisible) contentClass += " visible";
   if (fadingOut)      contentClass += " fading-out";
-
-  // Phase CSS class (drives all forge animations)
-  const phaseNames = ["init","fade-in","sparks","welding","clank","final","fade-out"];
-  const phaseCss   = phaseNames[phase] ?? "init";
-
-  // Forge scene class — class additions drive CSS keyframe animations on SVG internals
-  let forgeClass = `forge-scene phase-${phaseCss}`;
-  if (arcCrackle)  forgeClass += " arc-crackle";
-  // bolt-locked-N: tracks how many Rust phases have resolved (0–MAX_LOCKED_PHASES)
-  forgeClass += ` bolt-locked-${Math.min(completedPhaseCount, MAX_LOCKED_PHASES)}`;
 
   return (
     <div
       className={`splash-root${isFirstRun === false ? " short-mode" : ""}`}
       style={{ WebkitAppRegion: "no-drag" }}
     >
-      {/* Warm vignette */}
       <div className="vignette" />
 
-      {/* Flash overlay */}
       <div className={`flash-overlay${flash ? " flash" : ""}`} />
 
-      {/* Main content */}
       <div className={contentClass}>
 
-        {/* R3P monogram logo — official corporate mark */}
         <img
           src={r3pLogoUrl}
           className="r3p-header-logo"
@@ -521,24 +402,18 @@ function Splash({ onLoopRestart = null }) {
           alt="R3P"
         />
 
-        {/* TRANSMITTAL BUILDER wordmark */}
         <div className={`app-title${contentVisible ? " visible" : ""}`}>
           Transmittal Builder
         </div>
 
-        {/* Subtitle: ENGINEERED TO DELIVER */}
         <p className="subtitle">
           <span className="sub-tag">ENGINEERED TO DELIVER</span>
         </p>
 
-        {/* Sprocket+hammer scene — SVG is inline so CSS targets #hammer, #sprocket, etc. */}
-        <div
-          className={forgeClass}
-          dangerouslySetInnerHTML={{ __html: sprocketHammerSvg }}
-          aria-hidden="true"
-        />
+        {/* Forge scene — memoized so spinner/progress/line updates don't
+            reconcile the SVG branch and starve the CSS animation of frames. */}
+        <ForgeScene arcCrackle={arcCrackle} />
 
-        {/* Progress bar — in content flow, between forge scene and terminal */}
         <div className={`progress-track${chromeVisible ? " visible" : ""}`}>
           <div
             className="progress-fill"
@@ -546,7 +421,6 @@ function Splash({ onLoopRestart = null }) {
           />
         </div>
 
-        {/* Terminal block — build-log streaming (unchanged) */}
         <div className="terminal-block">
           {lines.map((line, i) => (
             <div key={line.phase ?? i} className="terminal-line">
@@ -559,8 +433,7 @@ function Splash({ onLoopRestart = null }) {
               <span className={line.mClass}>{line.msg}</span>
             </div>
           ))}
-          {/* Cursor on empty terminal (before first event arrives) */}
-          {lines.length === 0 && phase >= PHASE.WELDING && (
+          {lines.length === 0 && contentVisible && (
             <div className="terminal-line">
               <span className="terminal-gutter-num" aria-hidden="true" />
               <span className="prefix-pending">{">"}</span>
@@ -570,7 +443,6 @@ function Splash({ onLoopRestart = null }) {
         </div>
       </div>
 
-      {/* Version metadata row */}
       <div className={`version-meta${chromeVisible ? " visible" : ""}`}>
         v{APP_VERSION}&nbsp;&middot;&nbsp;R3P Transmittal Builder
       </div>
@@ -579,16 +451,9 @@ function Splash({ onLoopRestart = null }) {
 }
 
 // ── SplashApp: thin wrapper that owns the loop key ───────────────────────
-// When ?loop=1 is active in browser preview, Splash calls onLoopRestart()
-// after FADE_OUT, which increments loopKey and forces a full remount of Splash
-// (resetting all state cleanly without manual teardown).
 function SplashApp() {
   const [loopKey, setLoopKey] = useState(0);
   return <Splash key={loopKey} onLoopRestart={() => setLoopKey((k) => k + 1)} />;
 }
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <SplashApp />
-  </StrictMode>
-);
+createRoot(document.getElementById("root")).render(<SplashApp />);
