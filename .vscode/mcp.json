@@ -1,0 +1,67 @@
+{
+  "$schema": "https://aka.ms/vscode-mcp-schema",
+  "inputs": [
+    {
+      "id": "github-pat",
+      "type": "promptString",
+      "description": "GitHub Personal Access Token (repo + read:org)",
+      "password": true
+    },
+    {
+      "id": "svgmaker-key",
+      "type": "promptString",
+      "description": "SVGMaker API key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github-pat}"
+      }
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ]
+    },
+    "memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MEMORY_FILE_PATH": "${workspaceFolder}/.mcp/memory.json"
+      }
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "fetch": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--headless"]
+    },
+    "svgmaker": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@genwave/svgmaker-mcp"],
+      "env": {
+        "SVGMAKER_API_KEY": "${input:svgmaker-key}"
+      }
+    }
+  }
+}
