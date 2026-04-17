@@ -104,9 +104,16 @@ Monitor it at `https://github.com/Koraji95-coder/Transmittal-Builder/actions`.
 It will:
 1. Build the PyInstaller sidecar on Windows.
 2. Build the Vite frontend.
-3. Run `tauri build` → produces `R3P-Transmittal-Builder_4.0.0_x64-setup.exe`.
+3. Run `tauri build` → produces `R3P.Transmittal.Builder_4.0.0_x64-setup.exe`.
 4. Generate `latest.json`.
 5. Create a GitHub Release and upload both files.
+
+> **Filename note:** `softprops/action-gh-release` sanitises spaces to dots on
+> upload, so the GitHub Release asset is named `R3P.Transmittal.Builder_<version>_x64-setup.exe`
+> (dots) rather than the space-separated product name.  The filename on the
+> shared drive after `publish-to-drive.ps1` will match this dotted convention.
+> `publish-to-drive.ps1` uses a glob pattern to locate the installer, so it is
+> filename-agnostic and unaffected by this sanitisation.
 
 ### Step 5 — Publish to shared drive
 
@@ -135,9 +142,9 @@ If a release has a critical bug:
    ```powershell
    $drive = "G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder"
    # Move bad installer to archive
-   Move-Item "$drive\R3P-Transmittal-Builder_4.1.0_x64-setup.exe" "$drive\archive\"
+   Move-Item "$drive\R3P.Transmittal.Builder_4.1.0_x64-setup.exe" "$drive\archive\"
    # Restore the previous good installer
-   Copy-Item "$drive\archive\R3P-Transmittal-Builder_4.0.0_x64-setup.exe" "$drive\"
+   Copy-Item "$drive\archive\R3P.Transmittal.Builder_4.0.0_x64-setup.exe" "$drive\"
    ```
 
 2. Edit `latest.json` on the shared drive and set `"version"` back to the
