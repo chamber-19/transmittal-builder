@@ -36,15 +36,15 @@
         "label": "splash",
         "title": "Transmittal Builder",
         "url": "splash.html",
-        "width": 560,
-        "height": 340,
+        "width": 680,
+        "height": 460,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "resizable": false,
         "center": true,
-        "visible": true
+        "visible": false
       }
     ],
     "security": {

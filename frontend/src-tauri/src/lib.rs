@@ -1,13 +1,14 @@
 // Tauri app entry point.
 //
 // Startup sequence:
-//   1. Splash window opens automatically (visible: true in tauri.conf.json).
+//   1. Splash window opens with visible:false; React invokes `splash_ready`
+//      after the first CSS paint so the user never sees a transparent ghost.
 //   2. Background thread runs the setup sequence while emitting
 //      `splash://status` events that drive the splash terminal animation:
 //        a. Spawn the PyInstaller sidecar (or Python dev-server fallback).
 //        b. Check shared-drive reachability  → "Mounting shared drive".
 //        c. Run the version check            → "Checking for updates".
-//   3. The thread waits until at least 9.5 s have elapsed (or the user
+//   3. The thread waits until at least 11 s have elapsed (or the user
 //      clicks to skip) so the full animation plays before the transition.
 //   4. The splash closes and either the main window or the updater window
 //      is shown, depending on the update check result.
@@ -199,6 +200,7 @@ pub fn run() {
             peek_subfolders,
             splash::request_skip_splash,
             splash::splash_is_first_run,
+            splash::splash_ready,
         ])
         .manage(BackendState {
             url: Mutex::new(String::from("http://127.0.0.1:8000")),
@@ -232,7 +234,7 @@ pub fn run() {
 
 /// Minimum time (ms) the splash must stay visible so the full animation
 /// plays through to the fade-out phase.
-const MIN_SPLASH_MS: u64 = 9_500;
+const MIN_SPLASH_MS: u64 = 11_000;
 
 /// Reduced minimum (ms) for subsequent launches with the same version.
 /// Chosen so the user sees at most one hammer-strike cycle before the

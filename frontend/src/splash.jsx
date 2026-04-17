@@ -1,14 +1,14 @@
 /**
  * splash.jsx — Forge-branded animated splash screen.
  *
- * Animation sequence (~9.5 seconds):
- *   0.0–1.0s  FADE_IN:  Background + anvil + R3P header fade in; bolt is dull amber.
- *   1.0–2.0s  SPARKS:   Hammer descent begins; phase list starts streaming.
- *   2.0–6.5s  WELDING:  Hammer strike loop (~1.6 s per cycle); sparks radiate;
+ * Animation sequence (~11 seconds):
+ *   0.0–1.5s  FADE_IN:  Background + anvil + R3P header fade in; sprocket/hammer begin.
+ *   1.5–2.5s  SPARKS:   Hammer idle sway transitions; phase list starts streaming.
+ *   2.5–8.5s  WELDING:  Hammer strike loop (~1.6 s per cycle); sparks radiate;
  *                        bolt flashes white-hot then cools; locked segments → amber.
- *   6.5–7.5s  CLANK:    Final decisive strike; bolt fully locked amber; arc crackle.
- *   7.5–9.0s  FINAL:    Hammer at rest; bolt holds steady amber glow + breathing.
- *   9.0–10.0s FADE_OUT: Scene fades to black.
+ *   8.5–9.5s  CLANK:    Final decisive strike; bolt fully locked amber; arc crackle.
+ *   9.5–10.5s FINAL:    Hammer at rest; bolt holds steady amber glow + breathing.
+ *   10.5–11.5s FADE_OUT: Scene fades to black.
  *
  * Click / Esc / Space → skip to fade-out immediately.
  */
@@ -47,12 +47,12 @@ const getTauriApi = async () => {
 // ── Constants ────────────────────────────────────────────────────────────
 const PHASE = {
   INIT:      0,
-  FADE_IN:   1,   // 0–1 s   — background + anvil fade in; bolt dull amber
-  SPARKS:    2,   // 1–2 s   — hammer descent begins
-  WELDING:   3,   // 2–6.5 s — hammer strike loop; bolt heats/cools
-  CLANK:     4,   // 6.5–7.5 s — final decisive strike; arc crackle
-  FINAL:     5,   // 7.5–9.0 s — hammer rests; bolt breathing amber glow
-  FADE_OUT:  6,   // 9.0–10.0 s — fade to black
+  FADE_IN:   1,   // 0–1.5 s   — background + anvil fade in; sprocket/hammer begin gently
+  SPARKS:    2,   // 1.5–2.5 s — hammer idle sway transitions to strike
+  WELDING:   3,   // 2.5–8.5 s — hammer strike loop; bolt heats/cools
+  CLANK:     4,   // 8.5–9.5 s — final decisive strike; arc crackle
+  FINAL:     5,   // 9.5–10.5 s — hammer rests; bolt breathing amber glow
+  FADE_OUT:  6,   // 10.5–11.5 s — fade to black
 };
 
 // ── Status line helpers ───────────────────────────────────────────────────
@@ -115,6 +115,23 @@ function Splash() {
   // Keep phaseRef in sync
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
+  // ── Splash ready: show window after first CSS paint ───────────────────────
+  // The splash window is created with visible:false to prevent a transparent-
+  // ghost flash before React mounts.  We show it here after a double RAF so
+  // the background colour is guaranteed to have painted.
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        getTauriApi().then((api) =>
+          // Failures are intentionally ignored: if Tauri IPC is unavailable
+          // (browser preview) or the window is already closing, the visible:false
+          // window stays hidden, which is acceptable.
+          api?.invoke("splash_ready").catch(() => {})
+        );
+      });
+    });
+  }, []);
+
   // ── Line-in engine ───────────────────────────────────────────────────────
   // Store typeLineIn in a ref so drainQueue can call it without creating a
   // circular dependency in the useCallback dependency arrays.
@@ -130,41 +147,44 @@ function Splash() {
   typeLineInRef.current = (item) => {
     const { phase, message, kind } = item;
 
-    // ── In-place update: phase already has a line ──────────────────────────
-    // This happens when Rust sends Pending then Ok/Warn/Error for the same
-    // phase.  Update the prefix/color without re-running the fade-in animation.
-    if (phase && linesByPhaseRef.current[phase] !== undefined) {
-      const idx = linesByPhaseRef.current[phase];
-      setLines((prev) => {
-        const arr = [...prev];
-        arr[idx] = {
-          ...arr[idx],
-          prefix: prefixForKind(kind),
-          pClass: prefixClass(kind),
-          mClass: msgClass(kind),
-          done: true,
-        };
-        return arr;
-      });
-      // Track phase completion (Pending → Ok/Warn/Error).
-      if (kind !== "pending" && !completedPhasesRef.current.has(phase)) {
-        completedPhasesRef.current.add(phase);
-        setCompletedPhaseCount((n) => Math.min(n + 1, 4));
-      }
-      drainQueue();
-      return;
-    }
-
-    // ── New phase: append full text immediately; CSS handles the fade-in ───
     const prefix = prefixForKind(kind);
     const pClass = prefixClass(kind);
     const mClass = msgClass(kind);
 
     setLines((prev) => {
+      // Dedup inside the updater so we always read the freshest state.
+      // This avoids a race where Rust emits Pending then Ok before React
+      // has flushed the first setLines callback (the ref write would be
+      // stale, causing a second append instead of an in-place update).
+      const existingIdx = phase
+        ? prev.findIndex((l) => l.phase === phase)
+        : -1;
+
+      if (existingIdx !== -1) {
+        // In-place update — preserve msg, update prefix/class/done
+        const arr = [...prev];
+        arr[existingIdx] = {
+          ...arr[existingIdx],
+          prefix,
+          pClass,
+          mClass,
+          done: true,
+        };
+        return arr;
+      }
+
+      // New phase — append
       const newIdx = prev.length;
       if (phase) linesByPhaseRef.current[phase] = newIdx;
       return [...prev, { phase, prefix, pClass, msg: message, mClass, done: true }];
     });
+
+    // Track phase completion outside setLines (uses a Set keyed on phase id).
+    if (phase && kind !== "pending" && !completedPhasesRef.current.has(phase)) {
+      completedPhasesRef.current.add(phase);
+      setCompletedPhaseCount((n) => Math.min(n + 1, 4));
+    }
+
     drainQueue();
   };
 
@@ -178,39 +198,23 @@ function Splash() {
     while (statusQueueRef.current.length > 0) {
       const item = statusQueueRef.current.shift();
       const { phase, message, kind } = item;
+      const prefix = prefixForKind(kind);
+      const pClass = prefixClass(kind);
+      const mClass = msgClass(kind);
 
-      if (phase && linesByPhaseRef.current[phase] !== undefined) {
-        // Update existing line in place
-        const idx = linesByPhaseRef.current[phase];
-        setLines((prev) => {
+      setLines((prev) => {
+        const existingIdx = phase
+          ? prev.findIndex((l) => l.phase === phase)
+          : -1;
+        if (existingIdx !== -1) {
           const arr = [...prev];
-          arr[idx] = {
-            ...arr[idx],
-            prefix: prefixForKind(kind),
-            pClass: prefixClass(kind),
-            mClass: msgClass(kind),
-            done: true,
-          };
+          arr[existingIdx] = { ...arr[existingIdx], prefix, pClass, mClass, done: true };
           return arr;
-        });
-      } else {
-        // New phase — append with final text
-        setLines((prev) => {
-          const newIdx = prev.length;
-          if (phase) linesByPhaseRef.current[phase] = newIdx;
-          return [
-            ...prev,
-            {
-              phase,
-              prefix: prefixForKind(kind),
-              pClass: prefixClass(kind),
-              msg: message,
-              mClass: msgClass(kind),
-              done: true,
-            },
-          ];
-        });
-      }
+        }
+        const newIdx = prev.length;
+        if (phase) linesByPhaseRef.current[phase] = newIdx;
+        return [...prev, { phase, prefix, pClass, msg: message, mClass, done: true }];
+      });
     }
 
     // Start fade-out
@@ -265,25 +269,26 @@ function Splash() {
 
   // ── Phase sequencer ───────────────────────────────────────────────────────
   useEffect(() => {
-    // Phase 1: Fade-in (0–1 s) — background + anvil fade in; bolt is dull amber
+    // Phase 1: Fade-in (0–1.5 s) — background + anvil fade in; sprocket/hammer begin
     const t1 = setTimeout(() => {
       setPhase(PHASE.FADE_IN);
       setContentVisible(true);
       setTitleVisible(true);
-      setTimeout(() => setTaglineVisible(true), 400);
+      // Stagger tagline so sprocket/hammer has begun gentle motion first
+      setTimeout(() => setTaglineVisible(true), 800);
     }, 50);
 
-    // Phase 2: Sparks begin (1 s) — hammer first descent
+    // Phase 2: Sparks begin (1.5 s) — hammer idle → strike transition
     const t2 = setTimeout(() => {
       setPhase(PHASE.SPARKS);
-    }, 1000);
+    }, 1500);
 
-    // Phase 3: Heavy welding (2 s) — hammer strike loop; sparks; bolt heats/cools
+    // Phase 3: Heavy welding (2.5 s) — hammer strike loop; sparks; bolt heats/cools
     const t3 = setTimeout(() => {
       setPhase(PHASE.WELDING);
-    }, 2000);
+    }, 2500);
 
-    // Phase 4: Clank (6.5 s) — final decisive strike; arc crackle; bolt fully locked
+    // Phase 4: Clank (8.5 s) — final decisive strike; arc crackle; bolt fully locked
     const t4 = setTimeout(() => {
       setPhase(PHASE.CLANK);
 
@@ -294,20 +299,20 @@ function Splash() {
       // Electric arc crackle along bolt
       setArcCrackle(true);
       setTimeout(() => setArcCrackle(false), 800);
-    }, 6500);
+    }, 8500);
 
-    // Phase 5: Final (7.5 s) — hammer rests; bolt breathing amber glow
+    // Phase 5: Final (9.5 s) — hammer rests; bolt breathing amber glow
     const t5 = setTimeout(() => {
       setPhase(PHASE.FINAL);
-    }, 7500);
+    }, 9500);
 
-    // Phase 6: Fade-out (9 s)
+    // Phase 6: Fade-out (10.5 s)
     const t6 = setTimeout(() => {
       if (!skippedRef.current) {
         setPhase(PHASE.FADE_OUT);
         setFadingOut(true);
       }
-    }, 9000);
+    }, 10500);
 
     return () => {
       [t1, t2, t3, t4, t5, t6].forEach(clearTimeout);

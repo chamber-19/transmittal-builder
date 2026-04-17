@@ -11,6 +11,8 @@
 //     when the user clicks or presses Esc/Space to skip.
 //   - `splash_is_first_run`            — Tauri command: returns true when this launch
 //     follows an update or is the very first launch (drives full vs. short animation).
+//   - `splash_ready`                   — Tauri command: called by the frontend after the
+//     first CSS paint to show the window (avoids transparent-ghost pre-flash).
 //   - `splash_first_launch_after_update` — internal helper: reads/writes the
 //     splash-seen.json sentinel and returns true when the stored version differs
 //     from the current binary version (i.e. a fresh install or just-updated launch).
@@ -158,6 +160,19 @@ pub fn request_skip_splash(state: tauri::State<SplashState>) {
 #[tauri::command]
 pub fn splash_is_first_run(state: tauri::State<SplashState>) -> bool {
     state.first_run()
+}
+
+/// Called by the splash frontend once the first CSS paint has completed.
+///
+/// The splash window is created with `visible: false` (tauri.conf.json) to
+/// avoid a transparent-ghost flash before React mounts.  After the first
+/// animation frame this command is invoked to show the window, ensuring the
+/// viewer only ever sees a fully-painted background.
+#[tauri::command]
+pub fn splash_ready(app: tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("splash") {
+        let _ = win.show();
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
