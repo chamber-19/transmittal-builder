@@ -71,7 +71,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 16px;
+  padding-top: 12px;
   gap: 0;
   opacity: 0;
   transition: opacity 0.9s ease;
@@ -84,22 +84,13 @@
   transition: opacity 1s ease;
 }
 
-/* ── R3P header logo (official corporate mark — do not modify) ──────────── */
+/* ── R3P header logo (img element — monogram SVG at 48×48) ─────────────── */
 .r3p-header-logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #C8823A 0%, #a06830 100%);
-  color: #fff;
-  font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: -0.01em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: block;
   margin-bottom: 6px;
+  flex-shrink: 0;
 }
 
 /* ── App title (TRANSMITTAL BUILDER wordmark) ───────────────────────────── */
@@ -119,35 +110,26 @@
   opacity: 1;
 }
 
-/* ── Subtitle: R∛P · ENGINEERED TO DELIVER ─────────────────────────────── */
+/* ── Subtitle: ENGINEERED TO DELIVER ───────────────────────────────────── */
 .subtitle {
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 9px;
   font-variant: small-caps;
-  letter-spacing: 0.12em;
-  color: rgba(156, 163, 175, 0.55);
+  letter-spacing: 0.14em;
+  color: rgba(200, 130, 58, 0.65);
   margin-top: 3px;
   margin-bottom: 0;
   line-height: 1;
 }
-.sub-r3p {
-  color: rgba(200, 130, 58, 0.7);
-}
-.sub-cuberoot {
-  font-size: 11px;
-  color: #C8823A;
-  font-weight: 600;
-}
 .sub-tag {
-  color: rgba(156, 163, 175, 0.45);
   letter-spacing: 0.14em;
 }
 
 /* ── Forge scene ────────────────────────────────────────────────────────── */
 .forge-scene {
-  width: 240px;
-  height: 180px;
-  margin: 5px auto 4px;
+  width: 220px;
+  height: 160px;
+  margin: 4px auto 2px;
   position: relative;
   flex-shrink: 0;
 }
@@ -159,12 +141,44 @@
   overflow: visible;
 }
 
-/* ── Hammer (transform-box: fill-box so origin = bounding-box bottom-center) */
+/* ── Sprocket (transform-box: fill-box so origin = bounding-box center) ── */
+.forge-scene #sprocket {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* WELDING phase: continuous CCW rotation */
+.forge-scene.phase-welding #sprocket {
+  animation: sprocket-spin 3.2s linear infinite;
+}
+
+/* Short mode: same — sprocket still spins continuously */
+.splash-root.short-mode .forge-scene.phase-welding #sprocket {
+  animation: sprocket-spin 3.2s linear infinite;
+}
+
+/* CLANK phase: hold final position (animation paused) */
+.forge-scene.phase-clank #sprocket {
+  animation: sprocket-spin 3.2s linear paused;
+}
+
+/* FINAL / FADE-OUT: hold still */
+.forge-scene.phase-final #sprocket,
+.forge-scene.phase-fade-out #sprocket {
+  animation: none;
+}
+
+@keyframes sprocket-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+/* ── Hammer (transform-box: fill-box so origin = grip end at ~85%) ──────── */
 .forge-scene #hammer {
   transform-box: fill-box;
-  transform-origin: center bottom;
+  transform-origin: center 85%;
   /* Default position: raised overhead */
-  transform: rotate(-45deg);
+  transform: rotate(-35deg);
   transition: transform 0.8s ease;
 }
 
@@ -172,7 +186,6 @@
 .forge-scene.phase-sparks #hammer {
   animation: hammer-first-descent 1s ease-in forwards;
 }
-
 /* WELDING phase: looping strike animation */
 .forge-scene.phase-welding #hammer {
   animation: hammer-strike 1.6s ease-in-out infinite;
@@ -199,114 +212,95 @@
 }
 
 @keyframes hammer-first-descent {
-  0%   { transform: rotate(-45deg); }
+  0%   { transform: rotate(-35deg); }
   100% { transform: rotate(0deg);   }
 }
 
 @keyframes hammer-strike {
-  0%   { transform: rotate(-45deg); }   /* raised */
-  12%  { transform: rotate(-45deg); }   /* brief hold */
+  0%   { transform: rotate(-35deg); }   /* raised */
+  15%  { transform: rotate(-35deg); }   /* brief hold */
   48%  { transform: rotate(0deg);   }   /* descent → strike (ease-in) */
   58%  { transform: rotate(4deg);   }   /* overshoot on impact */
   72%  { transform: rotate(-8deg);  }   /* first rebound */
-  100% { transform: rotate(-45deg); }   /* back to raised */
+  100% { transform: rotate(-35deg); }   /* back to raised */
 }
 
 @keyframes hammer-final-strike {
-  0%   { transform: rotate(-45deg); }
+  0%   { transform: rotate(-35deg); }
   100% { transform: rotate(0deg);   }
 }
 
-/* ── Bolt heat cycle ─────────────────────────────────────────────────────── */
-/* Base: dull amber when not animating */
-.forge-scene #bolt-core,
-.forge-scene #bolt-glow {
-  fill: #8a5520;
-  transition: fill 0.5s ease;
+/* ── Rim heat cycle (replaces bolt heat — tooth glows amber on each strike) ── */
+/* During WELDING, strike-point tooth (k=0) glows amber synced with hammer */
+.forge-scene.phase-welding .tooth-glow-0 {
+  animation: tooth-heat-pulse 1.6s 0.48s ease-out infinite;
+}
+/* Neighboring teeth glow faintly as sprocket rotates */
+.forge-scene.phase-welding .tooth-glow-15,
+.forge-scene.phase-welding .tooth-glow-1 {
+  animation: tooth-heat-pulse 1.6s 0.50s ease-out infinite;
+  opacity: 0;
 }
 
-/* FADE_IN + SPARKS: bolt stays dull amber (default) */
-
-/* WELDING: bolt pulses white-hot at each strike, cools back */
-.forge-scene.phase-welding #bolt-core {
-  animation: bolt-heat 1.6s ease-in-out infinite;
-}
-.forge-scene.phase-welding #bolt-glow {
-  animation: bolt-glow-heat 1.6s ease-in-out infinite;
+@keyframes tooth-heat-pulse {
+  0%   { opacity: 0; }
+  45%  { opacity: 0.85; }
+  55%  { opacity: 0.6; }
+  85%  { opacity: 0; }
+  100% { opacity: 0; }
 }
 
-/* Progressive lock to accent amber as Rust phases complete (0–3) */
-/* lock-1: one phase done — bolt stays warm orange between strikes */
-.forge-scene.bolt-locked-1 #bolt-core,
-.forge-scene.phase-welding.bolt-locked-1 #bolt-core {
-  animation: bolt-heat-locked1 1.6s ease-in-out infinite;
+/* Progressive rim lock as Rust phases complete — rim-glow brightens */
+.forge-scene.bolt-locked-1 #rim-glow {
+  animation: rim-heat-locked1 1.6s ease-in-out infinite;
 }
-/* lock-2: two phases done — bolt minimum is accent amber */
-.forge-scene.bolt-locked-2 #bolt-core,
-.forge-scene.phase-welding.bolt-locked-2 #bolt-core {
-  animation: bolt-heat-locked2 1.6s ease-in-out infinite;
+.forge-scene.bolt-locked-2 #rim-glow {
+  animation: rim-heat-locked2 1.6s ease-in-out infinite;
 }
-/* lock-3: all phases done — bolt fully locked to accent amber */
-.forge-scene.bolt-locked-3 #bolt-core,
-.forge-scene.phase-welding.bolt-locked-3 #bolt-core {
+.forge-scene.bolt-locked-3 #rim-glow {
   animation: none;
+  opacity: 0.22;
   fill: #C8823A;
 }
 
-/* CLANK: bolt fully locked with brief white-hot flash */
-.forge-scene.phase-clank #bolt-core {
-  animation: bolt-clank-flash 0.5s ease-out forwards;
+@keyframes rim-heat-locked1 {
+  0%   { opacity: 0.05; fill: #8a5520; }
+  48%  { opacity: 0.5;  fill: #ffcc66; }
+  65%  { opacity: 0.3;  fill: #C8823A; }
+  100% { opacity: 0.05; fill: #8a5520; }
 }
-/* FINAL: bolt holds amber with breathing glow */
-.forge-scene.phase-final #bolt-core,
-.forge-scene.phase-fade-out #bolt-core {
-  animation: bolt-breathe 2s ease-in-out infinite;
-}
-.forge-scene.phase-final #bolt-glow,
-.forge-scene.phase-fade-out #bolt-glow {
-  animation: bolt-glow-breathe 2s ease-in-out infinite;
-}
-
-@keyframes bolt-heat {
-  0%   { fill: #8a5520; }   /* dull amber */
-  48%  { fill: #fff5e0; }   /* white-hot at strike */
-  65%  { fill: #ffcc66; }   /* hot orange */
-  100% { fill: #8a5520; }   /* cool back to dull */
-}
-@keyframes bolt-glow-heat {
-  0%   { fill: #8a5520; opacity: 0.4; }
-  48%  { fill: #fff5e0; opacity: 0.8; }
-  65%  { fill: #ffcc66; opacity: 0.6; }
-  100% { fill: #8a5520; opacity: 0.4; }
-}
-@keyframes bolt-heat-locked1 {
-  0%   { fill: #a06030; }
-  48%  { fill: #fff5e0; }
-  65%  { fill: #ffcc66; }
-  100% { fill: #a06030; }
-}
-@keyframes bolt-heat-locked2 {
-  0%   { fill: #C8823A; }
-  48%  { fill: #fff5e0; }
-  65%  { fill: #ffcc66; }
-  100% { fill: #C8823A; }
-}
-@keyframes bolt-clank-flash {
-  0%   { fill: #fff5e0; }
-  40%  { fill: #ffcc66; }
-  100% { fill: #C8823A; }
-}
-@keyframes bolt-breathe {
-  0%, 100% { fill: #C8823A; }
-  50%       { fill: #e09a50; }
-}
-@keyframes bolt-glow-breathe {
-  0%, 100% { fill: #C8823A; opacity: 0.5; }
-  50%       { fill: #e09a50; opacity: 0.7; }
+@keyframes rim-heat-locked2 {
+  0%   { opacity: 0.12; fill: #C8823A; }
+  48%  { opacity: 0.6;  fill: #ffcc66; }
+  65%  { opacity: 0.35; fill: #C8823A; }
+  100% { opacity: 0.12; fill: #C8823A; }
 }
 
-/* ── Electric arc (CLANK phase crackle) ─────────────────────────────────── */
-/* Default: hidden (stroke-dashoffset = total path length = 120) */
+/* CLANK: rim fully glows amber */
+.forge-scene.phase-clank #rim-glow {
+  animation: rim-heat-clank 0.8s ease-out forwards;
+  fill: #C8823A;
+}
+@keyframes rim-heat-clank {
+  0%   { opacity: 0.1; }
+  20%  { opacity: 0.7; }
+  100% { opacity: 0.1; }
+}
+
+/* FINAL: rim breathing amber glow */
+.forge-scene.phase-final #rim-glow,
+.forge-scene.phase-fade-out #rim-glow {
+  animation: rim-breathe 2s ease-in-out infinite;
+  fill: #C8823A;
+}
+@keyframes rim-breathe {
+  0%, 100% { opacity: 0.12; }
+  50%       { opacity: 0.28; }
+}
+
+
+/* ── Electric arc (CLANK phase crackle around sprocket rim) ─────────────── */
+/* Default: hidden (stroke-dashoffset = circumference ≈ 440px for r=70) */
 .forge-scene #electric-arc {
   opacity: 0;
 }
@@ -315,11 +309,11 @@
 }
 
 @keyframes arc-draw {
-  0%   { stroke-dashoffset: 120; opacity: 0; }
+  0%   { stroke-dashoffset: 440; opacity: 0; }
   15%  { opacity: 1; }
-  55%  { stroke-dashoffset: 0; opacity: 1; }
-  80%  { stroke-dashoffset: 0; opacity: 0.7; }
-  100% { stroke-dashoffset: 0; opacity: 0; }
+  55%  { stroke-dashoffset: 0;   opacity: 1; }
+  80%  { stroke-dashoffset: 0;   opacity: 0.7; }
+  100% { stroke-dashoffset: 0;   opacity: 0; }
 }
 
 /* ── Impact flash pulse ─────────────────────────────────────────────────── */
@@ -397,7 +391,9 @@
 /* ── Terminal block ──────────────────────────────────────────────────────── */
 .terminal-block {
   width: 320px;
-  margin-top: 8px;
+  max-height: 70px;
+  overflow: hidden;
+  margin-top: 4px;
   font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
   font-size: 11px;
   line-height: 1.65;
@@ -461,12 +457,11 @@
   animation: blink 0.9s step-end infinite;
 }
 
-/* ── Progress bar ────────────────────────────────────────────────────────── */
+/* ── Progress bar — in content flow, between forge scene and terminal ─────── */
 .progress-track {
-  position: absolute;
-  bottom: 38px;
-  left: 24px;
-  right: 24px;
+  position: relative;
+  width: 320px;
+  margin: 8px auto 4px;
   height: 3px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 2px;
@@ -488,15 +483,17 @@
 /* ── Version metadata row (replaces old Rust/Tauri tagline) ─────────────── */
 .version-meta {
   position: absolute;
-  bottom: 0;
+  bottom: 6px;
   left: 0;
   right: 0;
   text-align: center;
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 10px;
-  color: rgba(75, 85, 99, 0.8);
+  color: rgba(156, 163, 175, 0.75);
   letter-spacing: 0.04em;
-  padding-bottom: 12px;
+  z-index: 5;
+  padding: 6px 0 4px;
+  background: linear-gradient(180deg, transparent 0%, rgba(10, 8, 6, 0.85) 40%, rgba(10, 8, 6, 0.95) 100%);
   opacity: 0;
   transition: opacity 0.8s ease 1.2s;
 }
@@ -521,7 +518,7 @@
 }
 
 /* ── Accessibility: prefers-reduced-motion ──────────────────────────────── */
-/* Disable all forge animations; show static finished-bolt final frame.     */
+/* Disable all sprocket/hammer animations; show static final frame.        */
 @media (prefers-reduced-motion: reduce) {
   /* Hammer: rests at slight overhead angle — no swing */
   .forge-scene #hammer,
@@ -534,22 +531,24 @@
     transition: none !important;
   }
 
-  /* Bolt: immediately shows final forged-amber state */
-  .forge-scene #bolt-core,
-  .forge-scene.phase-welding #bolt-core,
-  .forge-scene.phase-clank #bolt-core,
-  .forge-scene.phase-final #bolt-core {
+  /* Sprocket: static, no rotation */
+  .forge-scene #sprocket,
+  .forge-scene.phase-welding #sprocket,
+  .forge-scene.phase-clank #sprocket {
     animation: none !important;
-    fill: #C8823A !important;
+    transform: none !important;
     transition: none !important;
   }
-  .forge-scene #bolt-glow,
-  .forge-scene.phase-welding #bolt-glow,
-  .forge-scene.phase-final #bolt-glow {
+
+  /* Rim/tooth glow: show amber teeth statically */
+  .forge-scene #rim-glow {
     animation: none !important;
     fill: #C8823A !important;
-    opacity: 0.5 !important;
-    transition: none !important;
+    opacity: 0.18 !important;
+  }
+  .forge-scene [class^="tooth-glow-"] {
+    animation: none !important;
+    opacity: 0.4 !important;
   }
 
   /* Sparks: hidden */

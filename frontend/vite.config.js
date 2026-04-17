@@ -29,7 +29,7 @@ export default defineConfig({
     // APP_VERSION is read by the splash screen subtitle and updater footer.
     // Falls back to "4.0.0" when npm_package_version is not set (e.g. in CI).
     __APP_VERSION__: JSON.stringify(
-      process.env.npm_package_version || "4.0.0"
+      process.env.npm_package_version || "4.1.0"
     ),
   },
 
