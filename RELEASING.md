@@ -66,7 +66,7 @@ can click "More info → Run anyway." To add signing later:
 
 ### Step 1 — Bump the version
 
-Edit **both** files:
+Edit **all three** files:
 
 | File | Key |
 |---|---|
@@ -74,7 +74,7 @@ Edit **both** files:
 | `frontend/package.json` | `"version"` |
 | `frontend/src-tauri/Cargo.toml` | `version` |
 
-All three must match, e.g. `4.1.0`.
+All three must match, e.g. `4.0.0`.
 
 ### Step 2 — (Optional) Add release notes
 
@@ -82,17 +82,17 @@ Create `RELEASE_NOTES.md` at the repository root with a brief description.
 This content ends up in the GitHub Release body and in `latest.json` > `notes`.
 
 ```markdown
-## What's new in v4.1.0
-- Fixed XYZ
-- Improved PDF merge speed
+## What's new in v4.0.0
+- Initial release of Transmittal Builder v4
+- PDF merge and transmittal letter generation
 ```
 
 ### Step 3 — Tag and push
 
 ```powershell
 git add .
-git commit -m "chore: bump version to 4.1.0"
-git tag v4.1.0
+git commit -m "chore: bump version to 4.0.0"
+git tag v4.0.0
 git push && git push --tags
 ```
 
@@ -104,7 +104,7 @@ Monitor it at `https://github.com/Koraji95-coder/Transmittal-Builder/actions`.
 It will:
 1. Build the PyInstaller sidecar on Windows.
 2. Build the Vite frontend.
-3. Run `tauri build` → produces `R3P-Transmittal-Builder_4.1.0_x64-setup.exe`.
+3. Run `tauri build` → produces `R3P-Transmittal-Builder_4.0.0_x64-setup.exe`.
 4. Generate `latest.json`.
 5. Create a GitHub Release and upload both files.
 
@@ -113,7 +113,7 @@ It will:
 On a machine with **Google Drive for Desktop** running and the R3P drive mounted:
 
 ```powershell
-.\scripts\publish-to-drive.ps1 -Tag v4.1.0
+.\scripts\publish-to-drive.ps1 -Tag v4.0.0
 ```
 
 This script:
@@ -228,7 +228,7 @@ version exists.
 ```powershell
 Get-Content "G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\latest.json" | ConvertFrom-Json
 ```
-Ensure `version` is a valid semver string (e.g. `"4.1.0"`, not `"v4.1.0"`).
+Ensure `version` is a valid semver string (e.g. `"4.0.0"`, not `"v4.0.0"`).
 
 ---
 
