@@ -12,9 +12,9 @@ release, rolling back, and troubleshooting.
 | Tool | Version | Notes |
 |---|---|---|
 | Node.js | 20 LTS | `node --version` |
-| Python | 3.11 | Match the CI environment |
+| Python | 3.13 | CI uses 3.13. Fall back to 3.12 only if PyInstaller fails — see `TROUBLESHOOTING.md §4`. |
 | Rust | stable | `rustup update stable` |
-| PyInstaller | ≥ 6 | `pip install pyinstaller` |
+| PyInstaller | ≥ 6.10 | Required for Python 3.13 support. `pip install "pyinstaller>=6.10"` |
 | GitHub CLI | latest | `gh auth login` |
 | Google Drive for Desktop | latest | R3P shared drive must be mounted as `G:` |
 

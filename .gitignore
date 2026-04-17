@@ -11,6 +11,8 @@ venv/
 # PyInstaller sidecar build artefacts (built fresh by CI)
 backend/dist/
 backend/build/
+backend/dist-sidecar/
+backend/build-sidecar/
 backend/__pycache__/
 
 # Tauri sidecar binaries (populated by CI before tauri build)

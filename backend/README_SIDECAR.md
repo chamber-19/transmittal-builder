@@ -8,9 +8,9 @@ it silently on startup and kills it on exit.
 
 | Tool | Version |
 |---|---|
-| Python | 3.11 (match the CI environment) |
+| Python | 3.13 (match the CI environment; 3.12 acceptable if 3.13 PyInstaller fails) |
 | pip | latest |
-| PyInstaller | ≥ 6.0 |
+| PyInstaller | ≥ 6.10 (required for Python 3.13 support) |
 
 All Python backend dependencies must be installed first.
 
@@ -19,16 +19,15 @@ All Python backend dependencies must be installed first.
 Run these commands from the **repository root**:
 
 ```powershell
-# 1. Install dependencies + PyInstaller
+# 1. Install runtime + build dependencies
 cd backend
-pip install -r requirements.txt
-pip install pyinstaller
+pip install -r requirements.txt -r requirements-build.txt
 
 # 2. Run the spec (must be run from backend/)
-pyinstaller transmittal_backend.spec
+pyinstaller transmittal_backend.spec --distpath dist-sidecar --workpath build-sidecar
 
 # 3. Copy the one-dir output to the Tauri resource folder
-robocopy dist\transmittal-backend ..\frontend\src-tauri\binaries\transmittal-backend /E /NFL /NDL
+robocopy dist-sidecar\transmittal-backend ..\frontend\src-tauri\binaries\transmittal-backend /E /NFL /NDL
 ```
 
 After this step, `frontend/src-tauri/binaries/transmittal-backend/` will
@@ -61,5 +60,9 @@ contain `transmittal-backend.exe` and its `_internal/` folder.
   would break the port-handshake protocol.
 - The one-dir build (`COLLECT`) is preferred over `--onefile` because it
   avoids the extraction delay on each launch.
-- Do **not** commit the `dist/` or `build/` folders. CI builds the sidecar
-  fresh on every tagged release.
+- Use `--distpath dist-sidecar --workpath build-sidecar` to keep build
+  artifacts out of the default `dist/` and `build/` directories.
+- Do **not** commit the `dist-sidecar/` or `build-sidecar/` folders. CI
+  builds the sidecar fresh on every tagged release.
+- PyInstaller 6.10+ is required for Python 3.13. Earlier versions will fail
+  with import errors on Python 3.13. See `TROUBLESHOOTING.md` for details.
