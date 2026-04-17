@@ -236,8 +236,10 @@ const MIN_SPLASH_MS: u64 = 9_500;
 
 /// Reduced minimum (ms) for subsequent launches with the same version.
 /// Chosen so the user sees at most one hammer-strike cycle before the
-/// window closes (the CSS `animation-iteration-count: 1` in short-mode
+/// window closes (the CSS `animation-iteration-count: 1` in `.splash-root.short-mode`
 /// limits the hammer loop to a single swing on the frontend side).
+/// NOTE: if the frontend `hammer-strike` keyframe duration (currently 1.6 s in
+/// splash.css) changes, this constant should be updated to remain in sync.
 const MIN_SPLASH_MS_SHORT: u64 = 3_200;
 
 /// Extra hold (ms) for the offline error state before the dialog fires.

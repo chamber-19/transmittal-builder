@@ -90,18 +90,29 @@ pub fn splash_first_launch_after_update() -> bool {
 
     // Resolve %APPDATA%\com.r3p.transmittal\ on Windows,
     // $HOME/.local/share/com.r3p.transmittal/ on Linux/macOS.
-    let sentinel_path = {
+    // If the base directory variable is absent, return `true` (full-mode fallback)
+    // so the sentinel is not written to an invalid relative path.
+    let base_opt = {
         #[cfg(windows)]
-        let base = std::env::var("APPDATA").unwrap_or_default();
+        let v = std::env::var("APPDATA").ok();
         #[cfg(not(windows))]
-        let base = std::env::var("HOME")
-            .map(|h| format!("{h}/.local/share"))
-            .unwrap_or_default();
-
-        std::path::PathBuf::from(base)
-            .join("com.r3p.transmittal")
-            .join("splash-seen.json")
+        let v = std::env::var("HOME")
+            .ok()
+            .map(|h| format!("{h}/.local/share"));
+        v
     };
+
+    let base = match base_opt {
+        Some(b) if !b.is_empty() => b,
+        _ => {
+            // Cannot locate the config directory — treat as first run.
+            return true;
+        }
+    };
+
+    let sentinel_path = std::path::PathBuf::from(base)
+        .join("com.r3p.transmittal")
+        .join("splash-seen.json");
 
     // Try to read the sentinel; treat read errors as "first run".
     let last_seen = sentinel_path

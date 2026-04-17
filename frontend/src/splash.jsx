@@ -19,12 +19,16 @@ import "./splash.css";
 import forgeAnvilSvg from "./assets/splash/forge-anvil.svg?raw";
 
 // APP_VERSION — injected at build time by Vite; fallback to package version.
-// TODO: ensure VITE_APP_VERSION is set in CI/CD or rely on __APP_VERSION__ define.
+// The typeof guard makes this safe in browser-preview mode (no Vite define).
 /* global __APP_VERSION__ */
 const APP_VERSION =
   (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : null) ??
   import.meta.env.VITE_APP_VERSION ??
   "4.0.0";
+
+// Maximum number of Rust phases whose completion locks a bolt segment to amber.
+// Corresponds to CSS classes .bolt-locked-1 / .bolt-locked-2 / .bolt-locked-3.
+const MAX_LOCKED_PHASES = 3;
 
 // Dynamic import so the app never crashes if Tauri IPC is absent (browser preview).
 const getTauriApi = async () => {
@@ -322,8 +326,8 @@ function Splash() {
   // Forge scene class — class additions drive CSS keyframe animations on SVG internals
   let forgeClass = `forge-scene phase-${phaseCss}`;
   if (arcCrackle)  forgeClass += " arc-crackle";
-  // bolt-locked-N: tracks how many Rust phases have resolved (0–3 max)
-  forgeClass += ` bolt-locked-${Math.min(completedPhaseCount, 3)}`;
+  // bolt-locked-N: tracks how many Rust phases have resolved (0–MAX_LOCKED_PHASES)
+  forgeClass += ` bolt-locked-${Math.min(completedPhaseCount, MAX_LOCKED_PHASES)}`;
 
   return (
     <div
@@ -341,7 +345,7 @@ function Splash() {
       <div className={contentClass}>
 
         {/* R3P rounded-square gradient logo — official corporate mark, do not modify */}
-        <div className="r3p-header-logo" aria-label="R3P">R3P</div>
+        <div className="r3p-header-logo" role="img" aria-label="R3P">R3P</div>
 
         {/* TRANSMITTAL BUILDER wordmark */}
         <div className={`app-title${titleVisible ? " visible" : ""}`}>
