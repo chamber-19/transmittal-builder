@@ -551,31 +551,6 @@
   will-change: width;
 }
 
-/* ── Skip hint — subtle click-to-dismiss affordance ─────────────────────── */
-.skip-hint {
-  position: absolute;
-  bottom: 28px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 9px;
-  color: rgba(156, 163, 175, 0.45);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  z-index: 5;
-  opacity: 0;
-  transition: opacity 1.2s ease 0.4s;
-  pointer-events: none;
-}
-.skip-hint.visible {
-  opacity: 1;
-}
-.skip-hint.hidden {
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
 /* ── Version metadata row (replaces old Rust/Tauri tagline) ─────────────── */
 .version-meta {
   position: absolute;

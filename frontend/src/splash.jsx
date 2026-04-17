@@ -9,8 +9,6 @@
  *   8.5–9.5s  CLANK:    Final decisive strike; bolt fully locked amber; arc crackle.
  *   9.5–10.5s FINAL:    Hammer at rest; bolt holds steady amber glow + breathing.
  *   10.5–11.5s FADE_OUT: Scene fades to black.
- *
- * Click / Esc / Space → skip to fade-out immediately.
  */
 
 import { StrictMode, useState, useEffect, useRef, useCallback } from "react";
@@ -148,8 +146,6 @@ function Splash({ onLoopRestart = null }) {
   const [arcCrackle, setArcCrackle]         = useState(false);
   // null = unknown (waiting for Tauri), true = first run (full mode), false = short mode
   const [isFirstRun, setIsFirstRun]         = useState(null);
-  // Skip hint — appears after ~3s so it doesn't compete with early animation
-  const [skipHintVisible, setSkipHintVisible] = useState(false);
 
   // Terminal lines: { phase, prefix, pClass, msg, mClass, done, spinnerFrame }
   const [lines, setLines] = useState([]);
@@ -178,17 +174,12 @@ function Splash({ onLoopRestart = null }) {
 
   // Queue of incoming status events from Rust
   const statusQueueRef = useRef([]);
-  const skippedRef      = useRef(false);
-  const phaseRef        = useRef(PHASE.INIT);
   const tauriRef        = useRef(null);
   const clankImpactTimerRef = useRef(null);
   // Stable ref to the loop-restart callback so the phase sequencer effect
   // can call it without needing it in its dependency array.
   const onLoopRestartRef = useRef(onLoopRestart);
   useEffect(() => { onLoopRestartRef.current = onLoopRestart; }, [onLoopRestart]);
-
-  // Keep phaseRef in sync
-  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   // ── Spinner tick ──────────────────────────────────────────────────────────
   // Start/stop the braille spinner based on whether any line is pending.
@@ -354,51 +345,6 @@ function Splash({ onLoopRestart = null }) {
     }
   };
 
-  // ── Skip handler ─────────────────────────────────────────────────────────
-  const requestSkip = useCallback(() => {
-    if (skippedRef.current) return;
-    if (phaseRef.current >= PHASE.FADE_OUT) return;
-    skippedRef.current = true;
-
-    // Cancel any pending clank impact effects so they don't fire during fade-out
-    if (clankImpactTimerRef.current) {
-      clearTimeout(clankImpactTimerRef.current);
-      clankImpactTimerRef.current = null;
-    }
-
-    // Snap progress to 100% so it doesn't look stalled during fade-out
-    setDisplayProgress(100);
-
-    // Flush any queued status lines instantly (drop per-phase delays)
-    while (statusQueueRef.current.length > 0) {
-      const item = statusQueueRef.current.shift();
-      const { phase, message, kind } = item;
-      const pClass = prefixClass(kind);
-      const mClass = msgClass(kind);
-
-      setLines((prev) => {
-        const existingIdx = phase
-          ? prev.findIndex((l) => l.phase === phase)
-          : -1;
-        if (existingIdx !== -1) {
-          const arr = [...prev];
-          arr[existingIdx] = { ...arr[existingIdx], kind, pClass, mClass, done: kind !== "pending" };
-          return arr;
-        }
-        const newIdx = prev.length;
-        if (phase) linesByPhaseRef.current[phase] = newIdx;
-        return [...prev, { phase, kind, pClass, msg: message, mClass, done: kind !== "pending" }];
-      });
-    }
-
-    // Start fade-out
-    setFadingOut(true);
-    setPhase(PHASE.FADE_OUT);
-
-    // Notify Rust to skip the minimum wait
-    tauriRef.current?.invoke("request_skip_splash").catch(() => {});
-  }, []);
-
   // ── Tauri event wiring ───────────────────────────────────────────────────
   useEffect(() => {
     let unlisten = null;
@@ -459,15 +405,6 @@ function Splash({ onLoopRestart = null }) {
       previewTimers.forEach(clearTimeout);
     };
   }, [drainQueue]);
-
-  // ── Keyboard skip ────────────────────────────────────────────────────────
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === "Escape" || e.key === " ") requestSkip();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [requestSkip]);
 
   // ── Phase sequencer ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -530,7 +467,6 @@ function Splash({ onLoopRestart = null }) {
 
     // Phase 6: Fade-out (10.5 s) — or loop if ?loop=1 in browser preview
     const t6 = setTimeout(() => {
-      if (skippedRef.current) return;
       if (!isTauri && PREVIEW_LOOP_MODE && onLoopRestartRef.current) {
         // Restart the full sequence by remounting the Splash component.
         onLoopRestartRef.current();
@@ -540,11 +476,8 @@ function Splash({ onLoopRestart = null }) {
       }
     }, 10500);
 
-    // Skip hint — fade in after ~3s so it doesn't compete with early animation
-    const t7 = setTimeout(() => setSkipHintVisible(true), 3000);
-
     return () => {
-      [t1, t2, t3, t4, t5, t6, t7].forEach(clearTimeout);
+      [t1, t2, t3, t4, t5, t6].forEach(clearTimeout);
       if (clankImpactTimerRef.current) clearTimeout(clankImpactTimerRef.current);
     };
   }, []);
@@ -568,7 +501,6 @@ function Splash({ onLoopRestart = null }) {
   return (
     <div
       className={`splash-root${isFirstRun === false ? " short-mode" : ""}`}
-      onClick={requestSkip}
       style={{ WebkitAppRegion: "no-drag" }}
     >
       {/* Warm vignette */}
@@ -636,11 +568,6 @@ function Splash({ onLoopRestart = null }) {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Skip hint — appears after scene has established */}
-      <div className={`skip-hint${skipHintVisible ? " visible" : ""}${fadingOut ? " hidden" : ""}`}>
-        click or press Esc to skip
       </div>
 
       {/* Version metadata row */}

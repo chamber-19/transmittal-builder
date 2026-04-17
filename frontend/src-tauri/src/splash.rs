@@ -5,10 +5,7 @@
 // Provides:
 //   - `emit_status`                    — emit a terminal status line to the splash window.
 //   - `close_splash`                   — close the splash window (no-op if already closed).
-//   - `SplashState`                    — managed Tauri state holding the skip flag and
-//                                        first-run flag.
-//   - `request_skip_splash`            — Tauri command called by the splash frontend
-//     when the user clicks or presses Esc/Space to skip.
+//   - `SplashState`                    — managed Tauri state holding the first-run flag.
 //   - `splash_is_first_run`            — Tauri command: returns true when this launch
 //     follows an update or is the very first launch (drives full vs. short animation).
 //   - `splash_ready`                   — Tauri command: called by the frontend after the
@@ -45,24 +42,14 @@ pub struct StatusPayload {
 
 /// Shared state held in Tauri's managed-state map.
 pub struct SplashState {
-    pub skip_requested: Arc<AtomicBool>,
     pub is_first_run:   Arc<AtomicBool>,
 }
 
 impl SplashState {
     pub fn new(is_first_run: bool) -> Self {
         Self {
-            skip_requested: Arc::new(AtomicBool::new(false)),
             is_first_run:   Arc::new(AtomicBool::new(is_first_run)),
         }
-    }
-
-    pub fn skip(&self) {
-        self.skip_requested.store(true, Ordering::SeqCst);
-    }
-
-    pub fn is_skip_requested(&self) -> bool {
-        self.skip_requested.load(Ordering::SeqCst)
     }
 
     pub fn first_run(&self) -> bool {
@@ -156,16 +143,6 @@ pub fn splash_first_launch_after_update() -> bool {
 }
 
 // ── Tauri commands ────────────────────────────────────────────────────────
-
-/// Called by the splash frontend when the user requests an early exit.
-///
-/// This sets the skip flag so the background startup thread can omit the
-/// minimum-duration wait and proceed directly to showing the next window.
-#[tauri::command]
-pub fn request_skip_splash(state: tauri::State<SplashState>) {
-    println!("[splash] Skip requested by user");
-    state.skip();
-}
 
 /// Returns `true` when the current launch is the first launch after an install
 /// or update (i.e. the full ~9.5 s animation should play).

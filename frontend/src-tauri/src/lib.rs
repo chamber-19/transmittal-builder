@@ -8,8 +8,8 @@
 //        a. Spawn the PyInstaller sidecar (or Python dev-server fallback).
 //        b. Check shared-drive reachability  → "Mounting shared drive".
 //        c. Run the version check            → "Checking for updates".
-//   3. The thread waits until at least 11 s have elapsed (or the user
-//      clicks to skip) so the full animation plays before the transition.
+//   3. The thread waits until at least 11 s have elapsed so the full
+//      animation plays before the transition.
 //   4. The splash closes and either the main window or the updater window
 //      is shown, depending on the update check result.
 //
@@ -198,7 +198,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_backend_url,
             peek_subfolders,
-            splash::request_skip_splash,
             splash::splash_is_first_run,
             splash::splash_ready,
         ])
@@ -351,18 +350,7 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
 
     if elapsed < target_ms {
         let remaining = target_ms - elapsed;
-        let skip_state = app.try_state::<splash::SplashState>();
-        let mut waited = 0u64;
-        while waited < remaining {
-            thread::sleep(Duration::from_millis(100));
-            waited += 100;
-            if let Some(ref s) = skip_state {
-                if s.is_skip_requested() {
-                    println!("[splash] Minimum wait interrupted by skip request");
-                    break;
-                }
-            }
-        }
+        thread::sleep(Duration::from_millis(remaining));
     }
 
     // ── 5. Transition ─────────────────────────────────────────────────────
