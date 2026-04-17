@@ -16,7 +16,8 @@
 import { StrictMode, useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import "./splash.css";
-import forgeAnvilSvg from "./assets/splash/forge-anvil.svg?raw";
+import sprocketHammerSvg from "./assets/splash/sprocket-hammer.svg?raw";
+import r3pLogoUrl from "./assets/splash/r3p-logo-transparent.svg";
 
 // APP_VERSION — injected at build time by Vite; fallback to package version.
 // The typeof guard makes this safe in browser-preview mode (no Vite define).
@@ -24,7 +25,7 @@ import forgeAnvilSvg from "./assets/splash/forge-anvil.svg?raw";
 const APP_VERSION =
   (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : null) ??
   import.meta.env.VITE_APP_VERSION ??
-  "4.0.0";
+  "4.1.0";
 
 // Maximum number of Rust phases whose completion locks a bolt segment to amber.
 // Corresponds to CSS classes .bolt-locked-1 / .bolt-locked-2 / .bolt-locked-3.
@@ -344,27 +345,39 @@ function Splash() {
       {/* Main content */}
       <div className={contentClass}>
 
-        {/* R3P rounded-square gradient logo — official corporate mark, do not modify */}
-        <div className="r3p-header-logo" role="img" aria-label="R3P">R3P</div>
+        {/* R3P monogram logo — official corporate mark */}
+        <img
+          src={r3pLogoUrl}
+          className="r3p-header-logo"
+          role="img"
+          aria-label="R3P"
+          alt="R3P"
+        />
 
         {/* TRANSMITTAL BUILDER wordmark */}
         <div className={`app-title${titleVisible ? " visible" : ""}`}>
           Transmittal Builder
         </div>
 
-        {/* Subtitle: R∛P · ENGINEERED TO DELIVER */}
+        {/* Subtitle: ENGINEERED TO DELIVER */}
         <p className="subtitle">
-          <span className="sub-r3p">R</span>
-          <span className="sub-cuberoot">&#x221B;P</span>
-          <span className="sub-tag">&nbsp;&middot;&nbsp;ENGINEERED TO DELIVER</span>
+          <span className="sub-tag">ENGINEERED TO DELIVER</span>
         </p>
 
-        {/* Forge anvil scene — SVG is inline so CSS targets #hammer, #bolt-core, etc. */}
+        {/* Sprocket+hammer scene — SVG is inline so CSS targets #hammer, #sprocket, etc. */}
         <div
           className={forgeClass}
-          dangerouslySetInnerHTML={{ __html: forgeAnvilSvg }}
+          dangerouslySetInnerHTML={{ __html: sprocketHammerSvg }}
           aria-hidden="true"
         />
+
+        {/* Progress bar — in content flow, between forge scene and terminal */}
+        <div className={`progress-track${taglineVisible ? " visible" : ""}`}>
+          <div
+            className="progress-fill"
+            style={{ width: `${(completedPhaseCount / 4) * 100}%` }}
+          />
+        </div>
 
         {/* Terminal block — build-log streaming (unchanged) */}
         <div className="terminal-block">
@@ -388,15 +401,7 @@ function Splash() {
         </div>
       </div>
 
-      {/* Progress bar — fills 0→4/4 as backend phases resolve */}
-      <div className={`progress-track${taglineVisible ? " visible" : ""}`}>
-        <div
-          className="progress-fill"
-          style={{ width: `${(completedPhaseCount / 4) * 100}%` }}
-        />
-      </div>
-
-      {/* Version metadata row (replaces old Rust/Tauri tagline) */}
+      {/* Version metadata row */}
       <div className={`version-meta${taglineVisible ? " visible" : ""}`}>
         v{APP_VERSION}&nbsp;&middot;&nbsp;R3P Transmittal Builder
       </div>

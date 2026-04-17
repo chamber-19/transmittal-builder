@@ -6,110 +6,60 @@
       <stop offset="0%"   stop-color="#1e1612"/>
       <stop offset="100%" stop-color="#0a0806"/>
     </linearGradient>
-    <linearGradient id="sb-bolt" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%"   stop-color="#ffcc66"/>
-      <stop offset="50%"  stop-color="#C8823A"/>
-      <stop offset="100%" stop-color="#8a5520"/>
-    </linearGradient>
-    <linearGradient id="sb-haft" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%"   stop-color="#5a3a1a"/>
-      <stop offset="100%" stop-color="#6b4a2a"/>
-    </linearGradient>
-    <filter id="sb-glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="4" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <!-- White outline filter for R3 mark -->
+    <filter id="sb-outline" color-interpolation-filters="sRGB"
+            x="-5%" y="-5%" width="110%" height="110%">
+      <feMorphology operator="dilate" radius="2" in="SourceAlpha" result="thick"/>
+      <feFlood flood-color="#ffffff" result="white"/>
+      <feComposite in="white" in2="thick" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
-    <filter id="sb-anvil-shadow" x="-10%" y="-5%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.6"/>
-    </filter>
-    <radialGradient id="sb-bolt-glow" cx="50%" cy="40%" r="60%">
-      <stop offset="0%"   stop-color="#ffcc66" stop-opacity="0.5"/>
-      <stop offset="100%" stop-color="#C8823A" stop-opacity="0"/>
-    </radialGradient>
   </defs>
 
   <!-- Background -->
   <rect width="164" height="314" fill="url(#sb-bg)"/>
 
-  <!-- Faint diagonal hatching overlay -->
-  <rect width="164" height="314" fill="rgba(200,130,58,0.015)"
-    style="background:repeating-linear-gradient(-45deg,rgba(200,130,58,.02) 0,rgba(200,130,58,.02) 1px,transparent 1px,transparent 8px)"/>
+  <!-- ── Large R3P monogram centered in upper half (~100×100) ── -->
+  <!-- Rounded-square background centered at (82, 95), size 100×100 -->
+  <rect x="32" y="45" width="100" height="100" rx="16"
+        fill="#1E5BCA" stroke="#ffffff" stroke-width="2"/>
 
-  <!-- ── Hammer (raised, above anvil) ── -->
-  <!-- Head (steel) -->
-  <path d="M 52,68 L 112,68 L 112,82 L 52,82 Z"
-    fill="#4a4540" transform="rotate(-20, 82, 130)"/>
-  <!-- Head rim light -->
-  <path d="M 52,68 L 112,68 L 112,72 L 52,72 Z"
-    fill="#6a6560" opacity="0.6" transform="rotate(-20, 82, 130)"/>
-  <!-- Haft (oak-brown) -->
-  <path d="M 79,82 L 88,82 L 95,148 L 79,148 Z"
-    fill="url(#sb-haft)" transform="rotate(-20, 82, 130)"/>
-
-  <!-- ── Anvil ── centered at x=82, top at y=152 -->
-  <g filter="url(#sb-anvil-shadow)">
-    <!-- Horn left -->
-    <path d="M 44,162 Q 20,165 18,174 Q 20,183 44,180 Z" fill="#2a2520"/>
-    <path d="M 44,162 Q 20,165 18,174 Q 20,170 28,169 Q 38,166 44,167 Z"
-          fill="#3a3530" opacity="0.7"/>
-    <!-- Body -->
-    <path d="M 42,152 L 122,152 L 120,182 L 60,182 Z" fill="#2a2520"/>
-    <!-- Waist -->
-    <path d="M 60,182 L 120,182 L 116,198 L 62,198 Z" fill="#221e18"/>
-    <!-- Base -->
-    <path d="M 54,198 L 110,198 L 112,212 L 52,212 Z" fill="#2a2520"/>
-    <!-- Top rim -->
-    <path d="M 42,152 L 122,152 L 122,158 L 42,158 Z" fill="#3a3530"/>
-    <!-- Right rim light -->
-    <path d="M 122,152 L 122,158 L 120,182 L 116,182 L 120,158 Z"
-          fill="#3a3530" opacity="0.5"/>
+  <!-- R3 letterform scaled to fit 100×100 box at (32,45) -->
+  <!-- scale = 100/512 ≈ 0.195, translate to box origin -->
+  <g filter="url(#sb-outline)" transform="translate(32,45) scale(0.1953125)">
+    <rect x="136" y="126" width="54"  height="262" fill="#000000"/>
+    <rect x="136" y="126" width="198" height="52"  fill="#000000"/>
+    <path d="M 190,126 H 344 Q 394,130 394,196 Q 394,258 344,258 H 190 Z" fill="#000000"/>
+    <path d="M 190,280 H 330 Q 390,282 390,334 Q 390,388 330,388 H 190 Z" fill="#000000"/>
+    <path d="M 258,258 L 344,258 L 394,388 L 308,388 Z"                   fill="#000000"/>
   </g>
 
-  <!-- ── Bolt glow (ambient behind bolt) ── -->
-  <ellipse cx="82" cy="166" rx="28" ry="22" fill="url(#sb-bolt-glow)" opacity="0.8"/>
+  <!-- Accent separator below logo -->
+  <line x1="30" y1="156" x2="134" y2="156" stroke="rgba(200,130,58,0.2)" stroke-width="1"/>
 
-  <!-- ── Lightning bolt (amber, on anvil top at y=152) ── -->
-  <path
-    d="M 68,110 L 88,110 L 79,130 L 86,130 L 92,152 L 78,152 L 73,136 L 66,136 L 74,116 Z"
-    fill="url(#sb-bolt)"
-    filter="url(#sb-glow)"/>
+  <!-- Tagline below logo -->
+  <text x="82" y="174" text-anchor="middle" dominant-baseline="middle"
+    font-family="Inter, system-ui, sans-serif" font-size="7.5" font-weight="700"
+    font-variant="small-caps" letter-spacing="0.16em"
+    fill="rgba(200,130,58,0.9)">ENGINEERED TO DELIVER</text>
 
-  <!-- Bolt core highlight -->
-  <path
-    d="M 70,114 L 77,120 L 70,136 L 73,136 L 77,148 L 78,152"
-    fill="none" stroke="#ffee99" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
-
-  <!-- ── Small ambient sparks ── -->
-  <circle cx="95" cy="120" r="2.5" fill="#ffcc66" opacity="0.55"/>
-  <circle cx="102" cy="112" r="1.5" fill="#ffcc66" opacity="0.4"/>
-  <circle cx="96" cy="132" r="2"   fill="#C8823A"  opacity="0.45"/>
-  <circle cx="65" cy="118" r="2"   fill="#ffcc66"  opacity="0.45"/>
-  <circle cx="60" cy="128" r="1.5" fill="#C8823A"  opacity="0.35"/>
-
-  <!-- ── Top wordmark block ── -->
-  <!-- R3P logo mark -->
-  <rect x="70" y="18" width="24" height="24" rx="5"
-    fill="none" stroke="#C8823A" stroke-width="1.5" opacity="0.9"/>
-  <text x="82" y="32" text-anchor="middle" dominant-baseline="middle"
-    font-family="ui-monospace, monospace" font-size="9" font-weight="700"
-    fill="#C8823A">R3P</text>
-
-  <!-- Accent separator -->
-  <line x1="30" y1="50" x2="134" y2="50" stroke="rgba(200,130,58,0.2)" stroke-width="1"/>
-
-  <!-- ── Bottom tagline ── -->
+  <!-- ── Bottom tagline block ── -->
   <line x1="20" y1="256" x2="144" y2="256" stroke="rgba(200,130,58,0.15)" stroke-width="1"/>
 
-  <text x="82" y="268" text-anchor="middle" dominant-baseline="middle"
+  <text x="82" y="270" text-anchor="middle" dominant-baseline="middle"
     font-family="Inter, system-ui, sans-serif" font-size="7.5" font-weight="700"
     font-variant="small-caps" letter-spacing="0.15em"
-    fill="rgba(200,130,58,0.9)">R∛P</text>
+    fill="rgba(200,130,58,0.9)">R3P</text>
 
-  <text x="82" y="282" text-anchor="middle" dominant-baseline="middle"
+  <text x="82" y="283" text-anchor="middle" dominant-baseline="middle"
     font-family="Inter, system-ui, sans-serif" font-size="6.5" font-weight="600"
     letter-spacing="0.14em"
-    fill="rgba(156,163,175,0.6)">ENGINEERED TO DELIVER</text>
+    fill="rgba(156,163,175,0.6)">TRANSMITTAL BUILDER</text>
 
   <!-- Bottom accent line -->
   <rect x="0" y="308" width="164" height="6" fill="rgba(200,130,58,0.12)"/>
+
 </svg>

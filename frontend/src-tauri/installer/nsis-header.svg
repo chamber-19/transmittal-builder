@@ -6,52 +6,48 @@
       <stop offset="0%"   stop-color="#1a1210"/>
       <stop offset="100%" stop-color="#0a0806"/>
     </linearGradient>
-    <linearGradient id="hdr-bolt" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%"   stop-color="#ffcc66"/>
-      <stop offset="100%" stop-color="#C8823A"/>
-    </linearGradient>
-    <filter id="hdr-glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="1.5" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <!-- White outline filter for R3 mark -->
+    <filter id="hdr-outline" color-interpolation-filters="sRGB"
+            x="-8%" y="-8%" width="116%" height="116%">
+      <feMorphology operator="dilate" radius="1" in="SourceAlpha" result="thick"/>
+      <feFlood flood-color="#ffffff" result="white"/>
+      <feComposite in="white" in2="thick" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
   </defs>
 
   <!-- Background -->
   <rect width="150" height="57" fill="url(#hdr-bg)"/>
 
-  <!-- Faint diagonal hatching -->
-  <rect width="150" height="57" fill="none"
-    style="background-image:repeating-linear-gradient(-45deg,rgba(200,130,58,.025) 0,rgba(200,130,58,.025) 1px,transparent 1px,transparent 8px)"/>
+  <!-- R3P monogram mark (~40×40, left-aligned) -->
+  <!-- Rounded-square background -->
+  <rect x="7" y="8" width="36" height="36" rx="6"
+        fill="#1E5BCA" stroke="#ffffff" stroke-width="1.2"/>
 
-  <!-- Anvil silhouette (left-aligned, compact) -->
-  <!-- Anvil body at x=8-38, y=18-45 -->
-  <path d="M 8,22 L 38,22 L 37,34 L 22,34 L 21,40 L 36,40 L 35,46 L 12,46 L 11,40 L 9,40 L 8,34 Z"
-    fill="#2a2520"/>
-  <path d="M 8,22 L 38,22 L 38,25 L 8,25 Z" fill="#3a3530"/>
-  <!-- Horn -->
-  <path d="M 8,26 Q 2,28 2,32 Q 2,36 8,35 Z" fill="#2a2520"/>
-
-  <!-- Bolt on anvil (small, clear silhouette) -->
-  <path d="M 18,12 L 26,12 L 22,20 L 25,20 L 28,22 L 21,22 L 19,18 L 16,18 Z"
-    fill="url(#hdr-bolt)" filter="url(#hdr-glow)"/>
+  <!-- R3 letterform inside, scaled to fit 36×36 box (origin 7,8) -->
+  <!-- Character scaled ~0.07× of 512 viewbox, translated to position -->
+  <g filter="url(#hdr-outline)" transform="translate(7,8) scale(0.0703125)">
+    <rect x="136" y="126" width="54"  height="262" fill="#000000"/>
+    <rect x="136" y="126" width="198" height="52"  fill="#000000"/>
+    <path d="M 190,126 H 344 Q 394,130 394,196 Q 394,258 344,258 H 190 Z" fill="#000000"/>
+    <path d="M 190,280 H 330 Q 390,282 390,334 Q 390,388 330,388 H 190 Z" fill="#000000"/>
+    <path d="M 258,258 L 344,258 L 394,388 L 308,388 Z"                   fill="#000000"/>
+  </g>
 
   <!-- Separator line -->
-  <line x1="48" y1="10" x2="48" y2="47" stroke="rgba(200,130,58,0.2)" stroke-width="1"/>
+  <line x1="51" y1="10" x2="51" y2="47" stroke="rgba(200,130,58,0.2)" stroke-width="1"/>
 
-  <!-- R3P logo mark -->
-  <rect x="55" y="12" width="20" height="20" rx="4"
-    fill="none" stroke="#C8823A" stroke-width="1.2" opacity="0.8"/>
-  <text x="65" y="26" text-anchor="middle" dominant-baseline="middle"
-    font-family="ui-monospace, monospace" font-size="7" font-weight="700"
-    fill="#C8823A">R3P</text>
-
-  <!-- "R3P Transmittal Builder" wordmark -->
-  <text x="82" y="22" dominant-baseline="middle"
+  <!-- "R3P TRANSMITTAL BUILDER" wordmark -->
+  <text x="59" y="22" dominant-baseline="middle"
     font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="700"
     font-variant="small-caps" letter-spacing="0.05em"
     fill="#C8823A">R3P</text>
-  <text x="82" y="34" dominant-baseline="middle"
+  <text x="59" y="34" dominant-baseline="middle"
     font-family="Inter, system-ui, sans-serif" font-size="8" font-weight="600"
-    letter-spacing="0.12em"
+    letter-spacing="0.10em"
     fill="rgba(156,163,175,0.85)">TRANSMITTAL BUILDER</text>
+
 </svg>
