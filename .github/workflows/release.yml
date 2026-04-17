@@ -33,13 +33,18 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.13
+        # PyInstaller >= 6.10 is required for Python 3.13 support.
+        # If PyInstaller fails on 3.13, change this to "3.12" as a fallback
+        # and update both RELEASING.md (prerequisites table) and
+        # TROUBLESHOOTING.md (§4 — PyInstaller build failures) to document
+        # the reason.
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Set up Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           targets: x86_64-pc-windows-msvc
 
@@ -57,19 +62,18 @@ jobs:
       - name: Install backend dependencies
         run: |
           cd backend
-          pip install -r requirements.txt
-          pip install pyinstaller
+          pip install -r requirements.txt -r requirements-build.txt
 
       - name: Build PyInstaller sidecar
         run: |
           cd backend
-          pyinstaller transmittal_backend.spec
+          pyinstaller transmittal_backend.spec --distpath dist-sidecar --workpath build-sidecar
 
       - name: Copy sidecar to Tauri resources
         run: |
           $dest = "frontend\src-tauri\binaries\transmittal-backend"
           New-Item -ItemType Directory -Force -Path $dest | Out-Null
-          Copy-Item -Recurse -Force "backend\dist\transmittal-backend\*" $dest
+          Copy-Item -Recurse -Force "backend\dist-sidecar\transmittal-backend\*" $dest
           Write-Host "Sidecar copied to $dest"
         shell: pwsh
 
@@ -90,6 +94,10 @@ jobs:
           cd frontend
           npx tauri build
         env:
+          # TODO: add signing when cert is available
+          #   signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256
+          #     /f cert.pfx /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" *.exe
+          # secrets needed: WINDOWS_CERT_BASE64, WINDOWS_CERT_PASSWORD
           TAURI_SIGNING_PRIVATE_KEY: ""   # No code-signing yet; see RELEASING.md
 
       # ── 6. Locate built artefacts ────────────────────────────────────────
@@ -118,7 +126,6 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name:     "R3P Transmittal Builder ${{ github.ref_name }}"
-          body_path: RELEASE_NOTES.md
           fail_on_unmatched_files: true
           files: |
             ${{ steps.find_installer.outputs.path }}

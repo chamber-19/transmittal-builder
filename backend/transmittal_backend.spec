@@ -1,13 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
 # PyInstaller spec for the Transmittal Builder backend sidecar.
+# Requires PyInstaller >= 6.10 (Python 3.13 support).
 #
 # Build (from the backend/ directory):
-#   pip install pyinstaller
-#   pyinstaller transmittal_backend.spec
+#   pip install -r requirements.txt -r requirements-build.txt
+#   pyinstaller transmittal_backend.spec --distpath dist-sidecar --workpath build-sidecar
 #
-# Output: dist/transmittal-backend/  (one-dir build)
-# Copy the entire dist/transmittal-backend/ folder to:
+# Output: dist-sidecar/transmittal-backend/  (one-dir build)
+# Copy the entire dist-sidecar/transmittal-backend/ folder to:
 #   frontend/src-tauri/binaries/transmittal-backend/
 #
 # NOTE: Use console=True (console subsystem) so that Rust can read the
@@ -36,13 +37,42 @@ a = Analysis(
         'uvicorn.protocols.websockets.auto',
         'uvicorn.lifespan',
         'uvicorn.lifespan.on',
-        # FastAPI / pydantic / templates
+        # FastAPI / Starlette internals
+        'fastapi',
+        'fastapi.middleware',
+        'fastapi.middleware.cors',
+        'starlette.routing',
+        'starlette.middleware',
+        'starlette.middleware.cors',
+        # pydantic / templates
         'pydantic',
         'pydantic.deprecated.class_validators',
         'jinja2',
         # openpyxl, pandas engines
         'openpyxl',
+        'openpyxl.styles',
+        'openpyxl.utils',
         'pandas',
+        # docxtpl (python-docx template engine)
+        'docxtpl',
+        'docx',
+        # pypdf
+        'pypdf',
+        'pypdf._page',
+        'pypdf._reader',
+        'pypdf._writer',
+        # pdf2docx
+        'pdf2docx',
+        # python-multipart (FastAPI file upload)
+        'multipart',
+        'multipart.multipart',
+        # email internals used by emails/ package
+        'email',
+        'email.mime',
+        'email.mime.multipart',
+        'email.mime.text',
+        'email.mime.base',
+        'email.mime.application',
     ],
     hookspath=[],
     hooksconfig={},

@@ -212,6 +212,8 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
   const[hintDismissed,setHintDismissed]=useState(false);
   const debounceRef=useRef(null);
   const panelRef=useRef(null);
+  const rootId=useId();
+  const searchId=useId();
 
   const saveRoot=v=>{
     setRoot(v);
@@ -309,7 +311,8 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
     {/* Projects Root row */}
     <div style={{display:"flex",gap:"6px",marginBottom:"10px",alignItems:"center"}}>
       <div style={{flex:1,position:"relative"}}>
-        <input value={root} onChange={e=>saveRoot(e.target.value)} placeholder="Projects root directory (e.g. C:\Projects)"
+        <label htmlFor={rootId} style={{position:"absolute",width:"1px",height:"1px",padding:0,margin:"-1px",overflow:"hidden",clip:"rect(0,0,0,0)",whiteSpace:"nowrap",border:0}}>Projects root directory</label>
+        <input id={rootId} value={root} onChange={e=>saveRoot(e.target.value)} placeholder="Projects root directory (e.g. C:\Projects)"
           name="projects_root" aria-label="Projects root directory"
           style={{width:"100%",padding:"6px 10px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fM,fontSize:"12px",outline:"none",transition:"border-color 0.15s"}}
           onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
@@ -328,7 +331,8 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
     {root&&<div style={{position:"relative"}}>
       <div style={{position:"relative",display:"flex",alignItems:"center"}}>
         <span style={{position:"absolute",left:"10px",color:T.t3,display:"flex",pointerEvents:"none"}}>{searching?I.spin:I.search}</span>
-        <input value={query} onChange={e=>setQuery(e.target.value)}
+        <label htmlFor={searchId} style={{position:"absolute",width:"1px",height:"1px",padding:0,margin:"-1px",overflow:"hidden",clip:"rect(0,0,0,0)",whiteSpace:"nowrap",border:0}}>Search projects</label>
+        <input id={searchId} value={query} onChange={e=>setQuery(e.target.value)}
           name="project_search" aria-label="Search projects by name or job number"
           onFocus={e=>{if(results.length>0||root)setOpen(true);e.target.style.borderColor=T.bdFoc}}
           onBlur={e=>{e.target.style.borderColor=T.bd}}
