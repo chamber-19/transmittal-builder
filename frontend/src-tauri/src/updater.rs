@@ -30,6 +30,7 @@ const DEFAULT_UPDATE_PATH: &str = r"G:\Shared drives\R3P RESOURCES\APPS\Transmit
 
 /// Contents of `latest.json` on the shared drive.
 #[derive(Deserialize, Clone, Debug)]
+#[allow(dead_code)]
 pub struct LatestJson {
     pub version: String,
     pub installer: String,
