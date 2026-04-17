@@ -1,0 +1,338 @@
+/* splash.css — Forged splash screen styles & keyframe animations */
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Root container ─────────────────────────────────────────────────────── */
+.splash-root {
+  width: 560px;
+  height: 340px;
+  background: #0F1419;
+  overflow: hidden;
+  position: relative;
+  font-family: 'Inter', system-ui, sans-serif;
+  user-select: none;
+  cursor: default;
+}
+
+/* ── Blueprint grid ─────────────────────────────────────────────────────── */
+.blueprint-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 200, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.04) 1px, transparent 1px);
+  background-size: 30px 30px;
+  animation: grid-drift 8s linear infinite;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.blueprint-grid.visible {
+  opacity: 1;
+}
+
+/* ── Radial vignette ─────────────────────────────────────────────────────── */
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center,
+    transparent 40%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  pointer-events: none;
+}
+
+/* ── Main content area ──────────────────────────────────────────────────── */
+.splash-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 38px;
+  gap: 0;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+.splash-content.visible {
+  opacity: 1;
+}
+.splash-content.fading-out {
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+/* ── Logo row ────────────────────────────────────────────────────────────── */
+.logo-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+  height: 90px;
+}
+
+.logo-wrapper {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.logo-wrapper img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+/* Slide-in from left */
+.logo-wrapper.rust-logo {
+  transform: translateX(-80px);
+  opacity: 0;
+  transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.6s ease;
+}
+.logo-wrapper.rust-logo.slid-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+.logo-wrapper.rust-logo.jitter {
+  animation: logo-jitter 0.08s linear infinite;
+}
+.logo-wrapper.rust-logo.clanked {
+  animation: scale-bounce 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* Slide-in from right */
+.logo-wrapper.tauri-logo {
+  transform: translateX(80px);
+  opacity: 0;
+  transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.6s ease;
+}
+.logo-wrapper.tauri-logo.slid-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+.logo-wrapper.tauri-logo.jitter {
+  animation: logo-jitter-right 0.08s linear infinite;
+}
+.logo-wrapper.tauri-logo.clanked {
+  animation: scale-bounce 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* ── Weld gap & arc ─────────────────────────────────────────────────────── */
+.weld-gap {
+  width: 36px;
+  height: 80px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.weld-arc {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.weld-arc.visible {
+  opacity: 1;
+  animation: weld-pulse 0.4s ease-in-out infinite alternate;
+}
+.weld-arc.solid {
+  opacity: 1;
+  animation: none;
+}
+
+/* Weld solid line (post-clank) */
+.weld-line {
+  position: absolute;
+  width: 3px;
+  height: 0;
+  background: linear-gradient(180deg, #FFC131 0%, #E05D2B 100%);
+  border-radius: 2px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: height 0.4s ease;
+  box-shadow: 0 0 6px #FFC131, 0 0 12px #E05D2B;
+}
+.weld-line.solidified {
+  height: 64px;
+}
+
+/* ── Flash overlay ───────────────────────────────────────────────────────── */
+.flash-overlay {
+  position: absolute;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+.flash-overlay.flash {
+  animation: clank-flash 0.4s ease-out forwards;
+}
+
+/* ── Spark container ─────────────────────────────────────────────────────── */
+.spark-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.spark {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: spark-fly var(--duration) var(--delay) ease-out forwards;
+}
+
+/* ── App title ───────────────────────────────────────────────────────────── */
+.app-title {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #9CA3AF;
+  margin-top: 8px;
+  opacity: 0;
+  transition: opacity 0.6s ease 0.5s;
+}
+.app-title.visible {
+  opacity: 1;
+}
+
+/* ── Terminal block ──────────────────────────────────────────────────────── */
+.terminal-block {
+  width: 340px;
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #9CA3AF;
+  min-height: 60px;
+}
+
+.terminal-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.terminal-line .prefix-ok    { color: #4ADE80; }
+.terminal-line .prefix-warn  { color: #E05D2B; }
+.terminal-line .prefix-error { color: #F87171; }
+.terminal-line .prefix-pending { color: #9CA3AF; }
+
+.terminal-line .msg-ok    { color: #E4E7EB; }
+.terminal-line .msg-warn  { color: #FFC131; }
+.terminal-line .msg-error { color: #F87171; }
+.terminal-line .msg-pending { color: #9CA3AF; }
+
+.cursor {
+  display: inline-block;
+  width: 6px;
+  height: 11px;
+  background: #E05D2B;
+  vertical-align: middle;
+  animation: blink 0.9s step-end infinite;
+}
+
+/* ── Tagline ────────────────────────────────────────────────────────────── */
+.tagline {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 10px;
+  color: #4B5563;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  transition: opacity 0.8s ease 1s;
+}
+.tagline.visible {
+  opacity: 1;
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────────── */
+@keyframes grid-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 30px 0; }
+}
+
+@keyframes weld-pulse {
+  from { filter: blur(2px) brightness(1);   opacity: 0.75; }
+  to   { filter: blur(5px) brightness(1.4); opacity: 1; }
+}
+
+@keyframes logo-jitter {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(-1.5px, 0.5px) rotate(-0.3deg); }
+  40%  { transform: translate(1.5px, -0.5px) rotate(0.3deg); }
+  60%  { transform: translate(-1px, 1px) rotate(-0.2deg); }
+  80%  { transform: translate(1px, -1px) rotate(0.2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes logo-jitter-right {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(1.5px, -0.5px) rotate(0.3deg); }
+  40%  { transform: translate(-1.5px, 0.5px) rotate(-0.3deg); }
+  60%  { transform: translate(1px, 1px) rotate(0.2deg); }
+  80%  { transform: translate(-1px, -1px) rotate(-0.2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes scale-bounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.08); }
+  65%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes clank-flash {
+  0%   { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
+@keyframes spark-fly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(var(--vx), var(--vy)) scale(0.1);
+    opacity: 0;
+  }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes burst-pulse {
+  0%   { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}

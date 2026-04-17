@@ -17,12 +17,11 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-use serde::Deserialize;
 use semver::Version;
+use serde::Deserialize;
 use tauri::AppHandle;
 
-const DEFAULT_UPDATE_PATH: &str =
-    r"G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder";
+const DEFAULT_UPDATE_PATH: &str = r"G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder";
 
 /// Contents of `latest.json` on the shared drive.
 #[derive(Deserialize, Clone, Debug)]
@@ -88,7 +87,10 @@ pub fn check_for_update() -> UpdateCheckResult {
     let remote = match Version::parse(&latest.version) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("[updater] Invalid version in latest.json ('{}'): {e}", latest.version);
+            eprintln!(
+                "[updater] Invalid version in latest.json ('{}'): {e}",
+                latest.version
+            );
             return UpdateCheckResult::UpToDate;
         }
     };
@@ -98,7 +100,10 @@ pub fn check_for_update() -> UpdateCheckResult {
             "[updater] Update available: {current_str} → {}",
             latest.version
         );
-        UpdateCheckResult::UpdateAvailable { latest, update_path }
+        UpdateCheckResult::UpdateAvailable {
+            latest,
+            update_path,
+        }
     } else {
         println!("[updater] Up to date ({current_str})");
         UpdateCheckResult::UpToDate
@@ -120,14 +125,12 @@ pub fn copy_installer_with_progress(
         .unwrap_or_else(|_| String::from("C:\\Temp"));
     let dest = PathBuf::from(&temp_dir).join("transmittal-update.exe");
 
-    let total_bytes = fs::metadata(&src)
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let total_bytes = fs::metadata(&src).map(|m| m.len()).unwrap_or(0);
 
     let mut reader = fs::File::open(&src)
         .map_err(|e| format!("Cannot open installer '{installer_name}': {e}"))?;
-    let mut writer = fs::File::create(&dest)
-        .map_err(|e| format!("Cannot create '{dest:?}': {e}"))?;
+    let mut writer =
+        fs::File::create(&dest).map_err(|e| format!("Cannot create '{dest:?}': {e}"))?;
 
     let mut buf = [0u8; 65_536];
     let mut copied: u64 = 0;

@@ -30,11 +30,12 @@ export default defineConfig({
     target: "chrome111",
     // Emit a source-map in debug builds so Tauri's devtools are useful.
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
-    // Multi-page: include the updater window alongside the main app.
+    // Multi-page: include the updater and splash windows alongside the main app.
     rollupOptions: {
       input: {
         main:    resolve(__dirname, 'index.html'),
         updater: resolve(__dirname, 'updater.html'),
+        splash:  resolve(__dirname, 'splash.html'),
       },
     },
   },

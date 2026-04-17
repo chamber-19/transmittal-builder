@@ -92,9 +92,7 @@ pub fn spawn_sidecar(sidecar_path: &PathBuf) -> Result<(Child, u16), String> {
     });
 
     // Wait up to 15 seconds for the sidecar to report its port.
-    let actual_port = rx
-        .recv_timeout(Duration::from_secs(15))
-        .unwrap_or(port);
+    let actual_port = rx.recv_timeout(Duration::from_secs(15)).unwrap_or(port);
 
     println!(
         "[sidecar] Sidecar spawned (PID {}), listening on port {actual_port}",
