@@ -169,6 +169,7 @@ function Splash({ onLoopRestart = null }) {
   const [displayProgress, setDisplayProgress] = useState(0);
   const lastEventProgressRef = useRef(0);
   const lastEventTimeRef = useRef(Date.now());
+  const startTimeRef = useRef(Date.now());
 
   // ── Minimum-duration queue ────────────────────────────────────────────────
   // Each entry: { phase, message, kind }
@@ -225,17 +226,23 @@ function Splash({ onLoopRestart = null }) {
     setDisplayProgress((p) => Math.max(p, floor));
   }, [completedPhaseCount]);
 
-  // ── Progress bar crawler: slowly creep between phase events ──────────────
+  // ── Progress bar crawler: time-anchored, always-advancing, caps at 95% ───
   useEffect(() => {
+    const TOTAL_ANIMATION_MS = 10500;
     const id = setInterval(() => {
       setDisplayProgress((p) => {
         // Final event → let the phase count drive us to 100%
         if (completedPhaseCount >= 4) return 100;
-        const floor = lastEventProgressRef.current;
-        const target = Math.min(floor + 20, 95);
-        if (p >= target) return p;
-        // Creep ~0.6% per 100ms so a 20% gap fills in ~3.3s
-        return Math.min(target, p + 0.6);
+        
+        // Time-based floor: bar always reflects total elapsed progress, capped at 95%
+        const elapsed = Date.now() - startTimeRef.current;
+        const timeBased = Math.min((elapsed / TOTAL_ANIMATION_MS) * 100, 95);
+        
+        // Event floor: each completed phase snaps the bar up to 25/50/75%
+        const eventFloor = (completedPhaseCount / 4) * 100;
+        
+        // Never regress, never pretend to be done
+        return Math.max(p, eventFloor, Math.min(timeBased, 95));
       });
     }, 100);
     return () => clearInterval(id);
@@ -356,6 +363,15 @@ function Splash({ onLoopRestart = null }) {
     if (skippedRef.current) return;
     if (phaseRef.current >= PHASE.FADE_OUT) return;
     skippedRef.current = true;
+
+    // Cancel any pending clank impact effects so they don't fire during fade-out
+    if (clankImpactTimerRef.current) {
+      clearTimeout(clankImpactTimerRef.current);
+      clankImpactTimerRef.current = null;
+    }
+
+    // Snap progress to 100% so it doesn't look stalled during fade-out
+    setDisplayProgress(100);
 
     // Flush any queued status lines instantly (drop per-phase delays)
     while (statusQueueRef.current.length > 0) {
@@ -627,7 +643,7 @@ function Splash({ onLoopRestart = null }) {
       </div>
 
       {/* Skip hint — appears after scene has established */}
-      <div className={`skip-hint${skipHintVisible ? " visible" : ""}`}>
+      <div className={`skip-hint${skipHintVisible ? " visible" : ""}${fadingOut ? " hidden" : ""}`}>
         click or press Esc to skip
       </div>
 
