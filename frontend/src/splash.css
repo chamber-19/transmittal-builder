@@ -182,6 +182,8 @@
   to   { transform: rotate(-180deg); }
 }
 
+/* Continuous spin — starts at -180deg where sprocket-spin-start ended,
+   so the transition is seamless when the WELDING phase class is applied. */
 @keyframes sprocket-spin {
   from { transform: rotate(-180deg); }
   to   { transform: rotate(-540deg); }
@@ -232,11 +234,6 @@
 @keyframes hammer-idle {
   0%, 100% { transform: rotate(-30deg); }
   50%       { transform: rotate(-38deg); }
-}
-
-@keyframes hammer-first-descent {
-  0%   { transform: rotate(-30deg); }
-  100% { transform: rotate(0deg);   }
 }
 
 @keyframes hammer-strike {

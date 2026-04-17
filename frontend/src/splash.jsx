@@ -122,7 +122,12 @@ function Splash() {
   useEffect(() => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        getTauriApi().then((api) => api?.invoke("splash_ready").catch(() => {}));
+        getTauriApi().then((api) =>
+          // Failures are intentionally ignored: if Tauri IPC is unavailable
+          // (browser preview) or the window is already closing, the visible:false
+          // window stays hidden, which is acceptable.
+          api?.invoke("splash_ready").catch(() => {})
+        );
       });
     });
   }, []);
