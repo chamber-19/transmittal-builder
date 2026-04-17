@@ -867,7 +867,7 @@ export default function App(){
       title:"Start Fresh Session?",
       message:`You're moving to XMTL-${nextXmtlNum}. Would you like to clear the current form data and start fresh, or keep your existing data?`,
       confirmLabel:"Start Fresh",
-      cancelLabel:"Keep Current Data",
+      cancelLabel:"Keep Data & Update",
       onConfirm:()=>{
         setConfirmDialog(null);
         u("xmtlNum",nextXmtlNum);
