@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { initBackendUrl, getBackendUrl } from "./api/backend.js";
+import { useState, useCallback, useRef, useEffect, useId } from "react";
+import { initBackendUrl, refreshBackendUrl, getBackendUrl } from "./api/backend.js";
 
 /* ═══════════════════════════════════════════════════════════════
    R3P TRANSMITTAL BUILDER v4.0 — Wired Frontend
@@ -111,14 +111,23 @@ const statusScreenStyle={
 // ─── Primitives ──────────────────────────────────────────────
 const SL=({children,mono,sub})=><div style={{marginBottom:sub?"6px":"14px"}}><span style={{fontSize:sub?"10px":"11px",fontWeight:600,fontFamily:mono?T.fM:T.fB,letterSpacing:"0.08em",textTransform:"uppercase",color:sub?T.t3:T.acc}}>{children}</span></div>;
 
-const TF=({label,value,onChange,placeholder,mono,compact})=><div style={{flex:1,minWidth:0}}>
-  {label&&<label style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>{label}</label>}
-  <input type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-    style={{width:"100%",padding:compact?"5px 10px":"7px 12px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:mono?T.fM:T.fB,fontSize:mono?"13px":"14px",outline:"none",transition:"border-color 0.15s"}}
-    onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/></div>;
+const TF=({label,value,onChange,placeholder,mono,compact})=>{
+  const id=useId();
+  return <div style={{flex:1,minWidth:0}}>
+    {label&&<label htmlFor={id} style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>{label}</label>}
+    <input id={id} name={label?label.toLowerCase().replace(/\s+/g,"_"):undefined} type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+      style={{width:"100%",padding:compact?"5px 10px":"7px 12px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:mono?T.fM:T.fB,fontSize:mono?"13px":"14px",outline:"none",transition:"border-color 0.15s"}}
+      onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
+  </div>;
+};
 
-const CB=({label,checked,onChange})=><label onClick={onChange} style={{display:"flex",alignItems:"center",gap:"8px",cursor:"pointer",padding:"3px 0",fontSize:"13px",color:checked?T.t1:T.t2}}>
-  <span style={{width:"15px",height:"15px",borderRadius:"3px",border:`1.5px solid ${checked?T.acc:T.bd}`,background:checked?T.acc:"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",flexShrink:0}}>{checked&&<span style={{color:T.tOn}}>{I.check}</span>}</span>{label}</label>;
+const CB=({label,checked,onChange})=>{
+  const id=useId();
+  return <label htmlFor={id} style={{display:"flex",alignItems:"center",gap:"8px",cursor:"pointer",padding:"3px 0",fontSize:"13px",color:checked?T.t1:T.t2}}>
+    <input id={id} type="checkbox" checked={checked} onChange={onChange} style={{position:"absolute",opacity:0,width:0,height:0,margin:0}}/>
+    <span style={{width:"15px",height:"15px",borderRadius:"3px",border:`1.5px solid ${checked?T.acc:T.bd}`,background:checked?T.acc:"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",flexShrink:0}}>{checked&&<span style={{color:T.tOn}}>{I.check}</span>}</span>{label}
+  </label>;
+};
 
 const Card=({children,style})=><div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:T.rL,padding:"24px",...style}}>{children}</div>;
 
@@ -275,6 +284,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
     <div style={{display:"flex",gap:"6px",marginBottom:"10px",alignItems:"center"}}>
       <div style={{flex:1,position:"relative"}}>
         <input value={root} onChange={e=>saveRoot(e.target.value)} placeholder="Projects root directory (e.g. C:\Projects)"
+          name="projects_root" aria-label="Projects root directory"
           style={{width:"100%",padding:"6px 10px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fM,fontSize:"12px",outline:"none",transition:"border-color 0.15s"}}
           onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
       </div>
@@ -286,6 +296,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
       <div style={{position:"relative",display:"flex",alignItems:"center"}}>
         <span style={{position:"absolute",left:"10px",color:T.t3,display:"flex",pointerEvents:"none"}}>{searching?I.spin:I.search}</span>
         <input value={query} onChange={e=>setQuery(e.target.value)}
+          name="project_search" aria-label="Search projects by name or job number"
           onFocus={e=>{if(results.length>0||root)setOpen(true);e.target.style.borderColor=T.bdFoc}}
           onBlur={e=>{e.target.style.borderColor=T.bd}}
           placeholder="Search projects by name, job number..."
@@ -325,13 +336,15 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
 }
 
 // ─── Sections ────────────────────────────────────────────────
-function ProjectSection({draft,u,nextXmtlNum,projectFolderPath,onNextXmtl}){return <Card>
+function ProjectSection({draft,u,nextXmtlNum,projectFolderPath,onNextXmtl}){
+  const xmtlId=useId();
+  return <Card>
   <SL>Project Information</SL>
   <Row><TF label="Job Number" value={draft.jobNum} onChange={v=>u("jobNum",v)} placeholder="R3P-XXXX" mono/>
     <div style={{flex:1,minWidth:0}}>
-      <label style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>Transmittal No.</label>
+      <label htmlFor={xmtlId} style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>Transmittal No.</label>
       <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
-        <input type="text" value={draft.xmtlNum} onChange={e=>u("xmtlNum",e.target.value)} placeholder="XMTL-001"
+        <input id={xmtlId} name="xmtl_num" type="text" value={draft.xmtlNum} onChange={e=>u("xmtlNum",e.target.value)} placeholder="XMTL-001"
           style={{width:"100%",padding:"7px 12px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fM,fontSize:"13px",outline:"none",transition:"border-color 0.15s"}}
           onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
         {projectFolderPath&&nextXmtlNum&&draft.xmtlNum!==nextXmtlNum&&<button onClick={onNextXmtl} title={`Jump to next available: ${nextXmtlNum}`}
@@ -411,7 +424,7 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templat
     <div onDragOver={e=>{prevent(e);setOver(true)}} onDragLeave={e=>{prevent(e);setOver(false)}}
       onDrop={e=>{prevent(e);setOver(false);onFileDrop([...e.dataTransfer.files])}} onClick={()=>inputRef.current?.click()}
       style={{padding:"28px 20px",border:`1.5px dashed ${over?T.acc:T.bd}`,borderRadius:T.r,textAlign:"center",cursor:"pointer",transition:"all 0.2s",background:over?T.accM:"transparent",marginBottom:"16px"}}>
-      <input ref={inputRef} type="file" multiple accept=".pdf,.xlsx,.xls,.docx" style={{display:"none"}} onChange={e=>{onFileDrop([...e.target.files]);e.target.value=""}}/>
+      <input ref={inputRef} type="file" multiple accept=".pdf,.xlsx,.xls,.docx" name="document_files" style={{display:"none"}} onChange={e=>{onFileDrop([...e.target.files]);e.target.value=""}}/>
       <div style={{color:over?T.acc:T.t3,marginBottom:"6px",display:"flex",justifyContent:"center"}}>{indexLoading?I.spin:I.upload}</div>
       <div style={{fontSize:"14px",color:T.t1,fontWeight:500,marginBottom:"4px"}}>{indexLoading?"Parsing drawing index...":"Click to browse or drag and drop your files here"}</div>
       <div style={{fontSize:"12px",color:T.t3,lineHeight:1.7}}><span style={{color:T.t2}}>PDFs</span> → source documents · <span style={{color:T.ok}}>Excel</span> → drawing index & revisions · <span style={{color:T.info}}>DOCX</span> → template</div>
@@ -432,9 +445,9 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templat
     {documents.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px solid ${T.bd}`,borderRadius:T.r,background:T.bgEl}}>Drop PDFs above to auto-populate, use "Add Row" for manual entries, or drop an Excel drawing index for revision data</div>:
       <><div style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"7px 12px",background:T.bgEl,borderRadius:`${T.rS} ${T.rS} 0 0`,borderBottom:`1px solid ${T.bd}`}}><span style={thS}>Doc No.</span><span style={thS}>Description</span><span style={thS}>Rev</span><span/></div>
       <div style={{border:`1px solid ${T.bd}`,borderTop:"none",borderRadius:`0 0 ${T.rS} ${T.rS}`,overflow:"hidden"}}>{documents.map((d,i)=><div key={d.id} style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"5px 12px",alignItems:"center",borderBottom:i<documents.length-1?`1px solid ${T.bdSub}`:"none",background:i%2===0?"transparent":"rgba(255,255,255,0.008)"}}>
-        <input value={d.docNo} onChange={e=>updateDoc(d.id,"docNo",e.target.value)} placeholder="E0-001" style={cMono}/>
-        <input value={d.desc} onChange={e=>updateDoc(d.id,"desc",e.target.value)} placeholder="Description" style={cBody}/>
-        <input value={d.rev} onChange={e=>updateDoc(d.id,"rev",e.target.value)} placeholder="—" style={{...cMono,color:T.acc,fontWeight:500,textAlign:"center"}}/>
+        <input value={d.docNo} onChange={e=>updateDoc(d.id,"docNo",e.target.value)} name={`doc_no_${i}`} aria-label={`Document number for row ${i+1}`} placeholder="E0-001" style={cMono}/>
+        <input value={d.desc} onChange={e=>updateDoc(d.id,"desc",e.target.value)} name={`doc_desc_${i}`} aria-label={`Description for row ${i+1}`} placeholder="Description" style={cBody}/>
+        <input value={d.rev} onChange={e=>updateDoc(d.id,"rev",e.target.value)} name={`doc_rev_${i}`} aria-label={`Revision for row ${i+1}`} placeholder="—" style={{...cMono,color:T.acc,fontWeight:500,textAlign:"center"}}/>
         <button onClick={()=>removeDoc(d.id)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"4px",display:"flex",justifyContent:"center",opacity:0.4,transition:"opacity 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.4"}}>{I.x}</button>
       </div>)}</div></>}
   </Card>;
@@ -608,11 +621,6 @@ export default function App(){
   const[confirmDialog,setConfirmDialog]=useState(null);       // {title,message,onConfirm} or null
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
-
-  // Initialize backend URL from Tauri sidecar (no-op in dev/web).
-  // Must run before the health-check loop starts; the health-check retries
-  // every 500 ms so by the second attempt API will point at the sidecar port.
-  useEffect(()=>{initBackendUrl().then(url=>{ API=url; });},[]);
 
   // Load saved contacts
   useEffect(()=>{try{const v=localStorage.getItem("r3p_contact_lists");if(v)setSavedLists(JSON.parse(v))}catch(e){}},[]);
@@ -921,21 +929,17 @@ export default function App(){
     let cancelled=false;
 
     const waitForBackend=async()=>{
-      // Resolve the real backend URL first (sidecar port in prod, default in dev).
-      try {
-        API = await initBackendUrl();
-      } catch {
-        // fall back to whatever API already was
-      }
-
       const maxAttempts=40;
       const delayMs=500;
 
       for(let attempt=1;attempt<=maxAttempts;attempt++){
+        try {
+          API = await refreshBackendUrl();
+        } catch {}
+
         try{
           const res=await fetch(`${API}/api/health`);
           if(!res.ok)throw new Error(`Health check failed with ${res.status}`);
-
           if(!cancelled)setBackendStatus("ready");
           return;
         }catch(error){
@@ -943,7 +947,6 @@ export default function App(){
             if(!cancelled)setBackendStatus("failed");
             return;
           }
-
           await new Promise(resolve=>setTimeout(resolve,delayMs));
         }
       }

@@ -13,6 +13,10 @@
 //   G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder
 // Override for dev/testing by setting `TRANSMITTAL_UPDATE_PATH`.
 
+// In debug builds these items are only used in release code paths; suppress
+// the resulting dead-code warnings without affecting release builds.
+#![cfg_attr(debug_assertions, allow(dead_code))]
+
 use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;

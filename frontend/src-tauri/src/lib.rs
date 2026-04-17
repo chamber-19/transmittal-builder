@@ -158,6 +158,7 @@ fn find_backend_dir() -> Option<PathBuf> {
 
 // ── Update outcome (internal) ─────────────────────────────────────────────
 
+#[allow(dead_code)]
 enum UpdateOutcome {
     UpToDate,
     UpdateAvailable {

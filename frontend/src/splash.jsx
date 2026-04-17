@@ -149,27 +149,29 @@ function Splash() {
     } catch { /* no sound */ }
   }, []);
 
-  // ── Tauri event wiring ───────────────────────────────────────────────────
-  useEffect(() => {
-    let unlisten = null;
-    getTauriApi().then((api) => {
-      if (!api) return;
-      tauriRef.current = api;
-      api
-        .listen("splash://status", (ev) => {
-          const { message, kind } = ev.payload ?? {};
-          if (!message) return;
-          statusQueueRef.current.push({ message, kind: kind ?? "pending" });
-          drainQueue();
-        })
-        .then((fn) => {
-          unlisten = fn;
-        });
-    });
-    return () => {
-      if (unlisten) unlisten();
-    };
-  }, [drainQueue]);
+  // ── Audio helpers ────────────────────────────────────────────────────────
+  // These read only stable refs (audioWeldRef, audioClankRef), so useCallback
+  // with empty deps gives stable function references for the phase sequencer.
+  const playWeldAudio = useCallback(() => {
+    if (!audioWeldRef.current) return;
+    try {
+      audioWeldRef.current.currentTime = 0;
+      audioWeldRef.current.play();
+    } catch { /* silence */ }
+  }, []);
+
+  const stopWeldAudio = useCallback(() => {
+    if (!audioWeldRef.current) return;
+    try { audioWeldRef.current.pause(); } catch { /* silence */ }
+  }, []);
+
+  const playClankAudio = useCallback(() => {
+    if (!audioClankRef.current) return;
+    try {
+      audioClankRef.current.currentTime = 0;
+      audioClankRef.current.play();
+    } catch { /* silence */ }
+  }, []);
 
   // ── Typewriter engine ────────────────────────────────────────────────────
   // Store typeLineIn in a ref so drainQueue can call it without creating a
@@ -266,6 +268,28 @@ function Splash() {
     tauriRef.current?.invoke("request_skip_splash").catch(() => {});
   }, [stopWeldAudio]);
 
+  // ── Tauri event wiring ───────────────────────────────────────────────────
+  useEffect(() => {
+    let unlisten = null;
+    getTauriApi().then((api) => {
+      if (!api) return;
+      tauriRef.current = api;
+      api
+        .listen("splash://status", (ev) => {
+          const { message, kind } = ev.payload ?? {};
+          if (!message) return;
+          statusQueueRef.current.push({ message, kind: kind ?? "pending" });
+          drainQueue();
+        })
+        .then((fn) => {
+          unlisten = fn;
+        });
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [drainQueue]);
+
   // ── Keyboard skip ────────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
@@ -274,30 +298,6 @@ function Splash() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [requestSkip]);
-
-  // ── Audio helpers ────────────────────────────────────────────────────────
-  // These read only stable refs (audioWeldRef, audioClankRef), so useCallback
-  // with empty deps gives stable function references for the phase sequencer.
-  const playWeldAudio = useCallback(() => {
-    if (!audioWeldRef.current) return;
-    try {
-      audioWeldRef.current.currentTime = 0;
-      audioWeldRef.current.play();
-    } catch { /* silence */ }
-  }, []);
-
-  const stopWeldAudio = useCallback(() => {
-    if (!audioWeldRef.current) return;
-    try { audioWeldRef.current.pause(); } catch { /* silence */ }
-  }, []);
-
-  const playClankAudio = useCallback(() => {
-    if (!audioClankRef.current) return;
-    try {
-      audioClankRef.current.currentTime = 0;
-      audioClankRef.current.play();
-    } catch { /* silence */ }
-  }, []);
 
   // ── Spark emitter ─────────────────────────────────────────────────────────
   // weldX/weldY in viewport coords — centre of the splash window
