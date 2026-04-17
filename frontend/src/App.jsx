@@ -111,11 +111,13 @@ const statusScreenStyle={
 // ─── Primitives ──────────────────────────────────────────────
 const SL=({children,mono,sub})=><div style={{marginBottom:sub?"6px":"14px"}}><span style={{fontSize:sub?"10px":"11px",fontWeight:600,fontFamily:mono?T.fM:T.fB,letterSpacing:"0.08em",textTransform:"uppercase",color:sub?T.t3:T.acc}}>{children}</span></div>;
 
+const labelToName=label=>label?label.toLowerCase().replace(/\s+/g,"_"):undefined;
+
 const TF=({label,value,onChange,placeholder,mono,compact})=>{
   const id=useId();
   return <div style={{flex:1,minWidth:0}}>
     {label&&<label htmlFor={id} style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>{label}</label>}
-    <input id={id} name={label?label.toLowerCase().replace(/\s+/g,"_"):undefined} type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+    <input id={id} name={labelToName(label)} type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
       style={{width:"100%",padding:compact?"5px 10px":"7px 12px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:mono?T.fM:T.fB,fontSize:mono?"13px":"14px",outline:"none",transition:"border-color 0.15s"}}
       onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
   </div>;
@@ -124,7 +126,7 @@ const TF=({label,value,onChange,placeholder,mono,compact})=>{
 const CB=({label,checked,onChange})=>{
   const id=useId();
   return <label htmlFor={id} style={{display:"flex",alignItems:"center",gap:"8px",cursor:"pointer",padding:"3px 0",fontSize:"13px",color:checked?T.t1:T.t2}}>
-    <input id={id} type="checkbox" checked={checked} onChange={onChange} style={{position:"absolute",opacity:0,width:0,height:0,margin:0}}/>
+    <input id={id} name={labelToName(label)} type="checkbox" checked={checked} onChange={onChange} style={{position:"absolute",opacity:0,width:0,height:0,margin:0}}/>
     <span style={{width:"15px",height:"15px",borderRadius:"3px",border:`1.5px solid ${checked?T.acc:T.bd}`,background:checked?T.acc:"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",flexShrink:0}}>{checked&&<span style={{color:T.tOn}}>{I.check}</span>}</span>{label}
   </label>;
 };
