@@ -86,6 +86,8 @@ function extractDocMeta(filename){
   const remainder=base.slice(m.index+m[0].length).replace(/^[\s\-_–—:;|]+/,"");
   return{doc_no:docNo,desc:remainder.trim(),rev:""};
 }
+/** Stable key for dedup / sync between PDF list and doc index rows. */
+const docKey=(docNo,desc)=>(docNo+"|"+desc).toLowerCase();
 
 // ─── Status screen (shared layout for checking / failed) ─────
 const statusScreenStyle={
@@ -710,11 +712,11 @@ export default function App(){
     // Auto-create document index rows for new PDFs
     if(newPdfs.length>0){
       setDocuments(prev=>{
-        const existing=new Set(prev.map(d=>(d.docNo+"|"+d.desc).toLowerCase()));
+        const existing=new Set(prev.map(d=>docKey(d.docNo,d.desc)));
         const toAdd=[];
         for(const f of newPdfs){
           const meta=extractDocMeta(f.name);
-          const key=(meta.doc_no+"|"+meta.desc).toLowerCase();
+          const key=docKey(meta.doc_no,meta.desc);
           if(!existing.has(key)){
             toAdd.push({id:uid(),docNo:meta.doc_no,desc:meta.desc,rev:meta.rev,_pdfName:f.name});
             existing.add(key);
@@ -731,8 +733,8 @@ export default function App(){
     setPdfFiles(p=>p.filter(f=>f.name!==name));
     // Sync-remove matching document row
     const meta=extractDocMeta(name);
-    const key=(meta.doc_no+"|"+meta.desc).toLowerCase();
-    setDocuments(p=>p.filter(d=>(d.docNo+"|"+d.desc).toLowerCase()!==key));
+    const key=docKey(meta.doc_no,meta.desc);
+    setDocuments(p=>p.filter(d=>docKey(d.docNo,d.desc)!==key));
   },[]);
   const toggleLocalPdf=useCallback(path=>{
     setLocalPdfPaths(prev=>{
@@ -741,12 +743,12 @@ export default function App(){
       // Sync doc rows: add or remove based on toggle
       const filename=path.replace(/\\/g,"/").split("/").pop();
       const meta=extractDocMeta(filename);
-      const key=(meta.doc_no+"|"+meta.desc).toLowerCase();
+      const key=docKey(meta.doc_no,meta.desc);
       if(removing){
-        setDocuments(p=>p.filter(d=>(d.docNo+"|"+d.desc).toLowerCase()!==key));
+        setDocuments(p=>p.filter(d=>docKey(d.docNo,d.desc)!==key));
       }else{
         setDocuments(p=>{
-          if(p.some(d=>(d.docNo+"|"+d.desc).toLowerCase()===key))return p;
+          if(p.some(d=>docKey(d.docNo,d.desc)===key))return p;
           return[...p,{id:uid(),docNo:meta.doc_no,desc:meta.desc,rev:meta.rev,_pdfPath:path}];
         });
       }
@@ -758,8 +760,8 @@ export default function App(){
     // Sync-remove matching document row
     const filename=path.replace(/\\/g,"/").split("/").pop();
     const meta=extractDocMeta(filename);
-    const key=(meta.doc_no+"|"+meta.desc).toLowerCase();
-    setDocuments(p=>p.filter(d=>(d.docNo+"|"+d.desc).toLowerCase()!==key));
+    const key=docKey(meta.doc_no,meta.desc);
+    setDocuments(p=>p.filter(d=>docKey(d.docNo,d.desc)!==key));
   },[]);
   const clearAllDocuments=useCallback(()=>{
     setDocuments([]);setPdfFiles([]);setLocalPdfPaths([]);setIndexFile(null);setIndexWarnings([]);
