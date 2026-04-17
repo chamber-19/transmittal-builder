@@ -44,7 +44,21 @@ const getTauriApi = async () => {
   }
 };
 
-// ── Constants ────────────────────────────────────────────────────────────
+// ── Reduced-motion helper ─────────────────────────────────────────────────
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handler = (e) => setReduced(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return reduced;
+}
+
+
 const PHASE = {
   INIT:      0,
   FADE_IN:   1,   // 0–1.5 s   — background + anvil fade in; sprocket/hammer begin gently
@@ -55,23 +69,34 @@ const PHASE = {
   FADE_OUT:  6,   // 10.5–11.5 s — fade to black
 };
 
+// Braille spinner frames — classic terminal look, cycles at ~90 ms/frame.
+const SPINNER_FRAMES = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+
+// Minimum ms a phase must be visible in Pending state before Ok can render.
+const MIN_PENDING_MS = 400;
+// Minimum ms gap between consecutive phase transitions.
+const MIN_GAP_MS = 200;
+
 // ── Status line helpers ───────────────────────────────────────────────────
-function prefixForKind(kind) {
+function prefixForKind(kind, spinnerFrame, reducedMotion) {
   switch (kind) {
     case "ok":      return "[✓]";
     case "warn":    return "[!]";
     case "error":   return "[✗]";
-    case "pending": return "[ ]";
+    case "pending":
+      return reducedMotion
+        ? "[…]"
+        : `[${SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length]}]`;
     default:        return ">";
   }
 }
 
 function prefixClass(kind) {
   switch (kind) {
-    case "ok":      return "prefix-ok";
-    case "warn":    return "prefix-warn";
-    case "error":   return "prefix-error";
-    default:        return "prefix-pending";
+    case "ok":      return "prefix-ok prefix-resolved";
+    case "warn":    return "prefix-warn prefix-resolved";
+    case "error":   return "prefix-error prefix-resolved";
+    default:        return "prefix-pending status-spinner";
   }
 }
 
@@ -86,6 +111,7 @@ function msgClass(kind) {
 
 // ── Main component ────────────────────────────────────────────────────────
 function Splash() {
+  const reducedMotion                       = usePrefersReducedMotion();
   const [phase, setPhase]                   = useState(PHASE.INIT);
   const [contentVisible, setContentVisible] = useState(false);
   const [fadingOut, setFadingOut]           = useState(false);
@@ -96,8 +122,12 @@ function Splash() {
   // null = unknown (waiting for Tauri), true = first run (full mode), false = short mode
   const [isFirstRun, setIsFirstRun]         = useState(null);
 
-  // Terminal lines: { phase, prefix, pClass, msg, mClass, done }
+  // Terminal lines: { phase, prefix, pClass, msg, mClass, done, spinnerFrame }
   const [lines, setLines] = useState([]);
+
+  // Spinner frame index — ticks every 90 ms while any line is still pending.
+  const [spinnerFrame, setSpinnerFrame] = useState(0);
+  const spinnerTimerRef = useRef(null);
 
   // Stable map of phase id → array index, for in-place dedup updates.
   const linesByPhaseRef = useRef({});
@@ -105,6 +135,13 @@ function Splash() {
   // Progress bar: count phases that have transitioned away from Pending (max 4).
   const [completedPhaseCount, setCompletedPhaseCount] = useState(0);
   const completedPhasesRef = useRef(new Set());
+
+  // ── Minimum-duration queue ────────────────────────────────────────────────
+  // Each entry: { phase, message, kind }
+  // We enforce MIN_PENDING_MS before applying an Ok/warn/error on a phase that
+  // was just set to Pending, and MIN_GAP_MS between consecutive transitions.
+  const pendingStartRef  = useRef({});   // phase → Date.now() when Pending emitted
+  const lastTransitionRef = useRef(0);   // Date.now() of last apply call
 
   // Queue of incoming status events from Rust
   const statusQueueRef = useRef([]);
@@ -114,6 +151,32 @@ function Splash() {
 
   // Keep phaseRef in sync
   useEffect(() => { phaseRef.current = phase; }, [phase]);
+
+  // ── Spinner tick ──────────────────────────────────────────────────────────
+  // Start/stop the braille spinner based on whether any line is pending.
+  // Skipped when prefers-reduced-motion is active (static […] shown instead).
+  const hasPendingRef = useRef(false);
+  useEffect(() => {
+    const hasPending = lines.some((l) => !l.done || l.kind === "pending");
+    hasPendingRef.current = hasPending;
+    if (hasPending && !reducedMotion) {
+      if (!spinnerTimerRef.current) {
+        spinnerTimerRef.current = setInterval(() => {
+          setSpinnerFrame((f) => (f + 1) % SPINNER_FRAMES.length);
+        }, 90);
+      }
+    } else {
+      if (spinnerTimerRef.current) {
+        clearInterval(spinnerTimerRef.current);
+        spinnerTimerRef.current = null;
+      }
+    }
+  }, [lines, reducedMotion]);
+
+  // Cleanup spinner on unmount.
+  useEffect(() => () => {
+    if (spinnerTimerRef.current) clearInterval(spinnerTimerRef.current);
+  }, []);
 
   // ── Splash ready: show window after first CSS paint ───────────────────────
   // The splash window is created with visible:false to prevent a transparent-
@@ -133,42 +196,39 @@ function Splash() {
   }, []);
 
   // ── Line-in engine ───────────────────────────────────────────────────────
-  // Store typeLineIn in a ref so drainQueue can call it without creating a
-  // circular dependency in the useCallback dependency arrays.
+  // drainQueue is called when a new event arrives OR when an async apply
+  // completes.  drainingRef prevents concurrent processing — if a setTimeout
+  // is already in flight we let the queue accumulate and process the next
+  // item only after the in-flight timer fires.
+  const drainingRef   = useRef(false);
   const typeLineInRef = useRef(null);
 
   const drainQueue = useCallback(() => {
+    if (drainingRef.current) return; // a timer is already in flight
     const next = statusQueueRef.current.shift();
     if (!next) return;
     typeLineInRef.current?.(next);
   }, []); // reads only refs — stable for component lifetime
 
-  // Wire typeLineIn via the ref so both callbacks share access.
-  typeLineInRef.current = (item) => {
+  // applyLineUpdate: actually write the status to React state, then drain next.
+  const applyLineUpdate = useCallback((item) => {
     const { phase, message, kind } = item;
-
-    const prefix = prefixForKind(kind);
     const pClass = prefixClass(kind);
     const mClass = msgClass(kind);
 
     setLines((prev) => {
-      // Dedup inside the updater so we always read the freshest state.
-      // This avoids a race where Rust emits Pending then Ok before React
-      // has flushed the first setLines callback (the ref write would be
-      // stale, causing a second append instead of an in-place update).
       const existingIdx = phase
         ? prev.findIndex((l) => l.phase === phase)
         : -1;
 
       if (existingIdx !== -1) {
-        // In-place update — preserve msg, update prefix/class/done
         const arr = [...prev];
         arr[existingIdx] = {
           ...arr[existingIdx],
-          prefix,
+          kind,
           pClass,
           mClass,
-          done: true,
+          done: kind !== "pending",
         };
         return arr;
       }
@@ -176,7 +236,7 @@ function Splash() {
       // New phase — append
       const newIdx = prev.length;
       if (phase) linesByPhaseRef.current[phase] = newIdx;
-      return [...prev, { phase, prefix, pClass, msg: message, mClass, done: true }];
+      return [...prev, { phase, kind, pClass, msg: message, mClass, done: kind !== "pending" }];
     });
 
     // Track phase completion outside setLines (uses a Set keyed on phase id).
@@ -185,7 +245,47 @@ function Splash() {
       setCompletedPhaseCount((n) => Math.min(n + 1, 4));
     }
 
+    lastTransitionRef.current = Date.now();
+    drainingRef.current = false;
     drainQueue();
+  }, [drainQueue]);
+
+  // Wire typeLineIn via the ref so both callbacks share access.
+  typeLineInRef.current = (item) => {
+    const { phase, kind } = item;
+    const now = Date.now();
+
+    // Mark as in-flight so new events don't kick off a second drain.
+    drainingRef.current = true;
+
+    if (kind === "pending") {
+      // Record when Pending started for this phase.
+      if (phase) pendingStartRef.current[phase] = now;
+
+      // Enforce MIN_GAP_MS between consecutive phase transitions.
+      const gapNeeded = MIN_GAP_MS - (now - lastTransitionRef.current);
+      if (gapNeeded > 0) {
+        setTimeout(() => applyLineUpdate(item), gapNeeded);
+      } else {
+        applyLineUpdate(item);
+      }
+      return;
+    }
+
+    // For ok/warn/error: enforce MIN_PENDING_MS since Pending was applied.
+    const pendingStart = phase ? (pendingStartRef.current[phase] ?? now) : now;
+    const pendingAge = now - pendingStart;
+    const pendingWait = Math.max(0, MIN_PENDING_MS - pendingAge);
+
+    // Also enforce MIN_GAP_MS from the last transition.
+    const gapNeeded = MIN_GAP_MS - (now - lastTransitionRef.current);
+    const totalWait = Math.max(pendingWait, gapNeeded);
+
+    if (totalWait > 0) {
+      setTimeout(() => applyLineUpdate(item), totalWait);
+    } else {
+      applyLineUpdate(item);
+    }
   };
 
   // ── Skip handler ─────────────────────────────────────────────────────────
@@ -194,11 +294,10 @@ function Splash() {
     if (phaseRef.current >= PHASE.FADE_OUT) return;
     skippedRef.current = true;
 
-    // Flush any queued status lines
+    // Flush any queued status lines instantly (drop per-phase delays)
     while (statusQueueRef.current.length > 0) {
       const item = statusQueueRef.current.shift();
       const { phase, message, kind } = item;
-      const prefix = prefixForKind(kind);
       const pClass = prefixClass(kind);
       const mClass = msgClass(kind);
 
@@ -208,12 +307,12 @@ function Splash() {
           : -1;
         if (existingIdx !== -1) {
           const arr = [...prev];
-          arr[existingIdx] = { ...arr[existingIdx], prefix, pClass, mClass, done: true };
+          arr[existingIdx] = { ...arr[existingIdx], kind, pClass, mClass, done: kind !== "pending" };
           return arr;
         }
         const newIdx = prev.length;
         if (phase) linesByPhaseRef.current[phase] = newIdx;
-        return [...prev, { phase, prefix, pClass, msg: message, mClass, done: true }];
+        return [...prev, { phase, kind, pClass, msg: message, mClass, done: kind !== "pending" }];
       });
     }
 
@@ -391,7 +490,9 @@ function Splash() {
               <span className="terminal-gutter-num" aria-hidden="true">
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <span className={line.pClass}>{line.prefix}</span>
+              <span className={line.pClass}>
+                {prefixForKind(line.kind ?? (line.done ? "ok" : "pending"), spinnerFrame, reducedMotion)}
+              </span>
               <span className={line.mClass}>{line.msg}</span>
             </div>
           ))}

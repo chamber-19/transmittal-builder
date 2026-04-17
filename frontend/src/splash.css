@@ -463,6 +463,34 @@
 .terminal-line .prefix-error   { color: #F87171; }
 .terminal-line .prefix-pending { color: #6B7280; }
 
+/* ── Status prefix slot — fixed 3ch width so text never shifts ───────────── */
+.terminal-line .prefix-ok,
+.terminal-line .prefix-warn,
+.terminal-line .prefix-error,
+.terminal-line .prefix-pending {
+  display: inline-block;
+  min-width: 3ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Animated spinner (Pending state) ───────────────────────────────────── */
+.terminal-line .status-spinner {
+  color: #C8823A;
+  animation: none; /* frame cycling is driven by JS setInterval */
+}
+
+/* ── Resolved prefix pulse — checkmark/warning/error lands with a pop ────── */
+.terminal-line .prefix-resolved {
+  animation: status-check-pop 250ms ease-out both;
+}
+
+@keyframes status-check-pop {
+  0%   { opacity: 0; transform: scale(0.7); }
+  60%  { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1.0); }
+}
+
 .terminal-line .msg-ok      { color: #E4E7EB; }
 .terminal-line .msg-warn    { color: #E4E7EB; }
 .terminal-line .msg-error   { color: #E4E7EB; }
@@ -601,5 +629,20 @@
     animation: none !important;
     opacity: 1 !important;
   }
+
+  /* Status spinner: no cycling (JS also skips frame updates) */
+  .terminal-line .status-spinner {
+    animation: none !important;
+  }
+
+  /* Resolved prefix: fade-in only (no scale pulse) */
+  .terminal-line .prefix-resolved {
+    animation: status-check-pop-reduced 250ms ease-out both !important;
+  }
+}
+
+@keyframes status-check-pop-reduced {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 

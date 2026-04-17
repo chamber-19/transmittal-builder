@@ -114,11 +114,12 @@ const SL=({children,mono,sub})=><div style={{marginBottom:sub?"6px":"14px"}}><sp
 
 const labelToName=label=>label?label.toLowerCase().replace(/\s+/g,"_"):undefined;
 
-const TF=({label,value,onChange,placeholder,mono,compact})=>{
+const TF=({label,value,onChange,placeholder,mono,compact,autoComplete})=>{
   const id=useId();
   return <div style={{flex:1,minWidth:0}}>
     {label&&<label htmlFor={id} style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>{label}</label>}
     <input id={id} name={labelToName(label)} type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+      autoComplete={autoComplete??"off"}
       style={{width:"100%",padding:compact?"5px 10px":"7px 12px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:mono?T.fM:T.fB,fontSize:mono?"13px":"14px",outline:"none",transition:"border-color 0.15s"}}
       onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
   </div>;
@@ -382,6 +383,7 @@ function ProjectSection({draft,u,nextXmtlNum,projectFolderPath,onNextXmtl}){
       <label htmlFor={xmtlId} style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>Transmittal No.</label>
       <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
         <input id={xmtlId} name="xmtl_num" type="text" value={draft.xmtlNum} onChange={e=>u("xmtlNum",e.target.value)} placeholder="XMTL-001"
+          autoComplete="off"
           style={{width:"100%",padding:"7px 12px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fM,fontSize:"13px",outline:"none",transition:"border-color 0.15s"}}
           onFocus={e=>{e.target.style.borderColor=T.bdFoc}} onBlur={e=>{e.target.style.borderColor=T.bd}}/>
         {projectFolderPath&&nextXmtlNum&&draft.xmtlNum!==nextXmtlNum&&<button onClick={onNextXmtl} title={`Jump to next available: ${nextXmtlNum}`}
@@ -397,9 +399,9 @@ function ProjectSection({draft,u,nextXmtlNum,projectFolderPath,onNextXmtl}){
   <div style={{marginTop:"12px",maxWidth:"200px"}}><TF label="Date" value={draft.date} onChange={v=>u("date",v)} placeholder="MM/DD/YYYY" mono/></div>
   <Divider/>
   <SL>Sender</SL>
-  <Row><TF label="Name" value={draft.fromName} onChange={v=>u("fromName",v)} placeholder="Full name"/><TF label="Title" value={draft.fromTitle} onChange={v=>u("fromTitle",v)} placeholder="Title / Role"/></Row>
-  <div style={{marginTop:"12px"}}><Row><TF label="Email" value={draft.fromEmail} onChange={v=>u("fromEmail",v)} placeholder="email@company.com"/><TF label="Phone" value={draft.fromPhone} onChange={v=>u("fromPhone",v)} placeholder="(XXX) XXX-XXXX" mono/></Row></div>
-  <div style={{marginTop:"12px",maxWidth:"240px"}}><TF label="Firm Registration" value={draft.firm} onChange={v=>u("firm",v)} placeholder="TX FIRM #XXXXX" mono/></div>
+  <Row><TF label="Name" value={draft.fromName} onChange={v=>u("fromName",v)} placeholder="Full name" autoComplete="name"/><TF label="Title" value={draft.fromTitle} onChange={v=>u("fromTitle",v)} placeholder="Title / Role" autoComplete="organization-title"/></Row>
+  <div style={{marginTop:"12px"}}><Row><TF label="Email" value={draft.fromEmail} onChange={v=>u("fromEmail",v)} placeholder="email@company.com" autoComplete="email"/><TF label="Phone" value={draft.fromPhone} onChange={v=>u("fromPhone",v)} placeholder="(XXX) XXX-XXXX" mono autoComplete="tel"/></Row></div>
+  <div style={{marginTop:"12px",maxWidth:"240px"}}><TF label="Firm Registration" value={draft.firm} onChange={v=>u("firm",v)} placeholder="TX FIRM #XXXXX" mono autoComplete="organization"/></div>
 </Card>;}
 
 function OptionsSection({checks,toggle,showToast}){
@@ -482,9 +484,9 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templat
     {documents.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px solid ${T.bd}`,borderRadius:T.r,background:T.bgEl}}>Drop PDFs above to auto-populate, use "Add Row" for manual entries, or drop an Excel drawing index for revision data</div>:
       <><div style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"7px 12px",background:T.bgEl,borderRadius:`${T.rS} ${T.rS} 0 0`,borderBottom:`1px solid ${T.bd}`}}><span style={thS}>Doc No.</span><span style={thS}>Description</span><span style={thS}>Rev</span><span/></div>
       <div style={{border:`1px solid ${T.bd}`,borderTop:"none",borderRadius:`0 0 ${T.rS} ${T.rS}`,overflow:"hidden"}}>{documents.map((d,i)=><div key={d.id} style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"5px 12px",alignItems:"center",borderBottom:i<documents.length-1?`1px solid ${T.bdSub}`:"none",background:i%2===0?"transparent":"rgba(255,255,255,0.008)"}}>
-        <input value={d.docNo} onChange={e=>updateDoc(d.id,"docNo",e.target.value)} name={`doc_no_${i}`} aria-label={`Document number for row ${i+1}`} placeholder="E0-001" style={cMono}/>
-        <input value={d.desc} onChange={e=>updateDoc(d.id,"desc",e.target.value)} name={`doc_desc_${i}`} aria-label={`Description for row ${i+1}`} placeholder="Description" style={cBody}/>
-        <input value={d.rev} onChange={e=>updateDoc(d.id,"rev",e.target.value)} name={`doc_rev_${i}`} aria-label={`Revision for row ${i+1}`} placeholder="—" style={{...cMono,color:T.acc,fontWeight:500,textAlign:"center"}}/>
+        <input value={d.docNo} onChange={e=>updateDoc(d.id,"docNo",e.target.value)} name={`doc_no_${i}`} aria-label={`Document number for row ${i+1}`} placeholder="E0-001" autoComplete="off" style={cMono}/>
+        <input value={d.desc} onChange={e=>updateDoc(d.id,"desc",e.target.value)} name={`doc_desc_${i}`} aria-label={`Description for row ${i+1}`} placeholder="Description" autoComplete="off" style={cBody}/>
+        <input value={d.rev} onChange={e=>updateDoc(d.id,"rev",e.target.value)} name={`doc_rev_${i}`} aria-label={`Revision for row ${i+1}`} placeholder="—" autoComplete="off" style={{...cMono,color:T.acc,fontWeight:500,textAlign:"center"}}/>
         <button onClick={()=>removeDoc(d.id)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",padding:"4px",display:"flex",justifyContent:"center",opacity:0.4,transition:"opacity 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.opacity="1"}} onMouseLeave={e=>{e.currentTarget.style.opacity="0.4"}}>{I.x}</button>
       </div>)}</div></>}
   </Card>;

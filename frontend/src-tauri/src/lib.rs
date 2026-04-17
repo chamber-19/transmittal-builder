@@ -250,6 +250,15 @@ const OFFLINE_EXTRA_MS: u64 = 3_000;
 fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>) {
     let start = Instant::now();
 
+    // Read optional debug hold (dev only; no-op in production when unset).
+    let hold_ms: u64 = std::env::var("TRANSMITTAL_SPLASH_HOLD_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    if hold_ms > 0 {
+        println!("[splash] Debug hold mode active: {} ms per phase", hold_ms);
+    }
+
     // Brief pause to let the splash window finish its initial render.
     thread::sleep(Duration::from_millis(200));
 
@@ -260,9 +269,11 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
         "Starting backend service",
         splash::StatusKind::Pending,
     );
+    if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
     let backend_url = do_spawn_backend(&child_arc);
     println!("[tauri] Backend URL: {backend_url}");
     splash::emit_status(&app, "backend", "Starting backend service", splash::StatusKind::Ok);
+    if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
 
     // Store backend URL in managed state.
     if let Some(state) = app.try_state::<BackendState>() {
@@ -274,13 +285,19 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
 
     #[cfg(not(debug_assertions))]
     {
-        outcome = run_update_check_with_status(&app);
+        outcome = run_update_check_with_status(&app, hold_ms);
     }
     #[cfg(debug_assertions)]
     {
         // Dev mode: skip the actual network check; emit fake Ok statuses.
+        splash::emit_status(&app, "mount", "Mounting shared drive", splash::StatusKind::Pending);
+        if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
         splash::emit_status(&app, "mount", "Mounting shared drive", splash::StatusKind::Ok);
+        if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
+        splash::emit_status(&app, "updates", "Checking for updates", splash::StatusKind::Pending);
+        if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
         splash::emit_status(&app, "updates", "Checking for updates", splash::StatusKind::Ok);
+        if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
         outcome = UpdateOutcome::UpToDate;
     }
 
@@ -293,7 +310,7 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
                 "Cannot reach R3P shared drive",
                 splash::StatusKind::Error,
             );
-            OFFLINE_EXTRA_MS
+            OFFLINE_EXTRA_MS + hold_ms
         }
         UpdateOutcome::UpdateAvailable { .. } => {
             splash::emit_status(
@@ -302,11 +319,11 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
                 "Update detected, loading updater\u{2026}",
                 splash::StatusKind::Warn,
             );
-            0
+            hold_ms
         }
         UpdateOutcome::UpToDate => {
             splash::emit_status(&app, "final", "Ready", splash::StatusKind::Ok);
-            0
+            hold_ms
         }
     };
 
@@ -461,18 +478,21 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
 // ── Update check with status emission ─────────────────────────────────────
 
 #[cfg(not(debug_assertions))]
-fn run_update_check_with_status(app: &tauri::AppHandle) -> UpdateOutcome {
+fn run_update_check_with_status(app: &tauri::AppHandle, hold_ms: u64) -> UpdateOutcome {
     // Step A: check drive reachability.
     splash::emit_status(app, "mount", "Mounting shared drive", splash::StatusKind::Pending);
+    if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
     let update_path = updater::get_update_path();
     if !update_path.exists() {
         splash::emit_status(app, "mount", "Mounting shared drive", splash::StatusKind::Error);
         return UpdateOutcome::Offline { path: update_path };
     }
     splash::emit_status(app, "mount", "Mounting shared drive", splash::StatusKind::Ok);
+    if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
 
     // Step B: version comparison.
     splash::emit_status(app, "updates", "Checking for updates", splash::StatusKind::Pending);
+    if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
     match updater::check_for_update() {
         updater::UpdateCheckResult::Offline { path } => {
             splash::emit_status(app, "updates", "Checking for updates", splash::StatusKind::Error);
@@ -483,6 +503,7 @@ fn run_update_check_with_status(app: &tauri::AppHandle) -> UpdateOutcome {
             update_path,
         } => {
             splash::emit_status(app, "updates", "Checking for updates", splash::StatusKind::Warn);
+            if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
             UpdateOutcome::UpdateAvailable {
                 latest,
                 update_path,
@@ -490,6 +511,7 @@ fn run_update_check_with_status(app: &tauri::AppHandle) -> UpdateOutcome {
         }
         updater::UpdateCheckResult::UpToDate => {
             splash::emit_status(app, "updates", "Checking for updates", splash::StatusKind::Ok);
+            if hold_ms > 0 { thread::sleep(Duration::from_millis(hold_ms)); }
             UpdateOutcome::UpToDate
         }
     }
