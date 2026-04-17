@@ -167,8 +167,6 @@ function Splash({ onLoopRestart = null }) {
 
   // Smooth progress bar: displayProgress crawls between phase events to avoid dead zones.
   const [displayProgress, setDisplayProgress] = useState(0);
-  const lastEventProgressRef = useRef(0);
-  const lastEventTimeRef = useRef(Date.now());
   const startTimeRef = useRef(Date.now());
 
   // ── Minimum-duration queue ────────────────────────────────────────────────
@@ -221,8 +219,6 @@ function Splash({ onLoopRestart = null }) {
   // ── Progress bar floor: snap upward when a phase completes ───────────────
   useEffect(() => {
     const floor = (completedPhaseCount / 4) * 100;
-    lastEventProgressRef.current = floor;
-    lastEventTimeRef.current = Date.now();
     setDisplayProgress((p) => Math.max(p, floor));
   }, [completedPhaseCount]);
 
