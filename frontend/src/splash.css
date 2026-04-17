@@ -106,7 +106,7 @@
   color: #9CA3AF;
   margin-top: 2px;
   opacity: 0;
-  transition: opacity 0.6s ease 0.3s;
+  transition: opacity 0.6s ease;
 }
 .app-title.visible {
   opacity: 1;
@@ -147,6 +147,7 @@
 .forge-scene #sprocket {
   transform-box: fill-box;
   transform-origin: 50% 50%;
+  will-change: transform;
 }
 
 /* FADE_IN / SPARKS phase: ease-in spin start */
@@ -165,15 +166,16 @@
   animation: sprocket-spin 3.2s linear infinite;
 }
 
-/* CLANK phase: keep spinning */
-.forge-scene.phase-clank #sprocket {
-  animation: sprocket-spin 3.2s linear infinite;
-}
-
-/* FINAL / FADE-OUT: hold still */
+/* CLANK: begin decelerating from linear-cruise velocity to zero */
+.forge-scene.phase-clank #sprocket,
 .forge-scene.phase-final #sprocket,
 .forge-scene.phase-fade-out #sprocket {
-  animation: none;
+  animation: sprocket-decelerate 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes sprocket-decelerate {
+  from { transform: rotate(-280deg); }
+  to   { transform: rotate(-540deg); }  /* 260° more rotation, easing to zero velocity */
 }
 
 /* Sprocket ease-in startup: ~280° with tuned curve to hand off at linear-cruise velocity */
@@ -196,6 +198,7 @@
   /* Default position: raised overhead */
   transform: rotate(-30deg);
   transition: transform 0.3s ease-out;
+  will-change: transform;
 }
 
 /* FADE_IN / SPARKS phase: gentle idle sway — no hard cock-back */
@@ -218,7 +221,7 @@
 
 /* CLANK phase: final decisive strike */
 .forge-scene.phase-clank #hammer {
-  animation: hammer-final-strike 0.45s ease-in forwards;
+  animation: hammer-final-strike 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   transition: none;
 }
 
@@ -247,8 +250,11 @@
 }
 
 @keyframes hammer-final-strike {
-  0%   { transform: rotate(-30deg); }
-  100% { transform: rotate(0deg);   }
+  0%   { transform: rotate(-30deg); }   /* raised, matches WELDING end */
+  42%  { transform: rotate(2deg);   }   /* strike with slight overshoot — at t≈420ms, syncs with clankImpactTimerRef flash */
+  55%  { transform: rotate(-6deg);  }   /* first rebound */
+  70%  { transform: rotate(-2deg);  }   /* settle */
+  100% { transform: rotate(-20deg); }   /* lifting to FINAL rest angle */
 }
 
 /* ── Rim heat cycle (replaces bolt heat — tooth glows amber on each strike) ── */
@@ -542,6 +548,7 @@
   border-radius: 2px;
   width: 0%;
   transition: width 600ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  will-change: width;
 }
 
 /* ── Skip hint — subtle click-to-dismiss affordance ─────────────────────── */
@@ -563,6 +570,10 @@
 }
 .skip-hint.visible {
   opacity: 1;
+}
+.skip-hint.hidden {
+  opacity: 0;
+  transition: opacity 0.4s ease;
 }
 
 /* ── Version metadata row (replaces old Rust/Tauri tagline) ─────────────── */
