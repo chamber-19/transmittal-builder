@@ -689,7 +689,7 @@ export default function App(){
       }else if(ext==="pdf"){
         if(documents.length===0&&!indexFile){
           showToast("Load a drawing index first before adding source PDFs","warning",5000);
-          return;
+          continue;
         }
         setPdfFiles(prev=>{
           if(prev.some(p=>p.name===f.name))return prev;
