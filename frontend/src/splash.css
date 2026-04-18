@@ -18,6 +18,16 @@
   font-family: 'Inter', system-ui, sans-serif;
   user-select: none;
   cursor: default;
+  opacity: 1;
+  transition: opacity 1s ease;
+}
+/* Cross-fade the entire splash (background + content) when the startup
+   sequence signals fade-now. This is what eliminates the "brown card sits
+   empty for a few seconds" gap between the previous content fade-out and
+   the splash window actually closing — see splash.jsx FADE_DURATION_MS,
+   which must stay in sync with the 1s opacity transition above. */
+.splash-root.fading-out {
+  opacity: 0;
 }
 
 /* Very faint diagonal hatching — old-technical-drawing feel (~3% opacity) */

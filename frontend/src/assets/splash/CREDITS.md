@@ -3,13 +3,21 @@
 ## Artwork
 
 ### r3p-logo.svg / r3p-logo-transparent.svg
-- **Description**: Hand-written SVG rendering of the R3P monogram — a chunky sans-serif R
-  with an integrated 3 fused into its bowl, set on a rounded-square background (R3P blue
-  `#1E5BCA`, white outline). `r3p-logo.svg` includes the opaque blue background;
-  `r3p-logo-transparent.svg` has a transparent exterior for use on dark splash backgrounds.
-- **Trademark notice**: The R3 monogram is a registered trademark of ROOT3POWER ENGINEERING.
-  All rights reserved. Do not modify the letterform geometry or brand colors.
-- **Use**: App icon master, splash header (`<img>` at 48×48), Windows Store tiles, ICO.
+- **Description**: Hand-written SVG of the **Anvil-T monogram** — the app's
+  custom mark, designed to fit the forge theme already established by the
+  splash. The crossbar of the "T" reads as a hammer head (with eye and
+  striking face details), the stem is the hammer handle, and the base is a
+  classic anvil silhouette with a right-side horn. Forge-orange gradient
+  (`#EBAA68 → #B86F2C`) over a mahogany rounded-square card
+  (`#2a1a14 → #0a0806`, `#C8823A` accent border). `r3p-logo.svg` includes
+  the opaque card background; `r3p-logo-transparent.svg` is the bare mark
+  for use on the dark splash gradient.
+- **Note on filename**: The files retain their `r3p-logo*.svg` names for
+  backwards compatibility with `splash.jsx` and the icon generator; the
+  artwork is the Anvil-T mark, not the R3P corporate monogram.
+- **License**: Original work for the Transmittal Builder app.
+- **Use**: App icon master (via `src-tauri/icons/icon-master.svg`), splash
+  header (`<img>` at 48×48), Windows Store tiles, ICO, NSIS installer art.
 
 ### sprocket-hammer.svg
 - **Description**: Semi-photoreal SVG depicting a 16-tooth industrial sprocket with forged-steel

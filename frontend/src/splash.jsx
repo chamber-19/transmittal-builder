@@ -8,10 +8,20 @@
  * the initial Tauri startup when ~20 state updates per second land on the
  * parent from the spinner + progress crawler + status events.
  *
- * Chrome sequence (driven by setTimeout in the sequencer useEffect):
- *   t=   50 ms  content fades in
- *   t=  850 ms  progress bar + version meta fade in
- *   t=10500 ms  content fades out
+ * Chrome / fade-out sequence:
+ *   t=     50 ms  content fades in
+ *   t=    850 ms  progress bar + version meta fade in
+ *   Rust  emits  `splash://fade-now` once the startup minimum-display
+ *                duration has elapsed (or a 10500 ms preview-mode timer
+ *                fires when running outside Tauri).
+ *   On  fade-now: progress bar snaps to 100 %, success state holds for
+ *                FADE_HOLD_MS (~800 ms), then the WHOLE splash window
+ *                (`.splash-root`) cross-fades to opacity 0 over
+ *                FADE_DURATION_MS (~1000 ms).  When the fade completes,
+ *                the frontend invokes `splash_fade_complete` so Rust shows
+ *                the main window and closes the splash atomically — this
+ *                eliminates the "brown background for a few seconds" gap
+ *                between splash close and main-window show.
  */
 
 import { useState, useEffect, useRef, useCallback, memo } from "react";
@@ -85,6 +95,22 @@ const SPINNER_FRAMES = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','�
 const MIN_PENDING_MS = 700;
 // Minimum ms gap between consecutive phase transitions.
 const MIN_GAP_MS = 400;
+
+// ── Fade-out timing (success hold + cross-fade) ──────────────────────────
+// FADE_HOLD_MS: time the fully-loaded success state (✓ rows, 100 % bar)
+// stays on screen before the cross-fade starts.  Gives the user a clear
+// "done" beat rather than dissolving the moment the last status lands.
+const FADE_HOLD_MS = 800;
+// FADE_DURATION_MS: opacity transition duration on `.splash-root`. Must
+// match the CSS `transition: opacity Ns ease` on `.splash-root`.
+const FADE_DURATION_MS = 1000;
+// Safety buffer (ms) past FADE_DURATION_MS before invoking
+// splash_fade_complete in case `transitionend` doesn't fire (e.g. window
+// hidden mid-transition by the OS).
+const FADE_COMPLETE_BUFFER_MS = 150;
+// Browser-preview only: when no Tauri is present, kick off the fade-out
+// after this many ms (matches the previous hard-coded 10500 ms behaviour).
+const PREVIEW_FADE_NOW_MS = 10500;
 
 // ── Status line helpers ───────────────────────────────────────────────────
 function prefixForKind(kind, spinnerFrame, reducedMotion) {
@@ -197,6 +223,12 @@ function Splash({ onLoopRestart = null }) {
   }, [completedPhaseCount]);
 
   // ── Progress bar crawler: time-anchored, always-advancing, caps at 95% ───
+  // The 95 % cap is a UX choice: while we're still waiting on backend / drive
+  // / update events, the bar lingers near completion rather than sitting at
+  // 100 % "done" before the success line actually arrives.  When the
+  // fade-out is triggered (success hold), the cap is removed and the bar is
+  // forced to 100 % so the user always sees a fully-filled bar before the
+  // splash dissolves.
   useEffect(() => {
     const TOTAL_ANIMATION_MS = 10500;
     const id = setInterval(() => {
@@ -297,9 +329,45 @@ function Splash({ onLoopRestart = null }) {
     }
   };
 
+  // ── Fade-out trigger (success hold + cross-fade) ─────────────────────────
+  // Idempotent: guards against double-fire from Rust + sequencer fallback.
+  const fadeTriggeredRef = useRef(false);
+  const triggerFadeOut = useCallback(() => {
+    if (fadeTriggeredRef.current) return;
+    fadeTriggeredRef.current = true;
+
+    // Snap the bar to 100 % so the user always sees a fully-filled loader
+    // before anything starts dissolving.
+    completedPhasesRef.current.add("__final__");
+    setCompletedPhaseCount(4);
+    setDisplayProgress(100);
+
+    // Hold the success state visibly, then begin the cross-fade.
+    setTimeout(() => {
+      setFadingOut(true);
+      // Defensive: notify Rust to swap windows after the fade completes,
+      // even if `transitionend` doesn't fire.  The handler itself is
+      // idempotent on the Rust side (close_splash silently ignores
+      // already-closed windows; show() is a no-op on already-visible
+      // windows).
+      setTimeout(() => {
+        if (!isTauri) {
+          if (PREVIEW_LOOP_MODE && onLoopRestartRef.current) {
+            onLoopRestartRef.current();
+          }
+          return;
+        }
+        getTauriApi().then((api) =>
+          api?.invoke("splash_fade_complete").catch(() => {})
+        );
+      }, FADE_DURATION_MS + FADE_COMPLETE_BUFFER_MS);
+    }, FADE_HOLD_MS);
+  }, []);
+
   // ── Tauri event wiring ───────────────────────────────────────────────────
   useEffect(() => {
-    let unlisten = null;
+    let unlistenStatus = null;
+    let unlistenFade   = null;
     const previewTimers = [];
     getTauriApi().then((api) => {
       if (!api) {
@@ -319,6 +387,9 @@ function Splash({ onLoopRestart = null }) {
           setTimeout(() => push("updates", "Checking for updates",     "pending"), 3100),
           setTimeout(() => push("updates", "Checking for updates",     "ok"),      3600),
           setTimeout(() => push("final",   "Ready",                    "ok"),      8500),
+          // Browser preview: simulate the Rust-side fade-now signal so the
+          // success-hold + cross-fade flow runs end-to-end without Tauri.
+          setTimeout(() => triggerFadeOut(),                                       PREVIEW_FADE_NOW_MS),
         );
         return;
       }
@@ -331,9 +402,10 @@ function Splash({ onLoopRestart = null }) {
             statusQueueRef.current.push({ phase: phase ?? null, message, kind: kind ?? "pending" });
             drainQueue();
           })
-          .then((fn) => {
-            unlisten = fn;
-          });
+          .then((fn) => { unlistenStatus = fn; });
+        api
+          .listen("splash://fade-now", () => triggerFadeOut())
+          .then((fn) => { unlistenFade = fn; });
       } catch (err) {
         console.warn("[splash] Tauri IPC unavailable, running in preview mode", err);
       }
@@ -343,38 +415,53 @@ function Splash({ onLoopRestart = null }) {
         .catch(() => setIsFirstRun(true));
     });
     return () => {
-      if (unlisten) unlisten();
+      if (unlistenStatus) unlistenStatus();
+      if (unlistenFade)   unlistenFade();
       previewTimers.forEach(clearTimeout);
     };
-  }, [drainQueue]);
+  }, [drainQueue, triggerFadeOut]);
 
   // ── Chrome sequencer ─────────────────────────────────────────────────────
+  // Owns only the entry-fade timers now; the fade-out is driven by the
+  // `splash://fade-now` event from Rust (or the browser-preview timer above).
   useEffect(() => {
     const t1 = setTimeout(() => setContentVisible(true), 50);
     const tChrome = setTimeout(() => setChromeVisible(true), 850);
-
-    const tFadeOut = setTimeout(() => {
-      if (!isTauri && PREVIEW_LOOP_MODE && onLoopRestartRef.current) {
-        onLoopRestartRef.current();
-      } else {
-        setFadingOut(true);
-      }
-    }, 10500);
-
     return () => {
-      [t1, tChrome, tFadeOut].forEach(clearTimeout);
+      [t1, tChrome].forEach(clearTimeout);
     };
   }, []);
+
+  // ── transitionend handler (primary fade-complete trigger) ────────────────
+  // Listening on the .splash-root opacity transition is more accurate than
+  // a setTimeout — it fires as soon as the GPU finishes the fade. The
+  // setTimeout in `triggerFadeOut` is a safety net for cases where the
+  // event doesn't fire (e.g. window minimized mid-transition).
+  const fadeCompleteFiredRef = useRef(false);
+  const handleRootTransitionEnd = useCallback((e) => {
+    if (e.propertyName !== "opacity" || !fadingOut) return;
+    if (fadeCompleteFiredRef.current) return;
+    fadeCompleteFiredRef.current = true;
+    if (!isTauri) return;
+    getTauriApi().then((api) =>
+      api?.invoke("splash_fade_complete").catch(() => {})
+    );
+  }, [fadingOut]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   let contentClass = "splash-content";
   if (contentVisible) contentClass += " visible";
   if (fadingOut)      contentClass += " fading-out";
 
+  let rootClass = "splash-root";
+  if (isFirstRun === false) rootClass += " short-mode";
+  if (fadingOut)            rootClass += " fading-out";
+
   return (
     <div
-      className={`splash-root${isFirstRun === false ? " short-mode" : ""}`}
+      className={rootClass}
       style={{ WebkitAppRegion: "no-drag" }}
+      onTransitionEnd={handleRootTransitionEnd}
     >
       <div className="vignette" />
 

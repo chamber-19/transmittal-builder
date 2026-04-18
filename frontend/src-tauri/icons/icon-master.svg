@@ -1,13 +1,25 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"
-  role="img" aria-label="R3P — ROOT3POWER ENGINEERING registered mark">
+  role="img" aria-label="Transmittal Builder — Anvil-T monogram (hammer crossbar over anvil base)">
 
   <defs>
-    <!-- White outline filter: dilate alpha then flood white, merge under source -->
-    <filter id="outline-white" color-interpolation-filters="sRGB"
+    <!-- Forge background gradient: warm mahogany → near-black -->
+    <linearGradient id="atBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#2a1a14"/>
+      <stop offset="100%" stop-color="#0a0806"/>
+    </linearGradient>
+
+    <!-- Forge-orange mark gradient: bright top → deep ember bottom -->
+    <linearGradient id="atMark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#EBAA68"/>
+      <stop offset="100%" stop-color="#B86F2C"/>
+    </linearGradient>
+
+    <!-- Dark outline filter so the mark stays crisp on any background -->
+    <filter id="atOutline" color-interpolation-filters="sRGB"
             x="-4%" y="-4%" width="108%" height="108%">
-      <feMorphology operator="dilate" radius="5" in="SourceAlpha" result="thick"/>
-      <feFlood flood-color="#ffffff" result="white"/>
-      <feComposite in="white" in2="thick" operator="in" result="outline"/>
+      <feMorphology operator="dilate" radius="4" in="SourceAlpha" result="thick"/>
+      <feFlood flood-color="#0a0806" result="dk"/>
+      <feComposite in="dk" in2="thick" operator="in" result="outline"/>
       <feMerge>
         <feMergeNode in="outline"/>
         <feMergeNode in="SourceGraphic"/>
@@ -15,40 +27,41 @@
     </filter>
   </defs>
 
-  <!-- Rounded-square background: R3P blue #1E5BCA, white border -->
+  <!-- Rounded forge background card -->
   <rect x="4" y="4" width="504" height="504" rx="72"
-        fill="#1E5BCA" stroke="#ffffff" stroke-width="8"/>
+        fill="url(#atBg)" stroke="#C8823A" stroke-width="6"/>
 
-  <!-- R3 monogram — all shapes fill black, white outline via filter -->
-  <!-- Character bounds: x=136–394, y=126–388 (within 76px padding zone) -->
-  <g filter="url(#outline-white)">
-    <!-- Left vertical spine of R (full height) -->
-    <rect x="136" y="126" width="54" height="262" fill="#000000"/>
+  <!-- ── Anvil-T mark ────────────────────────────────────────────────────
+       The crossbar of the T reads as a hammer head; the stem is the
+       handle; the base is a classic anvil silhouette with a right-side
+       horn. Conceptually: "engineered to deliver" — the strike of
+       hammer on anvil. -->
+  <g filter="url(#atOutline)" fill="url(#atMark)">
+    <!-- Hammer head (T crossbar) -->
+    <rect x="86" y="104" width="340" height="86" rx="10"/>
 
-    <!-- Top crossbar: horizontal arm extending right from spine -->
-    <rect x="136" y="126" width="198" height="52" fill="#000000"/>
+    <!-- T stem / hammer handle descending to the anvil -->
+    <rect x="226" y="190" width="60" height="170"/>
 
-    <!-- Upper D-shape: R's bowl fused with 3's upper curve -->
-    <!-- Flat top at y=126 from x=190 to x=344, then curves right to ~x=394 at y=196, back -->
-    <path d="M 190,126 H 344 Q 394,130 394,196 Q 394,258 344,258 H 190 Z"
-          fill="#000000"/>
+    <!-- Anvil top face with horn point on the right -->
+    <path d="M 72,360 H 412 L 446,374 L 446,396 L 412,410 H 72 Z"/>
 
-    <!-- Lower D-shape: 3's lower curve -->
-    <!-- Flat top at y=280 from x=190 to x=330, then curves right to ~x=388 at y=334, back -->
-    <path d="M 190,280 H 330 Q 390,282 390,334 Q 390,388 330,388 H 190 Z"
-          fill="#000000"/>
+    <!-- Anvil body block under the face -->
+    <rect x="98" y="410" width="316" height="14"/>
 
-    <!-- R's diagonal leg: triangular stroke from notch area to lower-right -->
-    <!-- From (258,258) to (344,258) diagonally down to (394,388) -->
-    <path d="M 258,258 L 344,258 L 394,388 L 308,388 Z"
-          fill="#000000"/>
+    <!-- Anvil waist (trapezoid narrowing to the foot) -->
+    <path d="M 196,424 H 316 L 304,452 H 208 Z"/>
+
+    <!-- Anvil foot/base -->
+    <rect x="128" y="452" width="256" height="32" rx="4"/>
   </g>
 
-  <!-- ® mark — bottom-right corner, subtle white, ~20px radius -->
-  <circle cx="428" cy="428" r="18" fill="none" stroke="#ffffff" stroke-width="2"
-          opacity="0.55"/>
-  <text x="428" y="432" text-anchor="middle" dominant-baseline="middle"
-        font-family="sans-serif" font-size="16" font-weight="700"
-        fill="#ffffff" opacity="0.55">R</text>
+  <!-- Detail accents (drawn after the outline filter so they sit on top) -->
+  <!-- Eye of the hammer: where the handle passes through the head -->
+  <rect x="240" y="124" width="32" height="48" rx="4" fill="#1a1210" opacity="0.7"/>
+  <!-- Striking face on the right end of the hammer head -->
+  <rect x="406" y="116" width="20" height="62" rx="3" fill="#1a1210" opacity="0.55"/>
+  <!-- Subtle highlight along the anvil face -->
+  <line x1="84" y1="364" x2="404" y2="364" stroke="#1a1210" stroke-width="2" opacity="0.35"/>
 
 </svg>

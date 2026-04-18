@@ -165,6 +165,35 @@ pub fn splash_ready(app: tauri::AppHandle) {
     }
 }
 
+/// Called by the splash frontend after the cross-fade animation completes
+/// (`transitionend` on `.splash-root` opacity).
+///
+/// Atomically shows the main window and closes the splash window. This is
+/// the trigger that eliminates the "brown background gap" the user used to
+/// see between content-fade-out and splash-close: by waiting for the fade
+/// `transitionend` before swapping windows, the user sees a smooth
+/// brown-card → near-black → main-app transition with no opaque dead time.
+///
+/// Idempotent: calling twice (e.g. once from `transitionend`, once from the
+/// safety-net `setTimeout` in splash.jsx) is harmless because `show()` on
+/// an already-visible window and `close_splash` on an already-closed
+/// window are both no-ops.
+///
+/// Note: window operations are marshalled onto the Tauri main thread to
+/// match the same constraint observed elsewhere in lib.rs (calling
+/// WebviewWindow::show / close from a background thread can deadlock the
+/// Windows event loop in release builds).
+#[tauri::command]
+pub fn splash_fade_complete(app: tauri::AppHandle) {
+    let app_for_ui = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if let Some(main_win) = app_for_ui.get_webview_window("main") {
+            let _ = main_win.show();
+        }
+        close_splash(&app_for_ui);
+    });
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 /// Emit a `splash://status` event to all windows (including the splash).
