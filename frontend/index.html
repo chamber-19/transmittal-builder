@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>R3P Transmittal Builder</title>
+    <!-- Background colour matches the splash fade-out target so there's no
+         white flash between splash close and the React app's first paint. -->
+    <style>
+      html, body { background: #0a0806; margin: 0; }
+      /* Brief opacity cross-fade on first paint — ensures a smooth
+         transition from the closing splash window to the main app. The
+         `app-ready` class is added by main.jsx after React mounts. */
+      body { opacity: 0; transition: opacity 250ms ease; }
+      body.app-ready { opacity: 1; }
+    </style>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1210'/><g fill='%23C8823A'><rect x='5' y='6' width='22' height='6' rx='1'/><rect x='14' y='12' width='4' height='10'/><path d='M4 22 H 26 L 28 23 L 28 25 L 26 26 H 4 Z'/><rect x='9' y='26' width='14' height='2'/></g></svg>" />
   </head>
   <body>

@@ -200,6 +200,7 @@ pub fn run() {
             peek_subfolders,
             splash::splash_is_first_run,
             splash::splash_ready,
+            splash::splash_fade_complete,
         ])
         .manage(BackendState {
             url: Mutex::new(String::from("http://127.0.0.1:8000")),
@@ -466,11 +467,45 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
         }
 
         UpdateOutcome::UpToDate => {
-            // Show the main window, then close the splash.
-            if let Some(main_win) = app.get_webview_window("main") {
-                let _ = main_win.show();
+            // Trigger the splash fade-out → main-window cross-fade.
+            //
+            // Sequence:
+            //   1. Emit `splash://fade-now` so the splash JS holds the
+            //      success state for FADE_HOLD_MS, then cross-fades the
+            //      whole `.splash-root` to opacity 0 over FADE_DURATION_MS.
+            //   2. The splash invokes `splash_fade_complete` from
+            //      `transitionend`, which shows the main window and
+            //      closes the splash atomically — no "brown background
+            //      gap" between the two.
+            //   3. As a safety net (in case the frontend never invokes the
+            //      command — e.g. JS error, window minimized mid-fade), we
+            //      sleep for the expected hold + fade duration and then
+            //      perform the same show/close from Rust. Both paths are
+            //      idempotent.
+            //
+            // The constants below must stay in sync with the matching
+            // FADE_HOLD_MS / FADE_DURATION_MS in frontend/src/splash.jsx.
+            const FADE_HOLD_MS:     u64 = 800;
+            const FADE_DURATION_MS: u64 = 1000;
+            const FADE_SAFETY_MS:   u64 = 400;
+
+            if let Err(e) = app.emit("splash://fade-now", ()) {
+                eprintln!("[splash] emit splash://fade-now failed: {e}");
             }
-            splash::close_splash(&app);
+
+            thread::sleep(Duration::from_millis(
+                FADE_HOLD_MS + FADE_DURATION_MS + FADE_SAFETY_MS,
+            ));
+
+            // Safety net: idempotent if the frontend already invoked
+            // splash_fade_complete from `transitionend`.
+            let app_for_ui = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                if let Some(main_win) = app_for_ui.get_webview_window("main") {
+                    let _ = main_win.show();
+                }
+                splash::close_splash(&app_for_ui);
+            });
         }
     }
 }
