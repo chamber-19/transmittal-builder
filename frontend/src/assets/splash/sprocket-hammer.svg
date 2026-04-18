@@ -9,81 +9,207 @@
       <stop offset="100%" stop-color="#C8823A" stop-opacity="0"/>
     </radialGradient>
 
-    <!-- Sprocket metal gradient — user-space so the light source stays fixed
-         in the SVG viewBox as the sprocket rotates. The bright spot (centered
-         at x=200, y=160 = above the sprocket hub) always appears to come from
-         above, like a forge flame lighting the top of the gear. -->
-    <radialGradient id="sprocket-rg" cx="200" cy="160" r="80" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#5a5550"/>
-      <stop offset="100%" stop-color="#3a3530"/>
+    <!-- Sprocket body — forge light from above, fixed in user-space so the
+         bright spot stays at top of scene as the gear rotates CCW -->
+    <radialGradient id="sprocket-rg" cx="200" cy="142" r="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#6e6c66"/>
+      <stop offset="25%"  stop-color="#55534e"/>
+      <stop offset="55%"  stop-color="#3e3c38"/>
+      <stop offset="85%"  stop-color="#2e2c28"/>
+      <stop offset="100%" stop-color="#1e1c18"/>
     </radialGradient>
 
-    <!-- Hub gradient — also user-space for consistent lighting -->
-    <radialGradient id="hub-rg" cx="194" cy="174" r="22" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#3a3530"/>
-      <stop offset="100%" stop-color="#1a1510"/>
+    <!-- Forge-light angular overlay (top of gear catches more light) — also user-space -->
+    <linearGradient id="forge-light-lg" x1="200" y1="115" x2="200" y2="245" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#b0aea6" stop-opacity="0.28"/>
+      <stop offset="35%"  stop-color="#7a7870" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+
+    <!-- Specular ring highlight (bright inner-edge chamfer) -->
+    <radialGradient id="chamfer-rg" cx="200" cy="152" r="60" gradientUnits="userSpaceOnUse">
+      <stop offset="74%"  stop-color="#a0a09a" stop-opacity="0.0"/>
+      <stop offset="86%"  stop-color="#a0a09a" stop-opacity="0.40"/>
+      <stop offset="100%" stop-color="#a0a09a" stop-opacity="0.0"/>
+    </radialGradient>
+
+    <!-- Hub bore inner-shadow (deep recess) -->
+    <radialGradient id="hub-bore-rg" cx="200" cy="175" r="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#0c0a08"/>
+      <stop offset="55%"  stop-color="#181613"/>
+      <stop offset="100%" stop-color="#282622"/>
+    </radialGradient>
+
+    <!-- Hub face (annular ring around the bore — bevel effect) -->
+    <radialGradient id="hub-face-rg" cx="200" cy="174" r="23" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#3a3835"/>
+      <stop offset="60%"  stop-color="#484644"/>
+      <stop offset="100%" stop-color="#5c5a58"/>
+    </radialGradient>
+
+    <!-- Spoke gradient (rounded cross-section illusion) -->
+    <linearGradient id="spoke-lg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#5c5a58"/>
+      <stop offset="40%"  stop-color="#484644"/>
+      <stop offset="100%" stop-color="#2a2826"/>
+    </linearGradient>
+
+    <!-- Tooth tip highlight (top teeth catch forge light) — user-space -->
+    <radialGradient id="tooth-tip-rg" cx="200" cy="128" r="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#9a9890" stop-opacity="0.30"/>
+      <stop offset="50%"  stop-color="#9a9890" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#9a9890" stop-opacity="0.0"/>
+    </radialGradient>
+
+    <!-- Hammer steel head — vertical gradient, bright top edge, dark body -->
+    <linearGradient id="steel-head-lg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#c0beb8"/>
+      <stop offset="12%"  stop-color="#7a7870"/>
+      <stop offset="45%"  stop-color="#50504c"/>
+      <stop offset="80%"  stop-color="#3c3a36"/>
+      <stop offset="100%" stop-color="#545250"/>
+    </linearGradient>
+
+    <!-- Hammer steel head — horizontal gradient for side-depth -->
+    <linearGradient id="steel-depth-lg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#000000" stop-opacity="0.28"/>
+      <stop offset="25%"  stop-color="#000000" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <!-- Hammer striking face (front face of head) -->
+    <linearGradient id="strike-face-lg" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%"   stop-color="#8a8880"/>
+      <stop offset="40%"  stop-color="#5c5c58"/>
+      <stop offset="100%" stop-color="#3a3a36"/>
+    </linearGradient>
+
+    <!-- Wooden handle — warm oak grain with subtle taper -->
+    <linearGradient id="wood-grain-lg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#4a2e18"/>
+      <stop offset="20%"  stop-color="#7a4e2a"/>
+      <stop offset="50%"  stop-color="#8c6035"/>
+      <stop offset="78%"  stop-color="#7a4e2a"/>
+      <stop offset="100%" stop-color="#5a3820"/>
+    </linearGradient>
+
+    <!-- Ground shadow radial -->
+    <radialGradient id="shadow-rg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.0"/>
     </radialGradient>
   </defs>
 
-  <!-- ── Ambient ground shadow (static — replaces the removed drop-shadow filter) -->
-  <ellipse cx="200" cy="264" rx="68" ry="10" fill="#000" opacity="0.45"/>
+  <!-- Ambient ground shadow -->
+  <ellipse cx="200" cy="264" rx="72" ry="11" fill="url(#shadow-rg)"/>
 
-  <!-- ── Sprocket group — rotated continuously by CSS (CCW) ──────────────── -->
+  <!-- ══ SPROCKET group — rotated CCW continuously by CSS ══ -->
   <g id="sprocket">
 
-    <!-- Rim glow element (display:none via CSS — retained for backward compat) -->
+    <!-- Rim-glow element (display:none via CSS — kept for CSS backward-compat) -->
     <path id="rim-glow"
       d="M 200,115 A 65,65 0 1 1 199.999,115"
       fill="#8a5520" opacity="0"/>
 
-    <!-- Rim annulus: outer circle with inner hole (fill-rule evenodd) -->
-    <path fill-rule="evenodd" fill="url(#sprocket-rg)"
-      d="M 135,180 A 65,65 0 1 1 265,180 A 65,65 0 1 1 135,180
-         M 150,180 A 50,50 0 1 0 250,180 A 50,50 0 1 0 150,180"/>
+    <!-- ── Gear body: outer disk fill ── -->
+    <!-- Step 1: main forged-steel radial gradient fill -->
+    <circle cx="200" cy="180" r="65" fill="url(#sprocket-rg)"/>
 
-    <!-- Inner ring highlight (subtle lighter ring just inside the outer rim) -->
-    <circle cx="200" cy="180" r="54" fill="none" stroke="#6a6560" stroke-width="1" opacity="0.4"/>
+    <!-- Step 2: forge-light angular overlay (brighter at top) -->
+    <circle cx="200" cy="180" r="65" fill="url(#forge-light-lg)"/>
 
-    <!-- 16 Teeth (trapezoidal, pre-computed from polar coords, 22.5° apart) -->
-    <!-- Strike point tooth at 12 o'clock (k=0): centered at (200,115) -->
-    <path fill="#4a4540" d="
-      M196.3,130.1 L195.2,115.2 L204.8,115.2 L203.7,130.1 Z
-      M215.6,132.5 L220.3,118.3 L229.3,122.0 L222.5,135.4 Z
-      M232.6,142.1 L242.4,130.7 L249.3,137.6 L237.9,147.4 Z
-      M244.6,157.5 L258.0,150.7 L261.7,159.7 L247.5,164.4 Z
-      M249.9,176.3 L264.8,175.2 L264.8,184.8 L249.9,183.7 Z
-      M247.5,195.6 L261.7,200.3 L258.0,209.3 L244.6,202.5 Z
-      M237.9,212.6 L249.3,222.4 L242.4,229.3 L232.6,217.9 Z
-      M222.5,224.6 L229.3,238.0 L220.3,241.7 L215.6,227.5 Z
-      M203.7,229.9 L204.8,244.8 L195.2,244.8 L196.3,229.9 Z
-      M184.4,227.5 L179.7,241.7 L170.7,238.0 L177.5,224.6 Z
-      M167.4,217.9 L157.6,229.3 L150.7,222.4 L162.1,212.6 Z
-      M155.4,202.5 L142.0,209.3 L138.3,200.3 L152.5,195.6 Z
-      M150.1,183.7 L135.2,184.8 L135.2,175.2 L150.1,176.3 Z
-      M152.5,164.4 L138.3,159.7 L142.0,150.7 L155.4,157.5 Z
-      M162.1,147.4 L150.7,137.6 L157.6,130.7 L167.4,142.1 Z
-      M177.5,135.4 L170.7,122.0 L179.7,118.3 L184.4,132.5 Z
-    "/>
+    <!-- Step 3: dark inner-hole (the web/bore cavity) -->
+    <circle cx="200" cy="180" r="50" fill="#1e1c18"/>
 
-    <!-- Three spokes at 90°/210°/330° — nod to ROOT3POWER -->
+    <!-- Step 4: inner-shadow at the edge of the bore opening (depth cue) -->
+    <circle cx="200" cy="180" r="50" fill="none" stroke="#0a0a08" stroke-width="4" opacity="0.6"/>
+
+    <!-- Step 5: chamfer / specular ring on outer face of rim -->
+    <circle cx="200" cy="180" r="60" fill="none" stroke="url(#chamfer-rg)" stroke-width="8" opacity="1"/>
+
+    <!-- Step 6: outer rim top-edge highlight line -->
+    <circle cx="200" cy="180" r="65" fill="none" stroke="#787672" stroke-width="1.2" opacity="0.45"/>
+
+    <!-- ── 16 Teeth ── fill matches sprocket body gradient; tip-highlight overlay -->
+    <g fill="url(#sprocket-rg)">
+      <path d="M196.3,130.1 L195.2,115.2 L204.8,115.2 L203.7,130.1 Z"/>
+      <path d="M215.6,132.5 L220.3,118.3 L229.3,122.0 L222.5,135.4 Z"/>
+      <path d="M232.6,142.1 L242.4,130.7 L249.3,137.6 L237.9,147.4 Z"/>
+      <path d="M244.6,157.5 L258.0,150.7 L261.7,159.7 L247.5,164.4 Z"/>
+      <path d="M249.9,176.3 L264.8,175.2 L264.8,184.8 L249.9,183.7 Z"/>
+      <path d="M247.5,195.6 L261.7,200.3 L258.0,209.3 L244.6,202.5 Z"/>
+      <path d="M237.9,212.6 L249.3,222.4 L242.4,229.3 L232.6,217.9 Z"/>
+      <path d="M222.5,224.6 L229.3,238.0 L220.3,241.7 L215.6,227.5 Z"/>
+      <path d="M203.7,229.9 L204.8,244.8 L195.2,244.8 L196.3,229.9 Z"/>
+      <path d="M184.4,227.5 L179.7,241.7 L170.7,238.0 L177.5,224.6 Z"/>
+      <path d="M167.4,217.9 L157.6,229.3 L150.7,222.4 L162.1,212.6 Z"/>
+      <path d="M155.4,202.5 L142.0,209.3 L138.3,200.3 L152.5,195.6 Z"/>
+      <path d="M150.1,183.7 L135.2,184.8 L135.2,175.2 L150.1,176.3 Z"/>
+      <path d="M152.5,164.4 L138.3,159.7 L142.0,150.7 L155.4,157.5 Z"/>
+      <path d="M162.1,147.4 L150.7,137.6 L157.6,130.7 L167.4,142.1 Z"/>
+      <path d="M177.5,135.4 L170.7,122.0 L179.7,118.3 L184.4,132.5 Z"/>
+    </g>
+    <!-- Tooth tip specular overlay (top-facing teeth catch forge light) -->
+    <g fill="url(#tooth-tip-rg)">
+      <path d="M196.3,130.1 L195.2,115.2 L204.8,115.2 L203.7,130.1 Z"/>
+      <path d="M215.6,132.5 L220.3,118.3 L229.3,122.0 L222.5,135.4 Z"/>
+      <path d="M232.6,142.1 L242.4,130.7 L249.3,137.6 L237.9,147.4 Z"/>
+      <path d="M177.5,135.4 L170.7,122.0 L179.7,118.3 L184.4,132.5 Z"/>
+      <path d="M162.1,147.4 L150.7,137.6 L157.6,130.7 L167.4,142.1 Z"/>
+    </g>
+    <!-- Forge-light overlay on teeth too -->
+    <g fill="url(#forge-light-lg)">
+      <path d="M196.3,130.1 L195.2,115.2 L204.8,115.2 L203.7,130.1 Z"/>
+      <path d="M215.6,132.5 L220.3,118.3 L229.3,122.0 L222.5,135.4 Z"/>
+      <path d="M232.6,142.1 L242.4,130.7 L249.3,137.6 L237.9,147.4 Z"/>
+      <path d="M244.6,157.5 L258.0,150.7 L261.7,159.7 L247.5,164.4 Z"/>
+      <path d="M249.9,176.3 L264.8,175.2 L264.8,184.8 L249.9,183.7 Z"/>
+      <path d="M247.5,195.6 L261.7,200.3 L258.0,209.3 L244.6,202.5 Z"/>
+      <path d="M237.9,212.6 L249.3,222.4 L242.4,229.3 L232.6,217.9 Z"/>
+      <path d="M222.5,224.6 L229.3,238.0 L220.3,241.7 L215.6,227.5 Z"/>
+      <path d="M203.7,229.9 L204.8,244.8 L195.2,244.8 L196.3,229.9 Z"/>
+      <path d="M184.4,227.5 L179.7,241.7 L170.7,238.0 L177.5,224.6 Z"/>
+      <path d="M167.4,217.9 L157.6,229.3 L150.7,222.4 L162.1,212.6 Z"/>
+      <path d="M155.4,202.5 L142.0,209.3 L138.3,200.3 L152.5,195.6 Z"/>
+      <path d="M150.1,183.7 L135.2,184.8 L135.2,175.2 L150.1,176.3 Z"/>
+      <path d="M152.5,164.4 L138.3,159.7 L142.0,150.7 L155.4,157.5 Z"/>
+      <path d="M162.1,147.4 L150.7,137.6 L157.6,130.7 L167.4,142.1 Z"/>
+      <path d="M177.5,135.4 L170.7,122.0 L179.7,118.3 L184.4,132.5 Z"/>
+    </g>
+
+    <!-- ── Inner machined channel / web area ── -->
+    <!-- Web fill matching the bore -->
+    <circle cx="200" cy="180" r="50" fill="#22201c"/>
+    <!-- Web highlight ring at inner rim edge (chamfer) -->
+    <circle cx="200" cy="180" r="50" fill="none" stroke="#525050" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="200" cy="180" r="49" fill="none" stroke="#101010" stroke-width="1" opacity="0.6"/>
+
+    <!-- ── Three spokes (90° / 210° / 330°) — nod to ROOT3POWER ── -->
     <rect x="218" y="177" width="32" height="6" rx="3"
-          fill="#4a4540" stroke="#3a3530" stroke-width="1"/>
+          fill="url(#spoke-lg)" stroke="#20201e" stroke-width="0.6"/>
     <rect x="-16" y="-3" width="32" height="6" rx="3"
-          fill="#4a4540" stroke="#3a3530" stroke-width="1"
+          fill="url(#spoke-lg)" stroke="#20201e" stroke-width="0.6"
           transform="translate(183,209.5) rotate(120)"/>
     <rect x="-16" y="-3" width="32" height="6" rx="3"
-          fill="#4a4540" stroke="#3a3530" stroke-width="1"
+          fill="url(#spoke-lg)" stroke="#20201e" stroke-width="0.6"
           transform="translate(183,150.5) rotate(240)"/>
 
-    <!-- Hub (central disk) -->
-    <circle cx="200" cy="180" r="18" fill="url(#hub-rg)"/>
-    <!-- Hub highlight ring -->
-    <circle cx="200" cy="180" r="18" fill="none" stroke="#5a5550" stroke-width="1.5" opacity="0.6"/>
+    <!-- ── Hub (central boss around bore) ── -->
+    <!-- Hub face ring -->
+    <circle cx="200" cy="180" r="22" fill="url(#hub-face-rg)"/>
+    <!-- Hub outer bevel edge -->
+    <circle cx="200" cy="180" r="22" fill="none" stroke="#6a6864" stroke-width="0.8" opacity="0.55"/>
+    <!-- Hub bore inner-shadow -->
+    <circle cx="200" cy="180" r="18" fill="url(#hub-bore-rg)"/>
+    <!-- Hub bore rim (chamfer cue) -->
+    <circle cx="200" cy="180" r="18" fill="none" stroke="#484644" stroke-width="1" opacity="0.45"/>
+    <!-- Hub bore center keyway dark -->
+    <circle cx="200" cy="180" r="5.5" fill="#080806"/>
+    <!-- Hub bore keyway highlight (gives it a 3D machined look) -->
+    <circle cx="198" cy="178" r="2.5" fill="#303030" opacity="0.6"/>
 
-    <!-- Bolt hole (center) -->
-    <circle cx="200" cy="180" r="5" fill="#1a1210"/>
-
-    <!-- Tooth glow circles — one per tooth tip, lit during strike by CSS -->
+    <!-- ── 16 Tooth-glow circles (CSS-animated, opacity=0 by default) ── -->
+    <!-- tooth-glow-0 = 12 o'clock = strike point (200, 115.2) -->
     <circle class="tooth-glow-0"  cx="200.0" cy="115.2" r="4" fill="#C8823A" opacity="0"/>
     <circle class="tooth-glow-1"  cx="224.8" cy="120.2" r="4" fill="#C8823A" opacity="0"/>
     <circle class="tooth-glow-2"  cx="245.9" cy="134.2" r="4" fill="#C8823A" opacity="0"/>
@@ -103,27 +229,55 @@
 
   </g><!-- end #sprocket -->
 
-  <!-- ── Hammer — strikes the top tooth (k=0) at (200, 115) ──────────────── -->
+  <!-- ══ HAMMER group — pendulum swing by CSS (transform-origin: center 85%) ══ -->
+  <!-- Bounding box approx: x=169..231, y=89..197
+       center≈(200,143)   85% down = y≈143 + 0.35*(197-89)≈181 ≈ sprocket center ✓ -->
   <g id="hammer">
-    <!-- Haft (oak-brown handle) -->
-    <rect x="196" y="115" width="9"  height="81" rx="2" fill="#6b4a2a"/>
-    <!-- Haft grain highlight -->
-    <rect x="199" y="115" width="2"  height="81" rx="1" fill="#8b6a40" opacity="0.5"/>
 
-    <!-- Head (steel, flat-face hammer) -->
-    <rect x="171" y="91"  width="58" height="24" rx="2" fill="#4a4540"/>
+    <!-- Wooden handle — oak-brown, subtle grain, slight taper -->
+    <!-- Main shaft -->
+    <rect x="195.5" y="114" width="9" height="83" rx="2.5" fill="url(#wood-grain-lg)"/>
+    <!-- Centre highlight (bright grain run) -->
+    <rect x="198.5" y="114" width="2.5" height="83" rx="1" fill="#c89055" opacity="0.30"/>
+    <!-- Right-edge shadow (depth) -->
+    <rect x="203.5" y="114" width="1.5" height="83" rx="0.5" fill="#1e0e04" opacity="0.28"/>
+    <!-- Grip wrap bands -->
+    <rect x="195.5" y="140" width="9" height="1.8" rx="0.8" fill="#2a1408" opacity="0.45"/>
+    <rect x="195.5" y="153" width="9" height="1.8" rx="0.8" fill="#2a1408" opacity="0.45"/>
+    <rect x="195.5" y="166" width="9" height="1.8" rx="0.8" fill="#2a1408" opacity="0.45"/>
 
-    <!-- Head — top rim light (bright edge) -->
-    <rect x="171" y="91"  width="58" height="4"  rx="2" fill="#6a6560" opacity="0.65"/>
+    <!-- Steel head — main body with multi-stop vertical gradient -->
+    <rect x="169" y="89" width="62" height="26" rx="3" fill="url(#steel-head-lg)"/>
 
-    <!-- Head — striking face (bottom) darker rim -->
-    <rect x="171" y="111" width="58" height="4"  rx="2" fill="#5a5a4e" opacity="0.5"/>
+    <!-- Steel head — left face shadow (rear/poll face) -->
+    <rect x="169" y="89" width="7" height="26" rx="2.5" fill="url(#steel-depth-lg)"/>
 
-    <!-- Head — rear face (left) darker -->
-    <rect x="171" y="91"  width="4"  height="24" rx="1" fill="#3a3830" opacity="0.6"/>
-  </g>
+    <!-- Steel head — striking-face right edge (brighter, polished) -->
+    <rect x="226" y="89" width="5" height="26" rx="2" fill="url(#strike-face-lg)"/>
 
-  <!-- ── Electric arc (CLANK-moment crackle around sprocket rim) ─────────── -->
+    <!-- Steel head — top bevel highlight (forged upper edge, bright) -->
+    <rect x="169" y="89" width="62" height="4" rx="2.5"
+          fill="#e0deda" opacity="0.45"/>
+
+    <!-- Steel head — lower edge (slight bounce-light reflection from anvil) -->
+    <rect x="170" y="111" width="60" height="4" rx="1.5"
+          fill="#6a6860" opacity="0.35"/>
+
+    <!-- Steel head — angled specular highlight band across upper face -->
+    <polygon points="182,92 215,92 218,98 179,98"
+             fill="#d8d6d0" opacity="0.20"/>
+
+    <!-- Eye / handle socket indent line (subtle dark outline) -->
+    <rect x="192" y="91" width="16" height="23" rx="2.5"
+          fill="none" stroke="#1e1c18" stroke-width="0.9" opacity="0.45"/>
+
+    <!-- Socket top shadow (hammer head-eye cutout depth) -->
+    <rect x="193" y="91" width="14" height="4" rx="1.5"
+          fill="#000000" opacity="0.20"/>
+
+  </g><!-- end #hammer -->
+
+  <!-- ══ Electric arc (CLANK-moment crackle around sprocket rim) ══ -->
   <path id="electric-arc"
     d="M 130,180 A 70,70 0 1 1 270,180 A 70,70 0 1 1 130,180"
     fill="none"
@@ -134,14 +288,14 @@
     stroke-dashoffset="440"
     opacity="0"/>
 
-  <!-- ── Impact flash (circle at strike point) ───────────────────────────── -->
+  <!-- ══ Impact flash (circle at strike point, CSS animated) ══ -->
   <circle id="impact-flash"
     cx="200" cy="115"
     r="28"
     fill="url(#impact-rg)"
     opacity="0"/>
 
-  <!-- ── Spark elements (pre-placed at strike point, fly outward) ────────── -->
+  <!-- ══ Sparks (pre-placed at strike point, fly outward via CSS) ══ -->
   <circle class="spark-1"  cx="200" cy="115" r="2.5" fill="#ffcc66" opacity="0"/>
   <circle class="spark-2"  cx="200" cy="115" r="2.0" fill="#C8823A" opacity="0"/>
   <circle class="spark-3"  cx="200" cy="115" r="3.0" fill="#ffcc66" opacity="0"/>

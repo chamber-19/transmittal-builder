@@ -12,15 +12,33 @@
 - **Use**: App icon master, splash header (`<img>` at 48×48), Windows Store tiles, ICO.
 
 ### sprocket-hammer.svg
-- **Description**: Hand-written SVG depicting a 16-tooth engineering sprocket (rotating CCW
-  during WELDING phase) with a hammer poised to strike the top tooth at 12 o'clock. Includes
-  tooth-tip glow circles, a rim-glow path, electric-arc overlay, impact flash, and 10 spark
-  elements. All paths are native vector (no embedded rasters).
-- **Author**: Original work © R3P / ROOT3POWER ENGINEERING
+- **Description**: Semi-photoreal SVG depicting a 16-tooth industrial sprocket with forged-steel
+  gradient shading (multi-stop radial + forge-light angular overlay, chamfer specular ring, inner
+  hub bore shadow) and a blacksmith's forging hammer with polished steel head and oak handle.
+  Includes tooth-tip glow circles, a rim-glow path, electric-arc overlay, impact flash, and 10
+  spark elements. All paths are native vector (no embedded rasters).
+- **Author**: Original work © R3P / ROOT3POWER ENGINEERING. Visual artwork regenerated using
+  SVGMaker (`@genwave/svgmaker-mcp`) on 2026-04-18, then stitched with required CSS animation
+  elements.
 - **License**: Proprietary — all rights reserved.
 - **Elements**: `#sprocket`, `#hammer`, `#rim-glow`, `.tooth-glow-0`–`.tooth-glow-15`,
   `#electric-arc`, `.spark-1`–`.spark-10`, `#impact-flash`. Animated entirely via
   `splash.css` keyframes.
+
+### rust-logo.svg
+- **Description**: Improved "Built with Rust" gear mark with multi-stop radial gradient shading
+  (forge-lit from upper-left), specular highlights, and inner bore gradient. Regenerated using
+  SVGMaker (`@genwave/svgmaker-mcp`) on 2026-04-18 as visual reference; geometry hand-fitted to
+  the 100×100 viewBox.
+- **Attribution**: Based on the Rust programming language logo (https://www.rust-lang.org/).
+  The Rust logo is copyright the Rust Foundation, dual-licensed Apache 2.0 / MIT.
+  Used here for "Built with Rust" attribution per rust-lang.org media guide.
+
+### tauri-logo.svg
+- **Description**: Improved "Powered by Tauri" concentric-ring mark with radial gradient fills,
+  tick-mark highlights, and bore gradient. Regenerated using SVGMaker (`@genwave/svgmaker-mcp`)
+  on 2026-04-18 as visual reference; geometry hand-fitted to the 100×100 viewBox.
+- **Attribution**: Based on the official Tauri brand assets (MIT license per tauri.app).
 
 ## Sound Effects
 
