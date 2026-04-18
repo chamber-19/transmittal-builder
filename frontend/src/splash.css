@@ -146,13 +146,17 @@
 }
 
 /* ── Hammer — pendulum swing (1.4s per cycle, impact at 50% = 0.7s) ──────── */
-/* The lift phase uses ease-out so the hammer decelerates as it approaches the
+/* The hammer is now mounted to the LEFT of the sprocket and pivots at its
+   grip end (transform-origin 0% 50%). Negative rotation lifts the head up
+   and back (CCW); rotate(0deg) is the horizontal impact pose where the
+   striking face meets the gear's left tooth tip.
+   The lift phase uses ease-out so the hammer decelerates as it approaches the
    raised position and then dwells briefly at the top. Without this the eye
    reacquires the hammer mid-lift at high constant velocity right as the
    impact flash fades, which reads as a jarring "reset". */
 .forge-scene #hammer {
   transform-box: fill-box;
-  transform-origin: center 85%;
+  transform-origin: 0% 50%;
   will-change: transform;
   animation: hammer-swing 1.4s linear infinite;
 }
@@ -164,21 +168,22 @@
      62 → 95%  ease-out lift (decelerates into the wind-up position)
      95 → 100% dwell at the top so the next fall reads as a deliberate stroke */
 @keyframes hammer-swing {
-  0%   { transform: rotate(-34deg); animation-timing-function: ease-in; }
+  0%   { transform: rotate(-45deg); animation-timing-function: ease-in; }
   50%  { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
-  57%  { transform: rotate(2deg);   animation-timing-function: ease-out; }
-  62%  { transform: rotate(-6deg);  animation-timing-function: ease-out; }
-  95%  { transform: rotate(-34deg); animation-timing-function: linear; }
-  100% { transform: rotate(-34deg); }
+  57%  { transform: rotate(3deg);   animation-timing-function: ease-out; }
+  62%  { transform: rotate(-10deg); animation-timing-function: ease-out; }
+  95%  { transform: rotate(-45deg); animation-timing-function: linear; }
+  100% { transform: rotate(-45deg); }
 }
 
 /* ── Strike-point tooth heat (synced to hammer impact at 50% of 1.4s = 0.7s) ── */
-.forge-scene .tooth-glow-0 {
+/* Strike point is now at the 9 o'clock tooth (tooth-glow-12 ≈ 124,180). */
+.forge-scene .tooth-glow-12 {
   animation: tooth-heat-pulse 1.4s 0.7s ease-out infinite;
 }
 /* Neighboring teeth glow faintly as the sprocket rotates past the strike point */
-.forge-scene .tooth-glow-15,
-.forge-scene .tooth-glow-1 {
+.forge-scene .tooth-glow-11,
+.forge-scene .tooth-glow-13 {
   animation: tooth-heat-pulse 1.4s 0.72s ease-out infinite;
   opacity: 0;
 }
@@ -218,12 +223,15 @@
 .forge-scene .spark-8 { animation: spark-fly-8 1.4s 0.70s ease-out infinite; }
 
 /* 8 pre-computed trajectories (angle, distance — hard-coded, no JS random).
-   Visible window is short (~0–35% of cycle) so each burst reads as a quick crackle. */
+   Visible window is short (~0–35% of cycle) so each burst reads as a quick crackle.
+   With the hammer striking the gear from the LEFT, the gear sits to the right
+   of the strike point — so trajectories are biased leftward/up/down to keep
+   sparks flying outward instead of into the spinning sprocket body. */
 /* Direction 1: upper-left  */ @keyframes spark-fly-1 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-28px,-38px);opacity:0} 100%{transform:translate(-28px,-38px);opacity:0} }
 /* Direction 2: upper       */ @keyframes spark-fly-2 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-4px,-44px);opacity:0}  100%{transform:translate(-4px,-44px);opacity:0}  }
-/* Direction 3: upper-right */ @keyframes spark-fly-3 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(26px,-40px);opacity:0}  100%{transform:translate(26px,-40px);opacity:0}  }
-/* Direction 4: right       */ @keyframes spark-fly-4 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(42px,-10px);opacity:0}  100%{transform:translate(42px,-10px);opacity:0}  }
-/* Direction 5: lower-right */ @keyframes spark-fly-5 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(34px,28px);opacity:0}   100%{transform:translate(34px,28px);opacity:0}   }
+/* Direction 3: upper-left  */ @keyframes spark-fly-3 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-26px,-40px);opacity:0} 100%{transform:translate(-26px,-40px);opacity:0} }
+/* Direction 4: far-left    */ @keyframes spark-fly-4 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-42px,-10px);opacity:0} 100%{transform:translate(-42px,-10px);opacity:0} }
+/* Direction 5: lower-left  */ @keyframes spark-fly-5 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-34px,28px);opacity:0}  100%{transform:translate(-34px,28px);opacity:0}  }
 /* Direction 6: lower-left  */ @keyframes spark-fly-6 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-32px,22px);opacity:0}  100%{transform:translate(-32px,22px);opacity:0}  }
 /* Direction 7: left        */ @keyframes spark-fly-7 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-44px,-6px);opacity:0}  100%{transform:translate(-44px,-6px);opacity:0}  }
 /* Direction 8: diagonal UL */ @keyframes spark-fly-8 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-20px,-48px);opacity:0} 100%{transform:translate(-20px,-48px);opacity:0} }
