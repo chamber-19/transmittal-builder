@@ -269,7 +269,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
         const{invoke}=await import("@tauri-apps/api/core");
         const children=await invoke("peek_subfolders",{path:root});
         if(cancelled)return;
-        const deptFolderRe=/^\d{2}-[A-Z][A-Z0-9_-]+$/;
+        const deptFolderRe=/^\d{2}-[A-Z][A-Z0-9_-]+$/i;
         const matches=children.filter(n=>deptFolderRe.test(n)).length;
         setRootHint(matches>=2);
       }catch{/* ignore — hint is advisory only */}
