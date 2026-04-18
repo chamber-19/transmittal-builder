@@ -1,12 +1,28 @@
-<!-- Rust gear logo — 10-tooth gear approximating the official Rust brand mark.
+<!-- Rust gear logo — improved version with gradient shading.
      Based on the Rust programming language logo (https://www.rust-lang.org/).
      The Rust logo is copyright the Rust Foundation and dual-licensed under
      Apache 2.0 / MIT; this recreation is used here for "Built with Rust"
      attribution per rust-lang.org media guide.
      See CREDITS.md for full attribution. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Rust">
-  <!-- 10-tooth gear body -->
-  <path fill="#E05D2B" d="
+  <defs>
+    <!-- Gear body gradient: orange-red with forge-light from upper-left -->
+    <radialGradient id="rust-gear-rg" cx="38%" cy="35%" r="62%">
+      <stop offset="0%"   stop-color="#F5803A"/>
+      <stop offset="45%"  stop-color="#E05D2B"/>
+      <stop offset="80%"  stop-color="#C44A1C"/>
+      <stop offset="100%" stop-color="#9E3810"/>
+    </radialGradient>
+    <!-- Subtle inner shadow on the bore ring -->
+    <radialGradient id="rust-bore-rg" cx="50%" cy="45%" r="50%">
+      <stop offset="0%"   stop-color="#0A0A0F"/>
+      <stop offset="70%"  stop-color="#141419"/>
+      <stop offset="100%" stop-color="#1E1E24"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 10-tooth gear body with gradient fill -->
+  <path fill="url(#rust-gear-rg)" d="
     M43.23,22.83 L44.43,10.39 L55.57,10.39 L56.77,22.83
     L60.49,24.04 L68.78,14.68 L77.79,21.23 L71.45,32.00
     L73.75,35.16 L85.95,32.47 L89.39,43.05 L77.93,48.05
@@ -18,8 +34,26 @@
     L22.07,48.05 L10.61,43.05 L14.05,32.47 L26.25,35.16
     L28.55,32.00 L22.21,21.23 L31.22,14.68 L39.51,24.04 Z
   "/>
-  <!-- Centre hole (punched out) -->
-  <circle cx="50" cy="50" r="13" fill="#0F1419"/>
-  <!-- Inner hub ring -->
+
+  <!-- Subtle top-left specular highlight -->
+  <path fill="#FF9A60" opacity="0.25" d="
+    M43.23,22.83 L44.43,10.39 L55.57,10.39 L56.77,22.83
+    L60.49,24.04 L68.78,14.68 L77.79,21.23 L71.45,32.00
+    L73.75,35.16 L50,35 L26.25,35.16
+    L28.55,32.00 L22.21,21.23 L31.22,14.68 L39.51,24.04 Z
+  "/>
+
+  <!-- Bore cutout with inner-shadow gradient -->
+  <circle cx="50" cy="50" r="13" fill="url(#rust-bore-rg)"/>
+
+  <!-- Inner hub ring (orange accent) -->
   <circle cx="50" cy="50" r="10" fill="none" stroke="#E05D2B" stroke-width="2.5"/>
+  <!-- Hub ring highlight (top edge lit) -->
+  <circle cx="50" cy="50" r="10" fill="none" stroke="#F07845" stroke-width="0.8"
+          stroke-dasharray="16 47" stroke-dashoffset="0" opacity="0.65"/>
+
+  <!-- Outer gear rim highlight line (upper-left portion lit) -->
+  <path fill="none" stroke="#F08050" stroke-width="0.8" opacity="0.35"
+    d="M43.23,22.83 L44.43,10.39 L55.57,10.39 L56.77,22.83
+       L60.49,24.04 L68.78,14.68 L77.79,21.23 L71.45,32.00"/>
 </svg>
