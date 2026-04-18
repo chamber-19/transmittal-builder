@@ -15,14 +15,14 @@
 - **Description**: Semi-photoreal SVG depicting a 16-tooth industrial sprocket with forged-steel
   gradient shading (multi-stop radial + forge-light angular overlay, chamfer specular ring, inner
   hub bore shadow) and a blacksmith's forging hammer with polished steel head and oak handle.
-  Includes tooth-tip glow circles, a rim-glow path, electric-arc overlay, impact flash, and 10
+  Includes tooth-tip glow circles, impact flash, and 10
   spark elements. All paths are native vector (no embedded rasters).
 - **Author**: Original work © R3P / ROOT3POWER ENGINEERING. Visual artwork regenerated using
   SVGMaker (`@genwave/svgmaker-mcp`) on 2026-04-18, then stitched with required CSS animation
   elements.
 - **License**: Proprietary — all rights reserved.
-- **Elements**: `#sprocket`, `#hammer`, `#rim-glow`, `.tooth-glow-0`–`.tooth-glow-15`,
-  `#electric-arc`, `.spark-1`–`.spark-10`, `#impact-flash`. Animated entirely via
+- **Elements**: `#sprocket`, `#hammer`, `.tooth-glow-0`–`.tooth-glow-15`,
+  `.spark-1`–`.spark-10`, `#impact-flash`. Animated entirely via
   `splash.css` keyframes.
 
 ### rust-logo.svg
