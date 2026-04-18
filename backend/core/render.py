@@ -19,11 +19,12 @@ from docx.table import Table
 _H = r"[-–—]"
 DOC_ID_RE = re.compile(rf"(R3P{_H}(\d+){_H}E(\d+){_H}(\d+))", re.IGNORECASE)
 
-# Matches one or more leading "XMTL" prefixes (with optional dash/underscore/
-# space and Unicode dash variants) so the rendered output gets exactly one
-# canonical "XMTL-" regardless of how the user typed the value, even pathological
-# inputs like "XMTL-XMTL-001".
-_XMTL_PREFIX_RE = re.compile(r"^(?:\s*xmtl[-_\s\u2013\u2014]*)+", re.IGNORECASE)
+# Matches a single leading "XMTL" prefix segment (with optional dash/
+# underscore/space and Unicode dash variants). Applied iteratively in
+# _normalize_xmtl_num so pathological inputs like "XMTL-XMTL-001" are
+# fully stripped without using a nested quantifier (which would be a
+# polynomial-ReDoS risk on whitespace-heavy inputs).
+_XMTL_PREFIX_RE = re.compile(r"^xmtl[-_\s\u2013\u2014]*", re.IGNORECASE)
 
 
 def _normalize_xmtl_num(raw: str) -> str:
@@ -31,10 +32,18 @@ def _normalize_xmtl_num(raw: str) -> str:
     Strip any user-supplied "XMTL"/"xmtl-"/"XMTL_"/"XMTL " prefix from a
     transmittal number. Returns the bare number (e.g. "001"). Empty input
     returns empty string. Mirror of the frontend `stripXmtlPrefix` helper.
+
+    Iterative (rather than `(?:…)+`) to avoid catastrophic backtracking on
+    inputs with long whitespace runs.
     """
     if not raw:
         return ""
-    return _XMTL_PREFIX_RE.sub("", str(raw)).strip()
+    s = str(raw).strip()
+    while True:
+        new_s = _XMTL_PREFIX_RE.sub("", s).strip()
+        if new_s == s:
+            return s
+        s = new_s
 
 
 def format_xmtl_label(raw: str) -> str:

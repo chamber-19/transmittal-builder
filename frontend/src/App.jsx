@@ -84,11 +84,19 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 @keyframes _spin{to{transform:rotate(360deg)}}
 `;
 
-/** Strip any leading "XMTL"/"xmtl" prefix (with optional dash/underscore/space)
- *  from a transmittal number so display + render code can re-add a single
- *  canonical "XMTL-" without doubling up. Mirrors backend `_normalize_xmtl_num`
- *  in core/render.py. */
-const stripXmtlPrefix=raw=>String(raw??"").trim().replace(/^(?:xmtl[-_\s\u2013\u2014]*)+/i,"").trim();
+/** Strip any leading "XMTL"/"xmtl" prefix (with optional dash/underscore/
+ *  space and Unicode dash variants) from a transmittal number. Iterative
+ *  to handle "XMTL-XMTL-001" without using a nested quantifier (mirror of
+ *  backend `_normalize_xmtl_num` in core/render.py). */
+const _XMTL_PREFIX=/^xmtl[-_\s\u2013\u2014]*/i;
+const stripXmtlPrefix=raw=>{
+  let s=String(raw??"").trim();
+  while(true){
+    const next=s.replace(_XMTL_PREFIX,"").trim();
+    if(next===s)return s;
+    s=next;
+  }
+};
 const formatXmtlLabel=raw=>{const v=stripXmtlPrefix(raw);return v?`XMTL-${v}`:"XMTL-???";};
 
 let _id=0;const uid=()=>`_${++_id}_${Date.now()}`;
