@@ -9,21 +9,19 @@ of Transmittal Builder.  The refactor happens in a dedicated branch
 
 ---
 
-## Pre-flight: create the standalone safety net
+## Pre-flight: standalone safety net (already complete)
 
-Before touching anything, tag and branch the current working state so the
-standalone version is permanently preserved:
+The standalone version of Transmittal Builder is preserved in three
+independent ways:
 
-```bash
-# In Transmittal-Builder
-git tag v1.0.0-standalone
-git push origin v1.0.0-standalone
-git checkout -b legacy/standalone-v1
-git push origin legacy/standalone-v1
-```
+- **Tag:** `v5.0.0` — immutable snapshot of the pre-extraction code.
+- **Branch:** `legacy/standalone-v1` — protected (`legacy/**` ruleset
+  blocks force-push and deletion); can receive emergency hotfixes via PR.
+- **GitHub Release:** https://github.com/Koraji95-coder/Transmittal-Builder/releases/tag/v5.0.0
+  with the signed Windows installer
+  (`R3P.Transmittal.Builder_5.0.0_x64-setup.exe`) attached.
 
-Then create a GitHub Release for the `v1.0.0-standalone` tag and attach the
-built installer binary.
+No further action is required before starting the extraction.
 
 ---
 
@@ -336,7 +334,7 @@ Push the `refactor/use-kc-framework` branch and open a PR targeting `main`.
 The PR must:
 
 - Pass the `Release` workflow (build sidecar + Vite + Tauri).
-- Show no regressions against the `v1.0.0-standalone` baseline.
+- Show no regressions against the `v5.0.0` baseline.
 - Include the `git diff --stat` showing only expected file changes.
 
 ---
@@ -344,8 +342,8 @@ The PR must:
 ## Step 8 — Tag a new Transmittal Builder release
 
 ```bash
-git tag v2.0.0   # or appropriate next version
-git push origin v2.0.0
+git tag v6.0.0
+git push origin v6.0.0
 ```
 
 The CI workflow creates the GitHub Release and attaches the installer
@@ -358,9 +356,9 @@ automatically.
 If anything goes wrong after the refactor PR is merged, the pre-extraction
 state is available at:
 
-- **Tag:** `v1.0.0-standalone` — immutable snapshot.
+- **Tag:** `v5.0.0` — immutable snapshot.
 - **Branch:** `legacy/standalone-v1` — can receive hotfixes.
-- **GitHub Release:** installer binary attached to the `v1.0.0-standalone`
+- **GitHub Release:** installer binary attached to the `v5.0.0`
   release page.
 
 To rebuild the standalone installer from the legacy branch:
