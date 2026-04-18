@@ -28,7 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from core.render import render_transmittal
+from core.render import render_transmittal, _normalize_xmtl_num
 from core.excel_parser import parse_drawing_index
 from core.pdf_merge import docx_to_pdf, merge_source_pdfs
 
@@ -370,7 +370,7 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
         except OSError:
             pass
 
-    existing_xmtl.sort()
+    existing_xmtl = sorted(set(existing_xmtl))
     next_num = _get_next_xmtl_num(xmtl_scan_dir)
 
     return {
@@ -409,7 +409,22 @@ def api_scan_projects(root: str, query: str = ""):
     except PermissionError as exc:
         raise HTTPException(403, f"Cannot read directory: {exc}") from exc
 
+    seen_paths: set[str] = set()
     for entry in entries:
+        # Skip numbered department folders ("01-ENGINEERING") and any
+        # transmittals subfolder — these are *inside* a project, not
+        # projects themselves. Without this filter, scanning a project
+        # root makes folders like "06-TRANSMITTALS" appear in the project
+        # picker (and clicking twice was registering as two adds).
+        if _DEPT_FOLDER_RE.match(entry.name):
+            continue
+        if _is_transmittals_folder(entry.name, entry.path):
+            continue
+        # Defensive dedupe by normalized path
+        norm = os.path.normpath(entry.path).lower()
+        if norm in seen_paths:
+            continue
+        seen_paths.add(norm)
         if _fuzzy_match(query, entry.name):
             projects.append(_build_project_meta(entry.path, entry.name))
 
@@ -472,6 +487,11 @@ def api_scan_folder(req: ScanFolderRequest):
 
     transmittals_folder: Optional[str] = None
     project_root: Optional[str] = None
+    # NOTE: pdf_sources is intentionally always [] now — the frontend's
+    # "PDF Sources Found" panel was removed in v5.0 in favor of the
+    # drag-and-drop dropzone, and computing the recursive walk on every
+    # project load was both expensive and unused. The field is kept in the
+    # response for backward compatibility with older clients.
     pdf_sources: list[dict] = []
 
     if is_xmtl_folder:
@@ -488,7 +508,6 @@ def api_scan_folder(req: ScanFolderRequest):
         project_root = candidate if os.path.isdir(candidate) else parent
         job_num, client_site = _parse_project_name(os.path.basename(project_root))
         output_dir = transmittals_folder
-        pdf_sources = _collect_pdf_sources(project_root, transmittals_folder)
 
     elif is_dept_folder:
         # ── Case D: selected folder is a numbered dept subfolder ──
@@ -498,7 +517,6 @@ def api_scan_folder(req: ScanFolderRequest):
         job_num, client_site = _parse_project_name(os.path.basename(project_root))
         transmittals_folder = _find_transmittals_subfolder(project_root)
         output_dir = transmittals_folder or project_root
-        pdf_sources = _collect_pdf_sources(project_root, transmittals_folder)
 
     elif has_dept_subfolders:
         # ── Case B: selected folder is a project root ────────
@@ -506,7 +524,6 @@ def api_scan_folder(req: ScanFolderRequest):
         job_num, client_site = _parse_project_name(folder_name)
         transmittals_folder = _find_transmittals_subfolder(folder_path)
         output_dir = transmittals_folder or folder_path
-        pdf_sources = _collect_pdf_sources(folder_path, transmittals_folder)
 
     else:
         # ── Case C: flat / legacy structure ──────────────────
@@ -514,7 +531,6 @@ def api_scan_folder(req: ScanFolderRequest):
         transmittals_folder = None
         job_num, client_site = _parse_project_name(folder_name)
         output_dir = folder_path
-        pdf_sources = []
 
     # ── Determine the directory to scan for XMTL-* folders ──
     scan_dir = transmittals_folder or output_dir
@@ -686,9 +702,11 @@ async def api_render_to_folder(
                 saved_pdfs.append(dest)
                 seen_names.add(bname)
 
-        # Determine output filenames
+        # Determine output filenames. Strip any leading "XMTL-" the user may
+        # have typed so the filename never contains "XMTL-XMTL-001".
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
-        xmtl_num = fields_dict.get("transmittal_num", "").strip() or _get_next_xmtl_num(output_dir)
+        raw_xmtl = fields_dict.get("transmittal_num", "").strip()
+        xmtl_num = _normalize_xmtl_num(raw_xmtl) or _get_next_xmtl_num(output_dir)
         project_desc = fields_dict.get("project_desc", "").strip()
         date_str = fields_dict.get("date", "")
         # Pad to 3 digits if purely numeric; non-numeric values (e.g. "ABC") are
@@ -713,6 +731,7 @@ async def api_render_to_folder(
             contacts=contacts_list,
             documents=documents_list,
             out_path=docx_tmp,
+            has_attached_drawings=bool(saved_pdfs),
         )
 
         # Create transmittal PDF
@@ -846,9 +865,11 @@ async def api_render(
             if pdf.filename and pdf.filename.lower().endswith(".pdf"):
                 saved_pdfs.append(_save_upload(pdf, pdf_dir))
 
-        # Build output filename
+        # Build output filename. Strip any leading "XMTL-" the user may have
+        # typed so the filename never contains "XMTL-XMTL-001".
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
-        xmtl_num = fields_dict.get("transmittal_num", "").strip() or "001"
+        raw_xmtl = fields_dict.get("transmittal_num", "").strip()
+        xmtl_num = _normalize_xmtl_num(raw_xmtl) or "001"
         project_desc = fields_dict.get("project_desc", "").strip()
         date_str = fields_dict.get("date", "")
         xmtl_num_padded = xmtl_num.zfill(3) if xmtl_num.isdigit() else xmtl_num
@@ -866,6 +887,7 @@ async def api_render(
             contacts=contacts_list,
             documents=documents_list,
             out_path=docx_out,
+            has_attached_drawings=bool(saved_pdfs),
         )
 
         # Create transmittal PDF

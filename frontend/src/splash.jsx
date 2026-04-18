@@ -29,14 +29,7 @@ import { createRoot } from "react-dom/client";
 import "./splash.css";
 import sprocketHammerSvg from "./assets/splash/sprocket-hammer.svg?raw";
 import r3pLogoUrl from "./assets/splash/r3p-logo-transparent.svg";
-
-// APP_VERSION — injected at build time by Vite; fallback to package version.
-// The typeof guard makes this safe in browser-preview mode (no Vite define).
-/* global __APP_VERSION__ */
-const APP_VERSION =
-  (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : null) ??
-  import.meta.env.VITE_APP_VERSION ??
-  "4.1.0";
+import { APP_VERSION } from "./version.js";
 
 // ── Runtime Tauri guard ────────────────────────────────────────────────────
 // window.__TAURI_INTERNALS__ is injected by the Tauri webview; absent in any

@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useId } from "react";
 import { initBackendUrl, refreshBackendUrl, getBackendUrl } from "./api/backend.js";
+import { APP_VERSION } from "./version.js";
 
 /* ═══════════════════════════════════════════════════════════════
-   R3P TRANSMITTAL BUILDER v4.0 — Wired Frontend
+   R3P TRANSMITTAL BUILDER — Wired Frontend
    API: /api/parse-index, /api/render, /api/email,
         /api/scan-projects, /api/scan-folder, /api/render-to-folder
    ═══════════════════════════════════════════════════════════════ */
@@ -51,11 +52,16 @@ const I={
 };
 
 // ─── Tokens ──────────────────────────────────────────────────
+// Warmed/darkened palette to align with the splash screen's brown fade-in
+// (#0a0806 → #1a1210). The previous tokens (#1C1B19 / #252420 / …) read as
+// neutral grey on launch, which made the transition from splash → app jarring.
+// The new values keep the same lightness hierarchy but shift the whole scale
+// warmer and ~3 shades darker.
 const T={
-  bg:"#1C1B19",bgEl:"#252420",bgCard:"#2C2B27",bgIn:"#33322D",bgHov:"#3A3934",
-  bd:"#3E3D38",bdFoc:"#C4884D",bdSub:"#33322D",
-  t1:"#F0ECE4",t2:"#A39E93",t3:"#736E64",tOn:"#1C1B19",
-  acc:"#C4884D",accH:"#D4994E",accM:"rgba(196,136,77,0.15)",accB:"rgba(196,136,77,0.3)",
+  bg:"#15110E",bgEl:"#1E1916",bgCard:"#241D18",bgIn:"#2A2218",bgHov:"#2F2620",
+  bd:"#3A2D22",bdFoc:"#C8823A",bdSub:"#2A2218",
+  t1:"#F0ECE4",t2:"#A39E93",t3:"#736E64",tOn:"#15110E",
+  acc:"#C8823A",accH:"#D89248",accM:"rgba(200,130,58,0.15)",accB:"rgba(200,130,58,0.3)",
   ok:"#6B9E6B",okBg:"rgba(107,158,107,0.12)",warn:"#C4A24D",warnBg:"rgba(196,162,77,0.12)",
   err:"#B85C5C",errBg:"rgba(184,92,92,0.12)",info:"#5C8EB8",infoBg:"rgba(92,142,184,0.12)",
   fB:"'DM Sans',system-ui,sans-serif",fM:"'JetBrains Mono','SF Mono',monospace",fD:"'Instrument Serif',Georgia,serif",
@@ -77,6 +83,13 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 @keyframes progressShrink{from{width:100%}to{width:0%}}
 @keyframes _spin{to{transform:rotate(360deg)}}
 `;
+
+/** Strip any leading "XMTL"/"xmtl" prefix (with optional dash/underscore/space)
+ *  from a transmittal number so display + render code can re-add a single
+ *  canonical "XMTL-" without doubling up. Mirrors backend `_normalize_xmtl_num`
+ *  in core/render.py. */
+const stripXmtlPrefix=raw=>String(raw??"").trim().replace(/^(?:xmtl[-_\s\u2013\u2014]*)+/i,"").trim();
+const formatXmtlLabel=raw=>{const v=stripXmtlPrefix(raw);return v?`XMTL-${v}`:"XMTL-???";};
 
 let _id=0;const uid=()=>`_${++_id}_${Date.now()}`;
 
@@ -211,6 +224,11 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
   const[selectedPath,setSelectedPath]=useState(null);
   const[rootHint,setRootHint]=useState(false);
   const[hintDismissed,setHintDismissed]=useState(false);
+  // Track whether the user has touched the root in this session — we only
+  // run the "looks like a single project folder" heuristic after a manual
+  // change, so the hint never pops up immediately on launch when the saved
+  // root is already the team's Active Projects directory.
+  const[rootTouched,setRootTouched]=useState(false);
   const debounceRef=useRef(null);
   const panelRef=useRef(null);
   const rootId=useId();
@@ -218,6 +236,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
 
   const saveRoot=v=>{
     setRoot(v);
+    setRootTouched(true);
     try{localStorage.setItem("r3p_projects_root",v)}catch{}
   };
 
@@ -226,26 +245,30 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
     if(picked)saveRoot(picked);
   };
 
-  // Check whether the chosen root looks like a single project folder
-  // (≥2 immediate children match the /^\d{2}-/ dept-folder pattern).
+  // Check whether the chosen root looks like a single project folder.
+  // The heuristic requires ≥2 children that match the *known* dept-folder
+  // shape: two digits, a dash, then an uppercase word (e.g. "01-ENGINEERING",
+  // "06-TRANSMITTALS"). The looser `^\d{2}-` pattern used previously also
+  // matched real project names like "25-074 NANULAK …", which made the
+  // warning fire on correct roots.
   useEffect(()=>{
     setRootHint(false);
     setHintDismissed(false);
-    if(!root||!isTauri)return;
+    if(!root||!isTauri||!rootTouched)return;
     let cancelled=false;
     const check=async()=>{
       try{
         const{invoke}=await import("@tauri-apps/api/core");
         const children=await invoke("peek_subfolders",{path:root});
         if(cancelled)return;
-        const deptFolderRe=/^\d{2}-/;
+        const deptFolderRe=/^\d{2}-[A-Z][A-Z0-9_-]+$/;
         const matches=children.filter(n=>deptFolderRe.test(n)).length;
         setRootHint(matches>=2);
       }catch{/* ignore — hint is advisory only */}
     };
     check();
     return()=>{cancelled=true};
-  },[root]);
+  },[root,rootTouched]);
 
   const doSearch=useCallback(async(r,q)=>{
     if(!r)return;
@@ -455,9 +478,9 @@ const thS={fontSize:"10px",fontWeight:600,fontFamily:T.fM,letterSpacing:"0.08em"
 const cMono={background:"transparent",border:"none",color:T.t1,fontFamily:T.fM,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 const cBody={background:"transparent",border:"none",color:T.t1,fontSize:"13px",padding:"4px 0",outline:"none",width:"100%"};
 
-function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templateFile,indexFile,pdfFiles,localPdfPaths,onFileDrop,clearTemplate,clearIndex,removePdf,removeLocalPdf,indexLoading,indexWarnings}){
+function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templateFile,indexFile,pdfFiles,onFileDrop,clearTemplate,clearIndex,removePdf,indexLoading,indexWarnings}){
   const inputRef=useRef(null);const[over,setOver]=useState(false);const prevent=e=>{e.preventDefault();e.stopPropagation()};
-  const hasAnything=documents.length>0||pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0)||indexFile;
+  const hasAnything=documents.length>0||pdfFiles.length>0||indexFile;
   return <Card>
     <SL>Documents</SL>
     <div onDragOver={e=>{prevent(e);setOver(true)}} onDragLeave={e=>{prevent(e);setOver(false)}}
@@ -465,14 +488,14 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templat
       style={{padding:"28px 20px",border:`1.5px dashed ${over?T.acc:T.bd}`,borderRadius:T.r,textAlign:"center",cursor:"pointer",transition:"all 0.2s",background:over?T.accM:"transparent",marginBottom:"16px"}}>
       <input ref={inputRef} type="file" multiple accept=".pdf,.xlsx,.xls,.docx" name="document_files" style={{display:"none"}} onChange={e=>{onFileDrop([...e.target.files]);e.target.value=""}}/>
       <div style={{color:over?T.acc:T.t3,marginBottom:"6px",display:"flex",justifyContent:"center"}}>{indexLoading?I.spin:I.upload}</div>
-      <div style={{fontSize:"14px",color:T.t1,fontWeight:500,marginBottom:"4px"}}>{indexLoading?"Parsing drawing index...":"Click to browse or drag and drop your files here"}</div>
-      <div style={{fontSize:"12px",color:T.t3,lineHeight:1.7}}><span style={{color:T.t2}}>PDFs</span> → source documents · <span style={{color:T.ok}}>Excel</span> → drawing index & revisions · <span style={{color:T.info}}>DOCX</span> → template</div>
+      <div style={{fontSize:"14px",color:T.t1,fontWeight:500,marginBottom:"4px"}}>{indexLoading?"Reading drawing index...":"Click to browse or drag and drop your files here"}</div>
+      <div style={{fontSize:"12px",color:T.t3,lineHeight:1.7}}><span style={{color:T.t2}}>PDFs</span> → source documents · <span style={{color:T.ok}}>Excel</span> → revision lookup (read-only) · <span style={{color:T.info}}>DOCX</span> → template</div>
     </div>
-    {(templateFile||indexFile||pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0))&&<div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"16px"}}>
+    {(templateFile||indexFile||pdfFiles.length>0)&&<div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"16px"}}>
       {templateFile&&<FileChip name={templateFile.name} type="doc" onRemove={clearTemplate}/>}
       {indexFile&&<FileChip name={indexFile.name} type="xl" onRemove={clearIndex}/>}
       {pdfFiles.map(f=><FileChip key={f.name} name={f.name} type="pdf" onRemove={()=>removePdf(f.name)}/>)}
-      {localPdfPaths&&localPdfPaths.map(p=>{const n=p.replace(/\\/g,"/").split("/").pop();return <FileChip key={p} name={n} type="pdf" onRemove={()=>removeLocalPdf(p)}/>;})}    </div>}
+    </div>}
     {indexWarnings&&indexWarnings.length>0&&<div style={{marginBottom:"12px",padding:"8px 12px",borderRadius:T.rS,background:T.warnBg,border:`1px solid rgba(196,162,77,0.3)`,fontSize:"12px",color:T.warn}}>{indexWarnings.join(" · ")}</div>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
       <SL sub mono>Document Index{documents.length>0&&<span style={{color:T.t3,fontWeight:400}}> · {documents.length} item{documents.length!==1?"s":""}</span>}</SL>
@@ -481,7 +504,7 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templat
         <Btn variant="ghost" icon={I.plus} onClick={addDoc} style={{padding:"4px 10px",fontSize:"12px"}}>Add Row</Btn>
       </div>
     </div>
-    {documents.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px solid ${T.bd}`,borderRadius:T.r,background:T.bgEl}}>Drop PDFs above to auto-populate, use "Add Row" for manual entries, or drop an Excel drawing index for revision data</div>:
+    {documents.length===0?<div style={{padding:"24px",textAlign:"center",color:T.t3,fontSize:"13px",border:`1px solid ${T.bd}`,borderRadius:T.r,background:T.bgEl}}>Drop PDFs above to auto-populate, use "Add Row" for manual entries, or drop an Excel drawing index to apply revisions to the rows below</div>:
       <><div style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"7px 12px",background:T.bgEl,borderRadius:`${T.rS} ${T.rS} 0 0`,borderBottom:`1px solid ${T.bd}`}}><span style={thS}>Doc No.</span><span style={thS}>Description</span><span style={thS}>Rev</span><span/></div>
       <div style={{border:`1px solid ${T.bd}`,borderTop:"none",borderRadius:`0 0 ${T.rS} ${T.rS}`,overflow:"hidden"}}>{documents.map((d,i)=><div key={d.id} style={{display:"grid",gridTemplateColumns:"160px 1fr 70px 36px",gap:"8px",padding:"5px 12px",alignItems:"center",borderBottom:i<documents.length-1?`1px solid ${T.bdSub}`:"none",background:i%2===0?"transparent":"rgba(255,255,255,0.008)"}}>
         <input value={d.docNo} onChange={e=>updateDoc(d.id,"docNo",e.target.value)} name={`doc_no_${i}`} aria-label={`Document number for row ${i+1}`} placeholder="E0-001" autoComplete="off" style={cMono}/>
@@ -492,70 +515,24 @@ function DocumentsSection({documents,updateDoc,removeDoc,addDoc,clearAll,templat
   </Card>;
 }
 
-// ─── PDF Sources Panel ───────────────────────────────────────
-function PdfSourcesPanel({pdfSources,localPdfPaths,onTogglePdf}){
-  const[expanded,setExpanded]=useState(null);
-  const[collapsed,setCollapsed]=useState(false);
-  if(!pdfSources||pdfSources.length===0)return null;
-  const selectedPdfPathsSet=new Set(localPdfPaths);
-  const totalPdfs=pdfSources.reduce((s,src)=>s+src.pdf_count,0);
-  return <Card>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:collapsed?"0":"12px",cursor:"pointer"}} onClick={()=>setCollapsed(v=>!v)}>
-      <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
-        <span style={{fontSize:"10px",color:T.t3,transition:"transform 0.2s",transform:collapsed?"rotate(-90deg)":"rotate(0deg)"}}>▼</span>
-        <SL>PDF Sources Found</SL>
-        {collapsed&&<Badge color="muted">{pdfSources.length} folder{pdfSources.length!==1?"s":""} · {totalPdfs} PDFs</Badge>}
-      </div>
-      {localPdfPaths.length>0&&<Badge color="success">{localPdfPaths.length} added</Badge>}
-    </div>
-    {!collapsed&&<><div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
-      {pdfSources.map((src,i)=>{
-        const isExp=expanded===i;
-        return <div key={src.path}>
-          <button onClick={()=>setExpanded(isExp?null:i)}
-            style={{display:"flex",alignItems:"center",gap:"8px",width:"100%",padding:"8px 10px",background:T.bgEl,border:`1px solid ${T.bdSub}`,borderRadius:isExp?`${T.rS} ${T.rS} 0 0`:T.rS,cursor:"pointer",textAlign:"left",transition:"background 0.15s"}}
-            onMouseEnter={e=>{e.currentTarget.style.background=T.bgHov}} onMouseLeave={e=>{e.currentTarget.style.background=T.bgEl}}>
-            <span style={{display:"flex",color:T.acc,flexShrink:0}}>{I.folder}</span>
-            <span style={{flex:1,fontSize:"12px",fontFamily:T.fM,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{src.label}</span>
-            <span style={{fontSize:"11px",color:T.t3,flexShrink:0,marginRight:"4px"}}>{src.pdf_count} PDFs</span>
-            <span style={{fontSize:"10px",color:T.t3,flexShrink:0}}>{isExp?"▼":"▶"}</span>
-          </button>
-          {isExp&&<div style={{border:`1px solid ${T.bdSub}`,borderTop:"none",borderRadius:`0 0 ${T.rS} ${T.rS}`,background:T.bgIn,maxHeight:"220px",overflowY:"auto"}}>
-            {src.pdf_files.map(pdfPath=>{
-              const name=pdfPath.replace(/\\/g,"/").split("/").pop();
-              const added=selectedPdfPathsSet.has(pdfPath);
-              return <div key={pdfPath} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 10px",borderBottom:`1px solid ${T.bdSub}`}}>
-                <span style={{display:"flex",color:added?T.ok:T.t3,flexShrink:0}}>{I.pdf}</span>
-                <span style={{flex:1,fontSize:"12px",fontFamily:T.fM,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</span>
-                <Btn variant={added?"secondary":"ghost"} onClick={()=>onTogglePdf(pdfPath)}
-                  style={{padding:"3px 8px",fontSize:"11px",flexShrink:0,color:added?T.ok:T.t2,borderColor:added?"rgba(107,158,107,0.4)":T.bd}}>
-                  {added?"✓ Added":"Add"}
-                </Btn>
-              </div>;
-            })}
-          </div>}
-        </div>;
-      })}
-    </div>
-    <div style={{marginTop:"8px",fontSize:"11px",color:T.t3}}>Click a folder to browse PDFs · click Add to include in this transmittal</div>
-    </>}
-  </Card>;
-}
-
 // ─── Sidebar ─────────────────────────────────────────────────
-function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templateFile,indexFile,onGenerate,onEmail,generating,projectFolderPath,nextXmtlNum}){
+function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFile,onGenerate,onEmail,generating,projectFolderPath,nextXmtlNum}){
   const filled=[draft.jobNum,draft.xmtlNum,draft.client,draft.projectDesc,draft.fromName,draft.date,draft.fromTitle,draft.fromEmail,draft.fromPhone,draft.firm].filter(Boolean).length;
   const total=10;const activeChecks=Object.values(checks).filter(Boolean).length;const goodContacts=contacts.filter(c=>c.name&&c.email).length;
-  const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0||(localPdfPaths&&localPdfPaths.length>0);
-  const totalPdfCount=pdfFiles.length+(localPdfPaths?localPdfPaths.length:0);
-  // Per-group option checks (each group counts once regardless of how many selected within it)
+  const hasT=!!templateFile,hasI=!!indexFile,hasP=pdfFiles.length>0;
+  const totalPdfCount=pdfFiles.length;
+  // Per-group option checks (each group counts once regardless of how many selected within it).
+  // Vendor Response is intentionally tracked but excluded from the readiness %
+  // and the "Option groups" tally below — it's hardly used in practice and was
+  // forcing the meter to plateau at 95% on every transmittal.
   const hasTransmitted=checks.trans_pdf||checks.trans_cad||checks.trans_originals;
   const hasSentVia=checks.via_email||checks.via_ftp;
   const hasCopyIntent=checks.ci_info||checks.ci_approval||checks.ci_bid||checks.ci_preliminary||checks.ci_const||checks.ci_asbuilt||checks.ci_fab||checks.ci_record||checks.ci_ref;
-  const hasVendorResponse=checks.vr_approved||checks.vr_approved_noted||checks.vr_rejected;
-  const optionGroupsFilled=[hasTransmitted,hasSentVia,hasCopyIntent,hasVendorResponse].filter(Boolean).length;
-  // Granular readiness: each field contributes individually
-  // PDFs are optional and don't reduce readiness when absent
+  const optionGroupsFilled=[hasTransmitted,hasSentVia,hasCopyIntent].filter(Boolean).length;
+  // Granular readiness: each field contributes individually.
+  // PDFs are optional and don't reduce readiness when absent.
+  // Vendor Response group is excluded — its 5% has been redistributed to
+  // template (+3) and docRows (+2) so the total still sums to 100.
   let pct=0;
   if(draft.jobNum)pct+=7;         // Job Number
   if(draft.xmtlNum)pct+=7;       // Transmittal No.
@@ -567,13 +544,12 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
   if(draft.fromEmail)pct+=3;      // Sender Email
   if(draft.fromPhone)pct+=2;      // Sender Phone
   if(draft.firm)pct+=2;           // Firm Registration
-  if(hasT)pct+=14;                // Template loaded
+  if(hasT)pct+=17;                // Template loaded (was 14, +3 from VR redistribution)
   if(goodContacts>0)pct+=9;       // Contacts
   if(hasTransmitted)pct+=8;       // Transmitted group (at least 1)
   if(hasSentVia)pct+=5;           // Sent Via group (at least 1)
   if(hasCopyIntent)pct+=8;        // Copy Intent group (at least 1)
-  if(hasVendorResponse)pct+=5;    // Vendor Response group (at least 1)
-  if(documents.length>0)pct+=6;   // Document index rows
+  if(documents.length>0)pct+=8;   // Document index rows (was 6, +2 from VR redistribution)
   if(hasI)pct+=4;                 // Drawing index (optional but counts)
   pct=Math.min(100,pct);
   const canGenerate=hasT&&documents.length>0&&filled>=4&&!generating;
@@ -584,14 +560,14 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
       <div style={{height:"4px",background:T.bgIn,borderRadius:"2px",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pct>=100?T.ok:T.acc,borderRadius:"2px",transition:"width 0.4s ease"}}/></div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Summary</SL><div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:totalPdfCount||"optional",ok:hasP,optional:true},{l:"Option groups",v:`${optionGroupsFilled} / 4`,ok:optionGroupsFilled===4},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
+      {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:totalPdfCount||"optional",ok:hasP,optional:true},{l:"Option groups",v:`${optionGroupsFilled} / 3`,ok:optionGroupsFilled===3},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
         <div key={x.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"12px",color:T.t2}}>{x.l}</span><Badge color={x.ok?"success":(x.optional?"info":"muted")}>{String(x.v)}</Badge></div>)}</div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Output</SL>
       {folderMode?<div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
         <div style={{display:"flex",alignItems:"center",gap:"6px"}}><span style={{color:T.ok,display:"flex"}}>{I.folder}</span><span style={{fontSize:"12px",fontWeight:600,color:T.ok}}>Folder Mode</span></div>
         <div style={{fontSize:"11px",fontFamily:T.fM,color:T.t3,wordBreak:"break-all",marginBottom:"4px"}}>{projectFolderPath}</div>
-        <Badge color="success">XMTL-{(draft.xmtlNum||"???")}</Badge>
+        <Badge color="success">{formatXmtlLabel(draft.xmtlNum)}</Badge>
         <div style={{display:"flex",flexDirection:"column",gap:"4px",marginTop:"4px"}}>
           <Badge color="info">Transmittal DOCX</Badge>
           <Badge color="info">Transmittal PDF</Badge>
@@ -626,7 +602,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,localPdfPaths,templat
 // ─── Header ──────────────────────────────────────────────────
 function Header(){return <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 32px",borderBottom:`1px solid ${T.bd}`,background:T.bgEl}}>
   <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
-    <div style={{width:"36px",height:"36px",borderRadius:"6px",background:`linear-gradient(135deg,${T.acc},#A06830)`,display:"flex",alignItems:"center",justifyContent:"center",color:T.tOn,fontFamily:T.fM,fontWeight:700,fontSize:"11px",letterSpacing:"-0.02em"}}>R3P</div>
+    <div style={{width:"36px",height:"36px",borderRadius:"6px",background:`linear-gradient(135deg,${T.acc},#7A4F22)`,display:"flex",alignItems:"center",justifyContent:"center",color:T.tOn,fontFamily:T.fM,fontWeight:700,fontSize:"11px",letterSpacing:"-0.02em"}}>R3P</div>
     <div><div style={{fontFamily:T.fD,fontSize:"18px",color:T.t1,lineHeight:1.2}}>Transmittal Builder</div><div style={{fontSize:"10px",fontFamily:T.fM,color:T.t3,letterSpacing:"0.06em"}}>ROOT3POWER</div></div>
   </div>
   <Btn variant="ghost" icon={I.grid}>Tools</Btn>
@@ -655,8 +631,6 @@ export default function App(){
   const[projectFolderPath,setProjectFolderPath]=useState(null); // absolute path (transmittals folder)
   const[nextXmtlNum,setNextXmtlNum]=useState(null);             // e.g. "003"
   const[projectRoot,setProjectRoot]=useState(null);             // project root folder name for breadcrumb
-  const[pdfSources,setPdfSources]=useState([]);                 // [{path,label,pdf_count,pdf_files}]
-  const[localPdfPaths,setLocalPdfPaths]=useState([]);           // absolute paths selected from pdfSources
   const[confirmDialog,setConfirmDialog]=useState(null);       // {title,message,onConfirm} or null
 
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
@@ -673,27 +647,15 @@ export default function App(){
       setProjectFolderPath(null);
       setNextXmtlNum(null);
       setProjectRoot(null);
-      setPdfSources([]);
-      setLocalPdfPaths([]);
       return;
     }
 
     showToast("Scanning project folder...","loading");
 
-    const applyProjectData=(outputDir,jobNum,clientSite,xmtlNum,root,sources)=>{
+    const applyProjectData=(outputDir,jobNum,clientSite,xmtlNum,root)=>{
       setProjectFolderPath(outputDir);
       setNextXmtlNum(xmtlNum);
       setProjectRoot(root||null);
-      // Deduplicate sources by path and exclude the output directory itself
-      const seen=new Set();
-      const deduped=(sources||[]).filter(s=>{
-        const norm=(s.path||"").replace(/\\/g,"/").toLowerCase();
-        const outNorm=(outputDir||"").replace(/\\/g,"/").toLowerCase();
-        if(seen.has(norm)||norm===outNorm)return false;
-        seen.add(norm);
-        return true;
-      });
-      setPdfSources(deduped);
       u("jobNum",jobNum);
       u("client",clientSite);
       u("xmtlNum",xmtlNum);
@@ -710,10 +672,7 @@ export default function App(){
 
       const outputDir=data.output_dir||selectedProject.path;
       const rootName=data.project_root?data.project_root.split(/[/\\]/).pop():null;
-      applyProjectData(outputDir,data.job_num||"",data.client_site||"",data.next_xmtl_num||"001",rootName,data.pdf_sources||[]);
-
-      // Reset local PDF paths to avoid stale selections from a previous scan
-      setLocalPdfPaths([]);
+      applyProjectData(outputDir,data.job_num||"",data.client_site||"",data.next_xmtl_num||"001",rootName);
 
       // Auto-load contacts from project (contacts.json found by backend)
       if(data.contacts&&data.contacts.length>0){
@@ -723,7 +682,7 @@ export default function App(){
       showToast(`Project loaded — XMTL-${data.next_xmtl_num} ready`,"success",4000);
     }catch(e){
       showToast(`Project scan failed: ${e.message}`,"error",6000);
-      applyProjectData(selectedProject.path,selectedProject.job_num||"",selectedProject.client_site||"",selectedProject.next_xmtl_num||"001",null,[]);
+      applyProjectData(selectedProject.path,selectedProject.job_num||"",selectedProject.client_site||"",selectedProject.next_xmtl_num||"001",null);
     }
   },[u]);
   const toggle=useCallback(k=>setChecks(p=>({...p,[k]:!p[k]})),[]);
@@ -735,6 +694,10 @@ export default function App(){
   const removeDoc=useCallback(id=>setDocuments(p=>p.filter(d=>d.id!==id)),[]);
 
   // ─── Parse Excel via API ─────────────────────────────────
+  // The drawing index is now a *revision lookup only* — parsing it never
+  // adds, removes, or replaces document rows. Rows come exclusively from
+  // PDFs (drag-drop or "Add Row"). We just merge in the `rev` column for
+  // any existing row whose docKey matches a row in the index.
   const parseIndex=useCallback(async(file)=>{
     setIndexLoading(true);setIndexWarnings([]);
     try{
@@ -743,19 +706,36 @@ export default function App(){
       const res=await fetch(`${API}/api/parse-index`,{method:"POST",body:form});
       const data=await res.json();
       if(!res.ok)throw new Error(data.detail||"Parse failed");
-      setDocuments(data.documents.map(d=>({id:uid(),docNo:d.doc_no,desc:d.desc,rev:d.rev})));
       if(data.warnings?.length)setIndexWarnings(data.warnings);
-      // Context-aware toast message
-      const hasPdfs=pdfFiles.length>0||localPdfPaths.length>0;
-      if(hasPdfs){
-        showToast(`Revisions updated for ${data.row_count} documents from uploaded PDFs`,"success");
-      }else{
-        showToast(`Drawing index loaded — ${data.row_count} documents imported from "${data.sheet_name}"`,"success");
+
+      // Build a docKey → rev map from the parsed index.
+      const revMap=new Map();
+      for(const d of (data.documents||[])){
+        const key=docKey(d.doc_no,d.desc);
+        if(key)revMap.set(key,d.rev||"");
       }
+
+      // Merge revisions into existing rows; never add or remove rows.
+      let matched=0;
+      setDocuments(prev=>prev.map(d=>{
+        const key=docKey(d.docNo,d.desc);
+        if(revMap.has(key)){
+          matched++;
+          return{...d,rev:revMap.get(key)||d.rev};
+        }
+        return d;
+      }));
+
+      showToast(
+        matched>0
+          ?`Revisions applied to ${matched} of ${data.row_count} index rows`
+          :`Index loaded — no matching PDF rows yet (revisions will apply once PDFs are added)`,
+        "success"
+      );
     }catch(e){
       showToast(`Index parse failed: ${e.message}`,"error");
     }finally{setIndexLoading(false)}
-  },[pdfFiles,localPdfPaths]);
+  },[]);
 
   // ─── Smart file router ───────────────────────────────────
   const onFileDrop=useCallback(files=>{
@@ -795,7 +775,9 @@ export default function App(){
   },[parseIndex]);
 
   const clearTemplate=useCallback(()=>setTemplateFile(null),[]);
-  const clearIndex=useCallback(()=>{setIndexFile(null);setDocuments([]);setIndexWarnings([])},[]);
+  // Clearing the index file no longer wipes document rows — the rows are
+  // owned by the PDF list, not the index. Existing `rev` values are kept.
+  const clearIndex=useCallback(()=>{setIndexFile(null);setIndexWarnings([])},[]);
   const removePdf=useCallback(name=>{
     setPdfFiles(p=>p.filter(f=>f.name!==name));
     // Sync-remove matching document row
@@ -803,35 +785,8 @@ export default function App(){
     const key=docKey(meta.doc_no,meta.desc);
     setDocuments(p=>p.filter(d=>docKey(d.docNo,d.desc)!==key));
   },[]);
-  const toggleLocalPdf=useCallback(path=>{
-    setLocalPdfPaths(prev=>{
-      const removing=prev.includes(path);
-      const next=removing?prev.filter(x=>x!==path):[...prev,path];
-      // Sync doc rows: add or remove based on toggle
-      const filename=path.replace(/\\/g,"/").split("/").pop();
-      const meta=extractDocMeta(filename);
-      const key=docKey(meta.doc_no,meta.desc);
-      if(removing){
-        setDocuments(p=>p.filter(d=>docKey(d.docNo,d.desc)!==key));
-      }else{
-        setDocuments(p=>{
-          if(p.some(d=>docKey(d.docNo,d.desc)===key))return p;
-          return[...p,{id:uid(),docNo:meta.doc_no,desc:meta.desc,rev:meta.rev,_pdfPath:path}];
-        });
-      }
-      return next;
-    });
-  },[]);
-  const removeLocalPdf=useCallback(path=>{
-    setLocalPdfPaths(p=>p.filter(x=>x!==path));
-    // Sync-remove matching document row
-    const filename=path.replace(/\\/g,"/").split("/").pop();
-    const meta=extractDocMeta(filename);
-    const key=docKey(meta.doc_no,meta.desc);
-    setDocuments(p=>p.filter(d=>docKey(d.docNo,d.desc)!==key));
-  },[]);
   const clearAllDocuments=useCallback(()=>{
-    setDocuments([]);setPdfFiles([]);setLocalPdfPaths([]);setIndexFile(null);setIndexWarnings([]);
+    setDocuments([]);setPdfFiles([]);setIndexFile(null);setIndexWarnings([]);
     showToast("All documents and PDFs cleared","info",3000);
   },[]);
 
@@ -847,7 +802,6 @@ export default function App(){
       from_email:draft.fromEmail,from_phone:draft.fromPhone,firm:draft.firm,
     };
     const contactsClean=contacts.filter(c=>c.name||c.email).map(({name,company,email,phone})=>({name,company,email,phone}));
-    const hasLocalPdfs=localPdfPaths.length>0;
 
     // ── Folder output mode ─────────────────────────────────
     if(projectFolderPath){
@@ -861,7 +815,6 @@ export default function App(){
         form.append("documents",JSON.stringify(documents.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
         form.append("output_dir",projectFolderPath);
         for(const pdf of pdfFiles){form.append("pdfs",pdf)}
-        if(hasLocalPdfs){form.append("local_pdf_paths",JSON.stringify(localPdfPaths))}
 
         const res=await fetch(`${API}/api/render-to-folder`,{method:"POST",body:form});
         if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
@@ -906,7 +859,7 @@ export default function App(){
     }catch(e){
       showToast(`Generation failed: ${e.message}`,"error",8000);
     }finally{setGenerating(false)}
-  },[templateFile,documents,draft,checks,contacts,pdfFiles,localPdfPaths,projectFolderPath]);
+  },[templateFile,documents,draft,checks,contacts,pdfFiles,projectFolderPath]);
 
   // ─── Generate with overwrite check ───────────────────────
   const handleGenerate=useCallback(()=>{
@@ -940,7 +893,6 @@ export default function App(){
         u("xmtlNum",nextXmtlNum);
         setDocuments([]);
         setPdfFiles([]);
-        setLocalPdfPaths([]);
         setIndexFile(null);
         setChecks({...defaultChecks});
         setIndexWarnings([]);
@@ -1047,15 +999,14 @@ export default function App(){
           <ProjectSection draft={draft} u={u} nextXmtlNum={nextXmtlNum} projectFolderPath={projectFolderPath} onNextXmtl={handleNextXmtl}/>
           <OptionsSection checks={checks} toggle={toggle} showToast={showToast}/>
           <ContactsSection contacts={contacts} updateContact={updateContact} removeContact={removeContact} addContact={addContact} savedLists={savedLists} onLoadList={onLoadList} onDeleteList={onDeleteList}/>
-          {pdfSources.length>0&&<PdfSourcesPanel pdfSources={pdfSources} localPdfPaths={localPdfPaths} onTogglePdf={toggleLocalPdf}/>}
-          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} clearAll={clearAllDocuments} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} removeLocalPdf={removeLocalPdf} indexLoading={indexLoading} indexWarnings={indexWarnings}/>
+          <DocumentsSection documents={documents} updateDoc={updateDoc} removeDoc={removeDoc} addDoc={addDoc} clearAll={clearAllDocuments} templateFile={templateFile} indexFile={indexFile} pdfFiles={pdfFiles} onFileDrop={onFileDrop} clearTemplate={clearTemplate} clearIndex={clearIndex} removePdf={removePdf} indexLoading={indexLoading} indexWarnings={indexWarnings}/>
         </div>
         <div style={{position:"sticky",top:"24px",alignSelf:"start"}}>
-          <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} localPdfPaths={localPdfPaths} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>
+          <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>
         </div>
       </div>
       <footer style={{display:"flex",justifyContent:"space-between",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
-        <span>R3P TRANSMITTAL BUILDER v4.0 — By Dustin</span><span>© 2025–2026 ROOT3POWER ENGINEERING</span>
+        <span>R3P TRANSMITTAL BUILDER v{APP_VERSION} — By Dustin</span><span>© 2019–2026 ROOT3POWER ENGINEERING</span>
       </footer>
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)} duration={toast?.duration||5000}/>

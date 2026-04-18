@@ -1,6 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'fs'
 import { resolve } from 'path'
+
+// Read the canonical app version from package.json so the value is never
+// stale, regardless of whether `npm_package_version` is set in the env.
+const PKG_VERSION = JSON.parse(
+  readFileSync(resolve(__dirname, 'package.json'), 'utf-8')
+).version
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -26,10 +33,11 @@ export default defineConfig({
 
   // ── Build-time constants ──────────────────────────────────────
   define: {
-    // APP_VERSION is read by the splash screen subtitle and updater footer.
-    // Falls back to "4.0.0" when npm_package_version is not set (e.g. in CI).
+    // APP_VERSION is read by the splash screen subtitle, the main app footer,
+    // and the updater. Sourced from package.json (see PKG_VERSION above) so
+    // bumping the version in one place propagates everywhere.
     __APP_VERSION__: JSON.stringify(
-      process.env.npm_package_version || "4.1.0"
+      process.env.npm_package_version || PKG_VERSION
     ),
   },
 

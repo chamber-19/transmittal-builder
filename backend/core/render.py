@@ -19,6 +19,29 @@ from docx.table import Table
 _H = r"[-–—]"
 DOC_ID_RE = re.compile(rf"(R3P{_H}(\d+){_H}E(\d+){_H}(\d+))", re.IGNORECASE)
 
+# Matches one or more leading "XMTL" prefixes (with optional dash/underscore/
+# space and Unicode dash variants) so the rendered output gets exactly one
+# canonical "XMTL-" regardless of how the user typed the value, even pathological
+# inputs like "XMTL-XMTL-001".
+_XMTL_PREFIX_RE = re.compile(r"^(?:\s*xmtl[-_\s\u2013\u2014]*)+", re.IGNORECASE)
+
+
+def _normalize_xmtl_num(raw: str) -> str:
+    """
+    Strip any user-supplied "XMTL"/"xmtl-"/"XMTL_"/"XMTL " prefix from a
+    transmittal number. Returns the bare number (e.g. "001"). Empty input
+    returns empty string. Mirror of the frontend `stripXmtlPrefix` helper.
+    """
+    if not raw:
+        return ""
+    return _XMTL_PREFIX_RE.sub("", str(raw)).strip()
+
+
+def format_xmtl_label(raw: str) -> str:
+    """Return canonical "XMTL-<num>" label, never doubling the prefix."""
+    bare = _normalize_xmtl_num(raw)
+    return f"XMTL-{bare}" if bare else ""
+
 
 def extract_doc_meta(filename: str) -> dict:
     """Parse an R3P filename into doc_no, desc, rev."""
@@ -225,6 +248,71 @@ CHECKBOX_MAP = [
 ]
 
 
+def _remove_reference_section(doc: Document) -> bool:
+    """
+    Remove the "REFERENCE" heading paragraph and its immediately-following
+    table from the document. Used when no source PDFs are attached, so the
+    rendered transmittal doesn't show an empty Reference table.
+
+    Returns True if a section was removed.
+
+    Detection: a paragraph whose text (stripped, lower-cased) starts with
+    "reference" (covers "REFERENCE:", "Reference", "References", etc.).
+    The first table that appears after that paragraph in document order is
+    treated as the reference table and removed alongside the heading.
+    """
+    body = doc.element.body
+    # qn() is needed to reference WordprocessingML element tags
+    from docx.oxml.ns import qn
+    p_tag = qn("w:p")
+    tbl_tag = qn("w:tbl")
+
+    # Helper to read concatenated text from a <w:p> element
+    def _p_text(el) -> str:
+        return "".join(t.text or "" for t in el.iter(qn("w:t")))
+
+    target_p = None
+    for child in list(body):
+        if child.tag == p_tag:
+            txt = _p_text(child).strip().lower().rstrip(":").strip()
+            if txt.startswith("reference"):
+                target_p = child
+                break
+
+    if target_p is None:
+        return False
+
+    # Walk forward from target_p, collecting siblings to remove until (and
+    # including) the first <w:tbl>. If no table is found before the next
+    # heading-like paragraph, just remove the heading itself.
+    to_remove = [target_p]
+    sibling = target_p.getnext()
+    table_found = False
+    while sibling is not None:
+        to_remove.append(sibling)
+        if sibling.tag == tbl_tag:
+            table_found = True
+            break
+        # Stop if we hit another heading-style paragraph (defensive — keeps
+        # us from eating subsequent sections if the template has no table)
+        if sibling.tag == p_tag:
+            txt = _p_text(sibling).strip()
+            if txt and len(txt) < 40 and txt.isupper():
+                # Looks like another heading — back off, only remove the
+                # heading paragraph itself.
+                to_remove = [target_p]
+                break
+        sibling = sibling.getnext()
+
+    if not table_found and len(to_remove) > 1:
+        # No table located — only safe to drop the heading itself
+        to_remove = [target_p]
+
+    for el in to_remove:
+        body.remove(el)
+    return True
+
+
 def render_transmittal(
     template_path: str,
     fields: dict,
@@ -232,6 +320,7 @@ def render_transmittal(
     contacts: List[Dict[str, str]],
     documents: List[Dict[str, str]],
     out_path: str,
+    has_attached_drawings: bool = True,
 ) -> str:
     """
     Render a transmittal .docx from a template.
@@ -243,6 +332,9 @@ def render_transmittal(
         contacts: List of {name, company, email, phone}
         documents: List of {doc_no, desc, rev}
         out_path: Where to save the rendered .docx
+        has_attached_drawings: When False, the "REFERENCE" heading and its
+            table are stripped from the output so no empty placeholder
+            section is left behind.
 
     Returns:
         The output path.
@@ -252,11 +344,17 @@ def render_transmittal(
 
     doc = Document(template_path)
 
+    # Normalize the transmittal number so the rendered text always reads
+    # "XMTL-001" — never "XMTL-XMTL-001" if the user already typed the prefix.
+    # The template contains "XMTL-<###>" literally, so we replace the
+    # placeholder with the bare numeric portion only.
+    xmtl_bare = _normalize_xmtl_num(fields.get("transmittal_num", ""))
+
     # Text replacements
     mapping = {
         "<DATE>": fields.get("date", ""),
         "R3P-<PRJ#>": fields.get("job_num", ""),
-        "XMTL-<###>": fields.get("transmittal_num", ""),
+        "XMTL-<###>": f"XMTL-{xmtl_bare}" if xmtl_bare else "",
         "<CLIENT> - <SITE NAME>": fields.get("client", ""),
         "<PROJECT DESCRIPTION>": fields.get("project_desc", ""),
         "Andrew Simmons, P.E.": fields.get("from_name", ""),
@@ -273,6 +371,13 @@ def render_transmittal(
 
     # Contacts
     fill_contacts_table(doc, contacts)
+
+    # If no source PDFs are being included, strip the Reference heading +
+    # its table BEFORE locating the Document Index table — both share the
+    # same header row ("Document No." / "Description" / "Revision") and
+    # find_table_by_headers returns the first match in document order.
+    if not has_attached_drawings:
+        _remove_reference_section(doc)
 
     # Document index
     idx_table = find_table_by_headers(doc, ["Document No.", "Description", "Revision"])
