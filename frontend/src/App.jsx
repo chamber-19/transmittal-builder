@@ -49,6 +49,7 @@ const I={
   spin:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{animation:"_spin 0.8s linear infinite",transformOrigin:"8px 8px",display:"block"}}><path d="M8 2a6 6 0 105.3 3.2"/></svg>,
   folder:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4.5A1.5 1.5 0 013.5 3h3l1.5 1.5H13A1.5 1.5 0 0114.5 6v5.5A1.5 1.5 0 0113 13H3A1.5 1.5 0 011.5 11.5v-7z"/></svg>,
   search:<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="6" r="4"/><line x1="9.5" y1="9.5" x2="13" y2="13"/></svg>,
+  warn:<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5L13 12H1L7 1.5z"/><line x1="7" y1="6" x2="7" y2="9"/><circle cx="7" cy="10.5" r="0.6" fill="currentColor" stroke="none"/></svg>,
 };
 
 // ─── Tokens ──────────────────────────────────────────────────
@@ -71,7 +72,12 @@ const T={
 const CSS=`
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:${T.bg};color:${T.t1};font-family:${T.fB};font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{background:${T.bg};color:${T.t1};font-family:${T.fB};font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;position:relative;min-height:100vh}
+/* Forge ambience overlay — mirrors the splash/loader hatch + vignette so the
+   hand-off from the loader to the main app reads as one continuous surface. */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:repeating-linear-gradient(-45deg,rgba(200,130,58,0.025) 0px,rgba(200,130,58,0.025) 1px,transparent 1px,transparent 8px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.45) 100%)}
+#root{position:relative;z-index:1}
 ::selection{background:${T.acc};color:${T.tOn}}
 input,select,textarea{font-family:inherit;font-size:inherit}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}
@@ -82,6 +88,12 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .toast-slide-down{animation:slideDown 0.25s ease forwards}
 @keyframes progressShrink{from{width:100%}to{width:0%}}
 @keyframes _spin{to{transform:rotate(360deg)}}
+/* Loader-style amber shimmer used on the Sidebar readiness bar. Mirrors
+   the .updater-progress-fill animation in updater.css. */
+@keyframes _readinessShimmer{0%{left:-60%;opacity:0}10%{opacity:1}80%{opacity:1}100%{left:110%;opacity:0}}
+.readiness-fill{position:relative;overflow:hidden;background:linear-gradient(90deg,${T.acc} 0%,#ffcc66 50%,${T.acc} 100%)}
+.readiness-fill::after{content:'';position:absolute;top:0;left:-60%;width:60%;height:100%;background:linear-gradient(90deg,transparent 0%,rgba(168,216,255,0.45) 50%,transparent 100%);animation:_readinessShimmer 2s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.readiness-fill::after{animation:none}}
 `;
 
 /** Strip any leading "XMTL"/"xmtl" prefix (with optional dash/underscore/
@@ -131,7 +143,7 @@ const statusScreenStyle={
 };
 
 // ─── Primitives ──────────────────────────────────────────────
-const SL=({children,mono,sub})=><div style={{marginBottom:sub?"6px":"14px"}}><span style={{fontSize:sub?"10px":"11px",fontWeight:600,fontFamily:mono?T.fM:T.fB,letterSpacing:"0.08em",textTransform:"uppercase",color:sub?T.t3:T.acc}}>{children}</span></div>;
+const SL=({children,mono,sub})=><div style={{marginBottom:sub?"6px":"14px"}}><span style={{fontSize:sub?"10px":"11px",fontWeight:600,fontFamily:mono?T.fM:T.fB,letterSpacing:"0.12em",fontVariant:"small-caps",textTransform:"uppercase",color:sub?T.t3:T.acc}}>{children}</span></div>;
 
 const labelToName=label=>label?label.toLowerCase().replace(/\s+/g,"_"):undefined;
 
@@ -239,6 +251,11 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
   const[rootTouched,setRootTouched]=useState(false);
   const debounceRef=useRef(null);
   const panelRef=useRef(null);
+  // Tracks whether the search input is currently focused. We only auto-open
+  // the results panel when the user is actively engaging with the field —
+  // otherwise the dropdown would pop up on first launch as soon as the saved
+  // projects root is restored from localStorage and the debounced search runs.
+  const searchFocusedRef=useRef(false);
   const rootId=useId();
   const searchId=useId();
 
@@ -289,7 +306,10 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
       const data=await res.json();
       if(!res.ok)throw new Error(data.detail||"Search failed");
       setResults(data.projects||[]);
-      setOpen(true);
+      // Only surface the dropdown if the user is actually engaging with the
+      // search field; otherwise we silently cache the results so the panel
+      // is instant the moment they focus it.
+      if(searchFocusedRef.current)setOpen(true);
     }catch(e){
       showToast(`Project search failed: ${e.message}`,"error",5000);
     }finally{setSearching(false)}
@@ -354,7 +374,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
 
     {/* Single-project hint */}
     {rootHint&&!hintDismissed&&<div style={{display:"flex",alignItems:"flex-start",gap:"8px",marginBottom:"8px",padding:"7px 10px",background:T.warnBg,border:`1px solid rgba(196,162,77,0.3)`,borderRadius:T.rS,fontSize:"11px",color:T.warn,lineHeight:1.45}}>
-      <span style={{flexShrink:0}}>⚠️</span>
+      <span style={{flexShrink:0,display:"flex",marginTop:"1px"}} aria-hidden="true">{I.warn}</span>
       <span style={{flex:1}}>This folder looks like a single project. Did you mean to point at its parent directory (the one containing all your projects)?</span>
       <button onClick={()=>setHintDismissed(true)} aria-label="Dismiss hint" style={{flexShrink:0,background:"none",border:"none",color:T.warn,cursor:"pointer",padding:"0 2px",lineHeight:1,fontSize:"13px",opacity:0.7}}>✕</button>
     </div>}
@@ -366,8 +386,8 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
         <label htmlFor={searchId} style={{position:"absolute",width:"1px",height:"1px",padding:0,margin:"-1px",overflow:"hidden",clip:"rect(0,0,0,0)",whiteSpace:"nowrap",border:0}}>Search projects</label>
         <input id={searchId} value={query} onChange={e=>setQuery(e.target.value)}
           name="project_search" aria-label="Search projects by name or job number"
-          onFocus={e=>{if(results.length>0||root)setOpen(true);e.target.style.borderColor=T.bdFoc}}
-          onBlur={e=>{e.target.style.borderColor=T.bd}}
+          onFocus={e=>{searchFocusedRef.current=true;if(results.length>0||root)setOpen(true);e.target.style.borderColor=T.bdFoc}}
+          onBlur={e=>{searchFocusedRef.current=false;e.target.style.borderColor=T.bd}}
           placeholder="Search projects by name, job number..."
           style={{width:"100%",padding:"6px 10px 6px 32px",background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:T.rS,color:T.t1,fontFamily:T.fB,fontSize:"13px",outline:"none",transition:"border-color 0.15s"}}/>
         {query&&<button onClick={()=>setQuery("")} style={{position:"absolute",right:"8px",background:"none",border:"none",color:T.t3,cursor:"pointer",display:"flex",padding:"2px"}}>{I.x}</button>}
@@ -564,8 +584,8 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
   const folderMode=!!projectFolderPath;
 
   return <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
-    <Card style={{padding:"18px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"10px"}}><span style={{fontSize:"12px",fontWeight:600,color:T.t2}}>Readiness</span><span style={{fontSize:"20px",fontWeight:600,fontFamily:T.fM,color:pct>=100?T.ok:T.acc}}>{pct}%</span></div>
-      <div style={{height:"4px",background:T.bgIn,borderRadius:"2px",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pct>=100?T.ok:T.acc,borderRadius:"2px",transition:"width 0.4s ease"}}/></div></Card>
+    <Card style={{padding:"18px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"10px"}}><span style={{fontSize:"12px",fontWeight:600,color:T.t2,fontVariant:"small-caps",letterSpacing:"0.08em"}}>Readiness</span><span style={{fontSize:"20px",fontWeight:600,fontFamily:T.fM,color:pct>=100?T.ok:T.acc}}>{pct}%</span></div>
+      <div style={{height:"6px",background:T.bgIn,borderRadius:"3px",overflow:"hidden",border:`1px solid ${T.bdSub}`}}><div className={pct>=100?"":"readiness-fill"} style={{height:"100%",width:`${pct}%`,background:pct>=100?T.ok:undefined,borderRadius:"3px",transition:"width 0.4s ease"}}/></div></Card>
 
     <Card style={{padding:"18px"}}><SL sub mono>Package Summary</SL><div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
       {[{l:"Project fields",v:`${filled} / ${total}`,ok:filled===total},{l:"Template",v:hasT?"loaded":"missing",ok:hasT},{l:"Drawing index",v:hasI?"loaded":"missing",ok:hasI},{l:"Source PDFs",v:totalPdfCount||"optional",ok:hasP,optional:true},{l:"Option groups",v:`${optionGroupsFilled} / 3`,ok:optionGroupsFilled===3},{l:"Contacts",v:goodContacts,ok:goodContacts>0},{l:"Doc index rows",v:documents.length,ok:documents.length>0}].map(x=>
@@ -608,12 +628,16 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
 }
 
 // ─── Header ──────────────────────────────────────────────────
+// Mirrors the splash/loader treatment: wordmark in small-caps with the
+// "Engineered to Deliver" tagline beneath in amber. The gradient R3P
+// square was retired from the loader, so we drop it here too. The right
+// side of the bar is intentionally empty — the previous "Tools" button
+// was a no-op and is removed pending a real menu.
 function Header(){return <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 32px",borderBottom:`1px solid ${T.bd}`,background:T.bgEl}}>
-  <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
-    <div style={{width:"36px",height:"36px",borderRadius:"6px",background:`linear-gradient(135deg,${T.acc},#7A4F22)`,display:"flex",alignItems:"center",justifyContent:"center",color:T.tOn,fontFamily:T.fM,fontWeight:700,fontSize:"11px",letterSpacing:"-0.02em"}}>R3P</div>
-    <div><div style={{fontFamily:T.fD,fontSize:"18px",color:T.t1,lineHeight:1.2}}>Transmittal Builder</div><div style={{fontSize:"10px",fontFamily:T.fM,color:T.t3,letterSpacing:"0.06em"}}>ROOT3POWER</div></div>
+  <div style={{display:"flex",flexDirection:"column",lineHeight:1.15}}>
+    <div style={{fontFamily:T.fB,fontSize:"15px",fontWeight:600,color:T.t1,fontVariant:"small-caps",letterSpacing:"0.12em"}}>Transmittal Builder</div>
+    <div style={{fontFamily:T.fM,fontSize:"10px",color:T.acc,letterSpacing:"0.18em",textTransform:"uppercase",marginTop:"2px"}}>Engineered to Deliver</div>
   </div>
-  <Btn variant="ghost" icon={I.grid}>Tools</Btn>
 </header>;}
 
 // ─── Main App ────────────────────────────────────────────────
@@ -1013,8 +1037,8 @@ export default function App(){
           <Sidebar draft={draft} checks={checks} contacts={contacts} documents={documents} pdfFiles={pdfFiles} templateFile={templateFile} indexFile={indexFile} onGenerate={handleGenerate} onEmail={handleEmail} generating={generating} projectFolderPath={projectFolderPath} nextXmtlNum={nextXmtlNum}/>
         </div>
       </div>
-      <footer style={{display:"flex",justifyContent:"space-between",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
-        <span>R3P TRANSMITTAL BUILDER v{APP_VERSION} — By Dustin</span><span>© 2019–2026 ROOT3POWER ENGINEERING</span>
+      <footer style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3,letterSpacing:"0.04em"}}>
+        <span>v{APP_VERSION} · Built by Dustin</span><span>© 2019–2026 ROOT3POWER ENGINEERING</span>
       </footer>
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)} duration={toast?.duration||5000}/>
