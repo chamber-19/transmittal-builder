@@ -89,7 +89,7 @@ Write-Step "Archiving existing installer"
 $ArchiveDir = Join-Path $DrivePath "archive"
 New-Item -ItemType Directory -Force -Path $ArchiveDir | Out-Null
 
-$ExistingInstallers = Get-ChildItem $DrivePath -Filter "*.exe" -File
+$ExistingInstallers = @(Get-ChildItem $DrivePath -Filter "*.exe" -File)
 foreach ($old in $ExistingInstallers) {
     $dest = Join-Path $ArchiveDir $old.Name
     if ($PSCmdlet.ShouldProcess($old.FullName, "Move to archive")) {
