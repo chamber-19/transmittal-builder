@@ -215,77 +215,96 @@
   </g><!-- end #sprocket -->
 
   <!-- ══ HAMMER group — pendulum swing by CSS (transform-origin: 0% 50%) ══ -->
-  <!-- Horizontal blacksmith hammer, positioned to the LEFT of the sprocket so
-       the striking face hits the gear's 9 o'clock tooth tip (~124, 180) instead
-       of overlapping the top of the gear at rest.
-       Bounding box: x=8..124, y=164..196.  width=116, height=32.
-       Pivot (transform-origin 0% 50%) → (x=8, y=180), at the grip end of the
-       handle, so the hammer swings like a pendulum hinged at its butt. At
-       rotate(0deg) the hammer is horizontal and the striking face right edge
-       (x=124) meets the left tooth tip (x≈124). Wind-up rotation is negative
-       (CCW) so the head lifts up and to the right. -->
+  <!-- Classic cross-peen blacksmith hammer, positioned to the LEFT of the
+       sprocket so the polished striking face hits the gear's 9 o'clock tooth
+       tip (~124, 180) instead of overlapping the top of the gear at rest.
+       Bounding box: x=8..124, y=156..204.  width=116, height=48 (mid y=180).
+       Pivot (transform-origin 0% 50%, fill-box) → (x=8, y=180), at the rounded
+       butt of the handle so the hammer swings like a pendulum hinged at its
+       grip end. At rotate(0deg) the hammer is horizontal and the striking face
+       right edge (x=124) meets the left tooth tip (x≈124). Wind-up rotation
+       is negative (CCW) so the head lifts up and to the right.
+
+       Silhouette layout (left → right):
+         butt cap → tapered wooden handle → cross-peen wedge → eye/socket →
+         main steel head → polished striking face. The vertical head is
+         markedly taller than the handle so the classic "stick + perpendicular
+         block" hammer silhouette reads at any rotation. -->
   <g id="hammer">
 
-    <!-- ── Wooden handle ── horizontal, tapered (thicker at head end, narrow at grip) -->
-    <!-- Tapered shaft: 12px tall at head end (x=80, y=174..186),
-         narrowing to 8px tall at grip (x=8, y=176.5..183.5) -->
-    <polygon points="8,176.5 80,174 80,186 8,183.5"
+    <!-- ── Wooden handle ── -->
+    <!-- Rounded butt cap at the grip end (anchors the pivot visually) -->
+    <ellipse cx="14" cy="180" rx="6" ry="5.5" fill="url(#wood-grain-lg)"/>
+    <ellipse cx="14" cy="180" rx="6" ry="5.5" fill="none"
+             stroke="#1e0e04" stroke-width="0.8" opacity="0.55"/>
+
+    <!-- Tapered shaft: 8px tall at grip (x=8, y=178..182) widening to 12px at
+         the head end (x=100, y=174..186) where it seats into the eye -->
+    <polygon points="8,178 100,174 100,186 8,182"
              fill="url(#wood-grain-lg)"/>
     <!-- Centre highlight (bright grain run along the handle) -->
-    <polygon points="8,179.7 80,179.3 80,180.7 8,180.3"
+    <polygon points="10,180 100,179.5 100,180.5 10,180.5"
              fill="#c89055" opacity="0.32"/>
     <!-- Top-edge shadow (depth + silhouette separation) -->
-    <polygon points="8,176.5 80,174 80,175 8,177.5"
+    <polygon points="8,178 100,174 100,175 8,179"
              fill="#1e0e04" opacity="0.30"/>
     <!-- Bottom-edge shadow -->
-    <polygon points="8,182.5 80,185 80,186 8,183.5"
+    <polygon points="8,181 100,185 100,186 8,182"
              fill="#1e0e04" opacity="0.42"/>
-    <!-- Two grip wrap bands (vertical now that the handle is horizontal) -->
-    <rect x="32" y="175.0" width="2.2" height="11" rx="1.0" fill="#2a1408" opacity="0.55"/>
-    <rect x="54" y="174.5" width="2.2" height="11.5" rx="1.0" fill="#2a1408" opacity="0.55"/>
+    <!-- Two grip wrap bands -->
+    <rect x="34" y="173.5" width="2.2" height="13" rx="1.0" fill="#2a1408" opacity="0.55"/>
+    <rect x="62" y="173.5" width="2.2" height="13" rx="1.0" fill="#2a1408" opacity="0.55"/>
 
-    <!-- ── Steel head ── cross-peen silhouette: peen wedge + eye collar + striking face -->
+    <!-- ── Steel head ── cross-peen silhouette -->
 
-    <!-- Peen (left): tapered wedge narrowing to a vertical chisel edge -->
-    <polygon points="80,170 80,190 58,184 58,180"
+    <!-- Cross-peen wedge: tapered, sticking OUT the LEFT side of the head
+         (opposite to the striking face). Narrows to a vertical chisel edge. -->
+    <polygon points="96,168 96,192 82,186 82,174"
              fill="url(#steel-head-lg)"/>
-
-    <!-- Striking face (right): squarish block, slightly taller than wide.
-         Right edge at x=124 meets the left tooth tip of the sprocket. -->
-    <rect x="98" y="166" width="26" height="28" rx="2" fill="url(#steel-head-lg)"/>
-
-    <!-- Eye collar (middle): raised band that visually clamps the handle -->
-    <rect x="80" y="164" width="18" height="32" rx="2.5" fill="url(#steel-head-lg)"/>
-
-    <!-- Striking-face polished right edge (brighter chamfer — the impact face) -->
-    <rect x="119" y="168" width="5" height="24" rx="1.5" fill="url(#strike-face-lg)"/>
-
-    <!-- Peen left-tip rear shadow (depth on the back face of the wedge) -->
-    <polygon points="58,180 63,181 63,183 58,184"
+    <!-- Peen tip polished chisel edge -->
+    <rect x="82" y="175" width="2" height="10" rx="0.5"
+          fill="url(#strike-face-lg)" opacity="0.85"/>
+    <!-- Peen rear-face depth shadow -->
+    <polygon points="82,184 86,185 86,186 82,186"
              fill="#000000" opacity="0.35"/>
 
-    <!-- Single top-edge highlight that spans peen → collar → face as one forged piece -->
-    <polygon points="60,181 80,166 98,164 122,166 124,168 98,167 80,167 62,182"
-             fill="#e0deda" opacity="0.55"/>
+    <!-- Main head body: tall vertical block (28×48), the unmistakable
+         "perpendicular block at end of stick" hammer silhouette -->
+    <rect x="96" y="156" width="28" height="48" rx="3" fill="url(#steel-head-lg)"/>
+    <!-- Side-depth shading on the head body -->
+    <rect x="96" y="156" width="28" height="48" rx="3"
+          fill="url(#steel-depth-lg)" opacity="0.55"/>
 
+    <!-- Eye / socket: raised collar band where the handle enters the head -->
+    <line x1="96" y1="172" x2="124" y2="172"
+          stroke="#1e1c18" stroke-width="0.7" opacity="0.55"/>
+    <line x1="96" y1="188" x2="124" y2="188"
+          stroke="#1e1c18" stroke-width="0.7" opacity="0.55"/>
+    <!-- Dark socket indent showing the wedge end of the handle inside the eye -->
+    <rect x="98" y="176" width="6" height="8" rx="1" fill="#0a0806" opacity="0.6"/>
+    <!-- Tiny wood-end-grain highlight inside the socket (handle wedge visible) -->
+    <rect x="99" y="177.5" width="4" height="5" rx="0.6"
+          fill="url(#wood-grain-lg)" opacity="0.55"/>
+
+    <!-- Polished striking face (bright vertical chamfer at the right edge) -->
+    <rect x="119" y="158" width="5" height="44" rx="1.5"
+          fill="url(#strike-face-lg)"/>
+
+    <!-- Top-edge highlight (forge light catches the crown of the head) -->
+    <rect x="97" y="156.5" width="26" height="2" rx="1"
+          fill="#e0deda" opacity="0.6"/>
     <!-- Subtle diagonal specular from upper-left (matches forge light from above) -->
-    <polygon points="66,180 86,168 120,168 122,172 86,172 68,182"
+    <polygon points="99,158 120,158 120,162 99,166"
              fill="#d8d6d0" opacity="0.18"/>
 
-    <!-- Lower edge bounce-light reflection (subtle) -->
-    <rect x="80" y="192" width="42" height="2.5" rx="1" fill="#6a6860" opacity="0.30"/>
+    <!-- Bottom-edge shadow (under-side of head) -->
+    <rect x="97" y="201" width="26" height="2.5" rx="1"
+          fill="#1e1c18" opacity="0.45"/>
 
-    <!-- Eye collar raised-band shadow lines (top + bottom outline of collar so it
-         reads as a raised ring rather than blending into the rest of the head) -->
-    <line x1="80" y1="164" x2="98" y2="164" stroke="#1e1c18" stroke-width="0.7" opacity="0.45"/>
-    <line x1="80" y1="196" x2="98" y2="196" stroke="#1e1c18" stroke-width="0.7" opacity="0.45"/>
-
-    <!-- Eye / handle socket indent (where the handle enters the head from the left) -->
-    <rect x="81" y="176" width="17" height="8" rx="1.5"
-          fill="none" stroke="#1e1c18" stroke-width="0.8" opacity="0.40"/>
-    <!-- Socket left shadow (depth into the eye cutout) -->
-    <rect x="81" y="177" width="3.5" height="6" rx="1"
-          fill="#000000" opacity="0.28"/>
+    <!-- Crisp silhouette outline on head body (separates head from gear teeth
+         on impact frame so the hammer doesn't visually merge into the sprocket) -->
+    <rect x="96" y="156" width="28" height="48" rx="3"
+          fill="none" stroke="#1a1816" stroke-width="0.6" opacity="0.55"/>
 
   </g><!-- end #hammer -->
 
