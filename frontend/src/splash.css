@@ -158,10 +158,11 @@
   to   { transform: rotate(-360deg); }
 }
 
-/* ── Hammer — fast pendulum swing (1.4s per cycle, impact at 50% = 0.7s) ── */
-/* Shorter cycle + gentler ease-in eliminates the "hovering at top" dead zone
-   that made the scene read as stuck. Lift back up uses linear timing so the
-   hammer doesn't asymptote into the raised position. */
+/* ── Hammer — pendulum swing (1.4s per cycle, impact at 50% = 0.7s) ──────── */
+/* The lift phase uses ease-out so the hammer decelerates as it approaches the
+   raised position and then dwells briefly at the top. Without this the eye
+   reacquires the hammer mid-lift at high constant velocity right as the
+   impact flash fades, which reads as a jarring "reset". */
 .forge-scene #hammer {
   transform-box: fill-box;
   transform-origin: center 85%;
@@ -169,18 +170,19 @@
   animation: hammer-swing 1.4s linear infinite;
 }
 
-/* Single back-and-forth swing: rise → fall → strike → rebound → rise.
-   Each segment declares its own timing function:
-     0→50%   plain ease-in (gravity-like fall, no hover at top)
-     50→57%  snappy spring-out on impact (small overshoot to sell the hit)
-     57→70%  ease-out rebound
-     70→100% linear lift (constant speed up, no asymptotic approach to raised) */
+/* Single back-and-forth swing: fall → strike → rebound → wind-up → dwell.
+     0  → 50%  ease-in fall (gravity-like, no hover at top of arc)
+     50 → 57%  snappy spring-out on impact (small overshoot to sell the hit)
+     57 → 62%  quick rebound off the anvil
+     62 → 95%  ease-out lift (decelerates into the wind-up position)
+     95 → 100% dwell at the top so the next fall reads as a deliberate stroke */
 @keyframes hammer-swing {
-  0%   { transform: rotate(-32deg); animation-timing-function: ease-in; }
+  0%   { transform: rotate(-34deg); animation-timing-function: ease-in; }
   50%  { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
   57%  { transform: rotate(2deg);   animation-timing-function: ease-out; }
-  70%  { transform: rotate(-6deg);  animation-timing-function: linear; }
-  100% { transform: rotate(-32deg); }
+  62%  { transform: rotate(-6deg);  animation-timing-function: ease-out; }
+  95%  { transform: rotate(-34deg); animation-timing-function: linear; }
+  100% { transform: rotate(-34deg); }
 }
 
 /* ── Strike-point tooth heat (synced to hammer impact at 50% of 1.4s = 0.7s) ── */
@@ -200,29 +202,6 @@
   25%  { opacity: 0.4; }
   60%  { opacity: 0; }
   100% { opacity: 0; }
-}
-
-/* ── Rim glow: removed from the splash (kept in SVG for backward compat) ──── */
-.forge-scene #rim-glow {
-  display: none;
-}
-
-
-/* ── Electric arc (CLANK-moment crackle around sprocket rim) ─────────────── */
-/* Default: hidden (stroke-dashoffset = circumference ≈ 440px for r=70) */
-.forge-scene #electric-arc {
-  opacity: 0;
-}
-.forge-scene.arc-crackle #electric-arc {
-  animation: arc-draw 0.75s ease-out forwards;
-}
-
-@keyframes arc-draw {
-  0%   { stroke-dashoffset: 440; opacity: 0; }
-  15%  { opacity: 1; }
-  55%  { stroke-dashoffset: 0;   opacity: 1; }
-  80%  { stroke-dashoffset: 0;   opacity: 0.7; }
-  100% { stroke-dashoffset: 0;   opacity: 0; }
 }
 
 /* ── Impact flash pulse (synced to hammer impact at 50% of 1.4s = 0.7s) ──── */

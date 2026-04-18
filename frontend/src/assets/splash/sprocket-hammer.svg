@@ -106,11 +106,6 @@
   <!-- ══ SPROCKET group — rotated CCW continuously by CSS ══ -->
   <g id="sprocket">
 
-    <!-- Rim-glow element (display:none via CSS — kept for CSS backward-compat) -->
-    <path id="rim-glow"
-      d="M 200,115 A 65,65 0 1 1 199.999,115"
-      fill="#8a5520" opacity="0"/>
-
     <!-- ── Gear body: outer disk fill ── -->
     <!-- Step 1: main forged-steel radial gradient fill -->
     <circle cx="200" cy="180" r="65" fill="url(#sprocket-rg)"/>
@@ -122,10 +117,10 @@
     <circle cx="200" cy="180" r="50" fill="#1e1c18"/>
 
     <!-- Step 4: inner-shadow at the edge of the bore opening (depth cue) -->
-    <circle cx="200" cy="180" r="50" fill="none" stroke="#0a0a08" stroke-width="4" opacity="0.6"/>
+    <circle cx="200" cy="180" r="50" fill="none" stroke="#0a0a08" stroke-width="5" opacity="0.5"/>
 
     <!-- Step 5: chamfer / specular ring on outer face of rim -->
-    <circle cx="200" cy="180" r="60" fill="none" stroke="url(#chamfer-rg)" stroke-width="8" opacity="1"/>
+    <circle cx="200" cy="180" r="60" fill="none" stroke="url(#chamfer-rg)" stroke-width="5" opacity="1"/>
 
     <!-- Step 6: outer rim top-edge highlight line -->
     <circle cx="200" cy="180" r="65" fill="none" stroke="#787672" stroke-width="1.2" opacity="0.45"/>
@@ -157,25 +152,8 @@
       <path d="M177.5,135.4 L170.7,122.0 L179.7,118.3 L184.4,132.5 Z"/>
       <path d="M162.1,147.4 L150.7,137.6 L157.6,130.7 L167.4,142.1 Z"/>
     </g>
-    <!-- Forge-light overlay on teeth too -->
-    <g fill="url(#forge-light-lg)">
-      <path d="M196.3,130.1 L195.2,115.2 L204.8,115.2 L203.7,130.1 Z"/>
-      <path d="M215.6,132.5 L220.3,118.3 L229.3,122.0 L222.5,135.4 Z"/>
-      <path d="M232.6,142.1 L242.4,130.7 L249.3,137.6 L237.9,147.4 Z"/>
-      <path d="M244.6,157.5 L258.0,150.7 L261.7,159.7 L247.5,164.4 Z"/>
-      <path d="M249.9,176.3 L264.8,175.2 L264.8,184.8 L249.9,183.7 Z"/>
-      <path d="M247.5,195.6 L261.7,200.3 L258.0,209.3 L244.6,202.5 Z"/>
-      <path d="M237.9,212.6 L249.3,222.4 L242.4,229.3 L232.6,217.9 Z"/>
-      <path d="M222.5,224.6 L229.3,238.0 L220.3,241.7 L215.6,227.5 Z"/>
-      <path d="M203.7,229.9 L204.8,244.8 L195.2,244.8 L196.3,229.9 Z"/>
-      <path d="M184.4,227.5 L179.7,241.7 L170.7,238.0 L177.5,224.6 Z"/>
-      <path d="M167.4,217.9 L157.6,229.3 L150.7,222.4 L162.1,212.6 Z"/>
-      <path d="M155.4,202.5 L142.0,209.3 L138.3,200.3 L152.5,195.6 Z"/>
-      <path d="M150.1,183.7 L135.2,184.8 L135.2,175.2 L150.1,176.3 Z"/>
-      <path d="M152.5,164.4 L138.3,159.7 L142.0,150.7 L155.4,157.5 Z"/>
-      <path d="M162.1,147.4 L150.7,137.6 L157.6,130.7 L167.4,142.1 Z"/>
-      <path d="M177.5,135.4 L170.7,122.0 L179.7,118.3 L184.4,132.5 Z"/>
-    </g>
+    <!-- Forge-light overlay on teeth removed: the duplicated layer muddied
+         tooth edges as the gear rotates. Tooth-tip specular above is enough. -->
 
     <!-- ── Inner machined channel / web area ── -->
     <!-- Web fill matching the bore -->
@@ -185,12 +163,12 @@
     <circle cx="200" cy="180" r="49" fill="none" stroke="#101010" stroke-width="1" opacity="0.6"/>
 
     <!-- ── Three spokes (90° / 210° / 330°) — nod to ROOT3POWER ── -->
-    <rect x="218" y="177" width="32" height="6" rx="3"
+    <rect x="220" y="177" width="30" height="6" rx="3"
           fill="url(#spoke-lg)" stroke="#20201e" stroke-width="0.6"/>
-    <rect x="-16" y="-3" width="32" height="6" rx="3"
+    <rect x="-14" y="-3" width="30" height="6" rx="3"
           fill="url(#spoke-lg)" stroke="#20201e" stroke-width="0.6"
           transform="translate(183,209.5) rotate(120)"/>
-    <rect x="-16" y="-3" width="32" height="6" rx="3"
+    <rect x="-14" y="-3" width="30" height="6" rx="3"
           fill="url(#spoke-lg)" stroke="#20201e" stroke-width="0.6"
           transform="translate(183,150.5) rotate(240)"/>
 
@@ -230,63 +208,73 @@
   </g><!-- end #sprocket -->
 
   <!-- ══ HAMMER group — pendulum swing by CSS (transform-origin: center 85%) ══ -->
-  <!-- Bounding box approx: x=169..231, y=89..197
-       center≈(200,143)   85% down = y≈143 + 0.35*(197-89)≈181 ≈ sprocket center ✓ -->
+  <!-- Cross-peen blacksmith hammer.
+       Bounding box: x=169..235, y=84..197.  width=66, height=113.
+       Horizontal midpoint = 202, ~at sprocket center x=200.
+       transform-origin: center 85% → pivot at y = 84 + 0.85*113 = 180.05 ≈ sprocket center y=180 ✓
+       Striking face bottom edge sits at y=114, just above strike-point tooth at (200,115). -->
   <g id="hammer">
 
-    <!-- Wooden handle — oak-brown, subtle grain, slight taper -->
-    <!-- Main shaft -->
-    <rect x="195.5" y="114" width="9" height="83" rx="2.5" fill="url(#wood-grain-lg)"/>
+    <!-- ── Wooden handle ── thicker, tapered (wider at head, narrow at grip) -->
+    <!-- Tapered shaft: top 13px wide at y=114, narrowing to 9px wide at y=197 -->
+    <polygon points="193.5,114 206.5,114 204.5,197 195.5,197"
+             fill="url(#wood-grain-lg)"/>
     <!-- Centre highlight (bright grain run) -->
-    <rect x="198.5" y="114" width="2.5" height="83" rx="1" fill="#c89055" opacity="0.30"/>
-    <!-- Right-edge shadow (depth) -->
-    <rect x="203.5" y="114" width="1.5" height="83" rx="0.5" fill="#1e0e04" opacity="0.28"/>
-    <!-- Grip wrap bands -->
-    <rect x="195.5" y="140" width="9" height="1.8" rx="0.8" fill="#2a1408" opacity="0.45"/>
-    <rect x="195.5" y="153" width="9" height="1.8" rx="0.8" fill="#2a1408" opacity="0.45"/>
-    <rect x="195.5" y="166" width="9" height="1.8" rx="0.8" fill="#2a1408" opacity="0.45"/>
+    <polygon points="199.3,114 200.7,114 200.4,197 199.6,197"
+             fill="#c89055" opacity="0.32"/>
+    <!-- Right-edge shadow (depth + silhouette separation) -->
+    <polygon points="205.0,114 206.5,114 204.5,197 203.5,197"
+             fill="#1e0e04" opacity="0.42"/>
+    <!-- Left-edge shadow -->
+    <polygon points="193.5,114 195.0,114 196.5,197 195.5,197"
+             fill="#1e0e04" opacity="0.30"/>
+    <!-- Two grip wrap bands (down from three for cleaner small-size read) -->
+    <rect x="194.5" y="148" width="11" height="2.2" rx="1.0" fill="#2a1408" opacity="0.55"/>
+    <rect x="195.0" y="170" width="10" height="2.2" rx="1.0" fill="#2a1408" opacity="0.55"/>
 
-    <!-- Steel head — main body with multi-stop vertical gradient -->
-    <rect x="169" y="89" width="62" height="26" rx="3" fill="url(#steel-head-lg)"/>
+    <!-- ── Steel head ── cross-peen silhouette: peen wedge + eye collar + striking face -->
 
-    <!-- Steel head — left face shadow (rear/poll face) -->
-    <rect x="169" y="89" width="7" height="26" rx="2.5" fill="url(#steel-depth-lg)"/>
+    <!-- Peen (left): tapered wedge narrowing to a horizontal chisel edge -->
+    <polygon points="191,86 191,114 169,102 169,98"
+             fill="url(#steel-head-lg)"/>
 
-    <!-- Steel head — striking-face right edge (brighter, polished) -->
-    <rect x="226" y="89" width="5" height="26" rx="2" fill="url(#strike-face-lg)"/>
+    <!-- Striking face (right): squarish block, slightly taller than wide -->
+    <rect x="209" y="86" width="26" height="28" rx="2" fill="url(#steel-head-lg)"/>
 
-    <!-- Steel head — top bevel highlight (forged upper edge, bright) -->
-    <rect x="169" y="89" width="62" height="4" rx="2.5"
-          fill="#e0deda" opacity="0.45"/>
+    <!-- Eye collar (middle): raised band that visually clamps the handle -->
+    <rect x="191" y="84" width="18" height="32" rx="2.5" fill="url(#steel-head-lg)"/>
 
-    <!-- Steel head — lower edge (slight bounce-light reflection from anvil) -->
-    <rect x="170" y="111" width="60" height="4" rx="1.5"
-          fill="#6a6860" opacity="0.35"/>
+    <!-- Striking-face polished right edge (brighter chamfer) -->
+    <rect x="230" y="88" width="5" height="24" rx="1.5" fill="url(#strike-face-lg)"/>
 
-    <!-- Steel head — angled specular highlight band across upper face -->
-    <polygon points="182,92 215,92 218,98 179,98"
-             fill="#d8d6d0" opacity="0.20"/>
+    <!-- Peen left-tip rear shadow (depth on the back face of the wedge) -->
+    <polygon points="169,98 174,99 174,101 169,102"
+             fill="#000000" opacity="0.35"/>
 
-    <!-- Eye / handle socket indent line (subtle dark outline) -->
-    <rect x="192" y="91" width="16" height="23" rx="2.5"
-          fill="none" stroke="#1e1c18" stroke-width="0.9" opacity="0.45"/>
+    <!-- Single top-edge highlight that spans peen → collar → face as one forged piece -->
+    <polygon points="171,99 191,87 209,85 233,87 235,89 209,88 191,89 173,100"
+             fill="#e0deda" opacity="0.55"/>
 
-    <!-- Socket top shadow (hammer head-eye cutout depth) -->
-    <rect x="193" y="91" width="14" height="4" rx="1.5"
-          fill="#000000" opacity="0.20"/>
+    <!-- Subtle diagonal specular from upper-left (matches sprocket light source from above) -->
+    <polygon points="178,100 198,89 230,89 232,93 198,93 180,103"
+             fill="#d8d6d0" opacity="0.18"/>
+
+    <!-- Lower edge bounce-light reflection (subtle) -->
+    <rect x="192" y="112" width="42" height="2.5" rx="1" fill="#6a6860" opacity="0.30"/>
+
+    <!-- Eye collar raised-band shadow lines (top + bottom outline of collar so it
+         reads as a raised ring rather than blending into the rest of the head) -->
+    <line x1="191" y1="86" x2="191" y2="114" stroke="#1e1c18" stroke-width="0.7" opacity="0.45"/>
+    <line x1="209" y1="86" x2="209" y2="114" stroke="#1e1c18" stroke-width="0.7" opacity="0.45"/>
+
+    <!-- Eye / handle socket indent (where the handle enters the head) -->
+    <rect x="194" y="86" width="12" height="28" rx="1.5"
+          fill="none" stroke="#1e1c18" stroke-width="0.8" opacity="0.40"/>
+    <!-- Socket top shadow (depth into the eye cutout) -->
+    <rect x="195" y="86" width="10" height="3.5" rx="1"
+          fill="#000000" opacity="0.28"/>
 
   </g><!-- end #hammer -->
-
-  <!-- ══ Electric arc (CLANK-moment crackle around sprocket rim) ══ -->
-  <path id="electric-arc"
-    d="M 130,180 A 70,70 0 1 1 270,180 A 70,70 0 1 1 130,180"
-    fill="none"
-    stroke="#a8d8ff"
-    stroke-width="1.8"
-    stroke-linecap="round"
-    stroke-dasharray="440"
-    stroke-dashoffset="440"
-    opacity="0"/>
 
   <!-- ══ Impact flash (circle at strike point, CSS animated) ══ -->
   <circle id="impact-flash"

@@ -11,7 +11,7 @@
  * Chrome sequence (driven by setTimeout in the sequencer useEffect):
  *   t=   50 ms  content fades in
  *   t=  850 ms  progress bar + version meta fade in
- *   t= 8500 ms  clank impact (flash overlay + electric arc)
+ *   t= 8500 ms  clank impact (flash overlay)
  *   t=10500 ms  content fades out
  */
 
@@ -120,15 +120,15 @@ function msgClass(kind) {
 }
 
 // ── ForgeScene: memoized SVG container ───────────────────────────────────
-// CRITICAL: this component is wrapped in memo() so it only re-renders when
-// `arcCrackle` actually changes. Without this, every spinner tick and progress
-// crawler tick would reconcile the SVG branch and starve the CSS animation
-// of main-thread time during the first 3s of startup — which was the visible
-// "sprocket hangs up during stage 01 then unfreezes at stage 03" bug.
-const ForgeScene = memo(function ForgeScene({ arcCrackle }) {
+// CRITICAL: this component is wrapped in memo() with no props so it never
+// re-renders. Without this, every spinner tick and progress crawler tick
+// would reconcile the SVG branch and starve the CSS animation of main-thread
+// time during the first 3s of startup — which was the visible "sprocket hangs
+// up during stage 01 then unfreezes at stage 03" bug.
+const ForgeScene = memo(function ForgeScene() {
   return (
     <div
-      className={`forge-scene${arcCrackle ? " arc-crackle" : ""}`}
+      className="forge-scene"
       dangerouslySetInnerHTML={{ __html: sprocketHammerSvg }}
       aria-hidden="true"
     />
@@ -142,7 +142,6 @@ function Splash({ onLoopRestart = null }) {
   const [fadingOut, setFadingOut]           = useState(false);
   const [chromeVisible, setChromeVisible]   = useState(false);
   const [flash, setFlash]                   = useState(false);
-  const [arcCrackle, setArcCrackle]         = useState(false);
   // null = unknown (waiting for Tauri), true = first run (full mode), false = short mode
   const [isFirstRun, setIsFirstRun]         = useState(null);
 
@@ -360,8 +359,6 @@ function Splash({ onLoopRestart = null }) {
     const tClank = setTimeout(() => {
       setFlash(true);
       setTimeout(() => setFlash(false), 400);
-      setArcCrackle(true);
-      setTimeout(() => setArcCrackle(false), 800);
     }, 8500);
 
     const tFadeOut = setTimeout(() => {
@@ -410,9 +407,9 @@ function Splash({ onLoopRestart = null }) {
           <span className="sub-tag">ENGINEERED TO DELIVER</span>
         </p>
 
-        {/* Forge scene — memoized so spinner/progress/line updates don't
-            reconcile the SVG branch and starve the CSS animation of frames. */}
-        <ForgeScene arcCrackle={arcCrackle} />
+        {/* Forge scene — memoized with no props so spinner/progress/line
+            updates can never reconcile the SVG branch. */}
+        <ForgeScene />
 
         <div className={`progress-track${chromeVisible ? " visible" : ""}`}>
           <div
