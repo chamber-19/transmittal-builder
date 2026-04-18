@@ -1,0 +1,18 @@
+{
+  "name": "@koraji95-coder/kc-framework",
+  "version": "1.0.0",
+  "description": "Shared JS/React primitives for ROOT3POWER desktop tools — vendor copy for kc-framework@v1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./ipc": "./src/ipc/backend.js",
+    "./splash": "./src/splash/index.jsx",
+    "./updater": "./src/updater/index.jsx",
+    "./utils/version": "./src/utils/version.js"
+  },
+  "files": ["src"],
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  }
+}

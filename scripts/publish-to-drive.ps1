@@ -1,28 +1,28 @@
 <#
 .SYNOPSIS
-    Copies a tagged Transmittal Builder release from GitHub to the R3P shared drive.
+    Copies a tagged tool release from GitHub to the R3P shared drive.
 
 .DESCRIPTION
     Downloads the NSIS installer and latest.json from a GitHub Release, archives
     the previous installer on the shared drive, and replaces it with the new one.
 
+    Sourced from kc-framework@v1.0.0 — build-scripts/publish-to-drive.ps1
+    Tool-specific defaults: DrivePath = Transmittal Builder path, Repo = Koraji95-coder/Transmittal-Builder
+
     Requires the GitHub CLI (gh) to be installed and authenticated.
     Requires Google Drive for Desktop to be running with the R3P shared drive mounted.
 
 .PARAMETER Tag
-    The Git tag to publish, e.g. "v4.1.0".
+    The Git tag to publish, e.g. "v5.0.0".
 
 .PARAMETER DrivePath
-    Override the shared drive path (default: G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder).
+    The shared drive path where the tool is published.
 
 .PARAMETER Repo
-    GitHub repository in owner/name format (default: Koraji95-coder/Transmittal-Builder).
+    GitHub repository in owner/name format, e.g. "Koraji95-coder/Transmittal-Builder".
 
 .EXAMPLE
-    .\scripts\publish-to-drive.ps1 -Tag v4.1.0
-
-.EXAMPLE
-    .\scripts\publish-to-drive.ps1 -Tag v4.1.0 -DrivePath "D:\TestDrive\TransmittalBuilder"
+    .\scripts\publish-to-drive.ps1 -Tag v5.0.0 -DrivePath "G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder" -Repo "Koraji95-coder/Transmittal-Builder"
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -30,9 +30,11 @@ param(
     [Parameter(Mandatory)]
     [string]$Tag,
 
-    [string]$DrivePath = "G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder",
+    [Parameter(Mandatory)]
+    [string]$DrivePath,
 
-    [string]$Repo = "Koraji95-coder/Transmittal-Builder"
+    [Parameter(Mandatory)]
+    [string]$Repo
 )
 
 Set-StrictMode -Version Latest

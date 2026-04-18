@@ -1,9 +1,10 @@
-// frontend/src-tauri/src/sidecar.rs
+// SOURCED FROM kc-framework@v1.0.0 — do not edit directly; sync via scripts/sync-framework-tauri.mjs.
+// tauri-template/src-tauri-base/src/sidecar.rs
 //
 // Manages the PyInstaller backend sidecar process.
 //
 // Protocol:
-//   1. Rust picks a free TCP port and passes it via TRANSMITTAL_BACKEND_PORT.
+//   1. Rust picks a free TCP port and passes it via SIDECAR_BACKEND_PORT.
 //   2. The sidecar prints the confirmed port on its first stdout line, then
 //      starts uvicorn.
 //   3. Rust reads that line (with a 15-second timeout) to learn the actual
@@ -36,18 +37,24 @@ fn find_free_port() -> u16 {
 
 /// Locate the PyInstaller sidecar binary relative to the running executable.
 ///
+/// # Arguments
+/// * `sidecar_name` - The binary name **without** the `.exe` extension,
+///   e.g. `"transmittal-backend"`. This must match the `name` field in the
+///   PyInstaller spec and the sidecar name in `tauri.conf.json`.
+///
 /// Search order (all relative to the directory containing the app exe):
-///   1. `binaries/transmittal-backend/transmittal-backend.exe`  ← NSIS layout
-///   2. `transmittal-backend/transmittal-backend.exe`            ← flat layout
-///   3. `transmittal-backend.exe`                               ← single-file
-pub fn find_sidecar_path() -> Option<PathBuf> {
+///   1. `binaries/<sidecar-name>/<sidecar-name>.exe`  ← NSIS layout
+///   2. `<sidecar-name>/<sidecar-name>.exe`            ← flat layout
+///   3. `<sidecar-name>.exe`                           ← single-file
+pub fn find_sidecar_path(sidecar_name: &str) -> Option<PathBuf> {
     let exe_path = std::env::current_exe().ok()?;
     let exe_dir = exe_path.parent()?;
+    let exe_name = format!("{}.exe", sidecar_name);
 
     let candidates = [
-        exe_dir.join("binaries/transmittal-backend/transmittal-backend.exe"),
-        exe_dir.join("transmittal-backend/transmittal-backend.exe"),
-        exe_dir.join("transmittal-backend.exe"),
+        exe_dir.join("binaries").join(sidecar_name).join(&exe_name),
+        exe_dir.join(sidecar_name).join(&exe_name),
+        exe_dir.join(&exe_name),
     ];
 
     for p in &candidates {
@@ -64,7 +71,7 @@ pub fn spawn_sidecar(sidecar_path: &PathBuf) -> Result<(Child, u16), String> {
     let port = find_free_port();
 
     let mut cmd = Command::new(sidecar_path);
-    cmd.env("TRANSMITTAL_BACKEND_PORT", port.to_string())
+    cmd.env("SIDECAR_BACKEND_PORT", port.to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
 

@@ -1,5 +1,7 @@
 # Framework Extraction — Migration Plan
 
+> **STATUS: Steps 1–7 complete as of PR #N (migrate-to-kc-framework-v1.0.0). Step 8 (release tagging v6.0.0) pending.**
+
 A numbered, executable checklist.  **Steps 1–5 operate on the `kc-framework`
 repo.  Steps 6–8 operate on this repo (`Transmittal-Builder`).**
 

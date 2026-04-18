@@ -359,10 +359,12 @@ resulting binary files along with any SVG master changes.
 
 ## Architecture roadmap
 
-Shared scaffolding (UI primitives, installer templates, logging, updater)
-will be extracted into [`kc-framework`](https://github.com/Koraji95-coder/kc-framework)
-and consumed here as a versioned dependency.
-See [docs/framework-extraction/](./docs/framework-extraction/README.md) for the inventory and migration plan.
+As of v6.0.0, this repo consumes [`kc-framework@v1.0.0`](https://github.com/Koraji95-coder/kc-framework/releases/tag/v1.0.0)
+for shared scaffolding (splash screen, updater, backend IPC, PDF merge, email sender,
+build scripts, NSIS installer hooks, and Tauri Rust scaffolding).
+
+See [docs/framework-extraction/](./docs/framework-extraction/) for the full
+inventory and migration plan (Steps 1–7 complete; Step 8 — tagging v6.0.0 — pending).
 
 ---
 

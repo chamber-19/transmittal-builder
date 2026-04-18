@@ -3,64 +3,45 @@
      See CREDITS.md for full attribution. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Tauri logo">
   <defs>
-    <!-- Inner filled circle gradient (gold centre) -->
     <radialGradient id="tauri-inner-rg" cx="42%" cy="38%" r="60%">
       <stop offset="0%"   stop-color="#FFD860"/>
       <stop offset="50%"  stop-color="#FFC131"/>
       <stop offset="100%" stop-color="#E8A800"/>
     </radialGradient>
-    <!-- Outer ring ambient glow -->
     <radialGradient id="tauri-glow-rg" cx="50%" cy="50%" r="50%">
       <stop offset="0%"   stop-color="#FFC131" stop-opacity="0.22"/>
       <stop offset="70%"  stop-color="#FFC131" stop-opacity="0.06"/>
       <stop offset="100%" stop-color="#FFC131" stop-opacity="0.0"/>
     </radialGradient>
-    <!-- Bore gradient -->
     <radialGradient id="tauri-bore-rg" cx="50%" cy="45%" r="50%">
       <stop offset="0%"   stop-color="#0A0C10"/>
       <stop offset="100%" stop-color="#1A1E24"/>
     </radialGradient>
   </defs>
 
-  <!-- Ambient glow -->
   <circle cx="50" cy="50" r="48" fill="url(#tauri-glow-rg)"/>
-
-  <!-- Outer ring -->
   <circle cx="50" cy="50" r="44" fill="none" stroke="#FFC131" stroke-width="3.2"/>
-  <!-- Outer ring inner-edge highlight (top-left arc, lighter) -->
   <circle cx="50" cy="50" r="44" fill="none" stroke="#FFD860" stroke-width="0.8" opacity="0.55"/>
 
-  <!-- Outer tick marks at cardinal points -->
   <circle cx="50"  cy="6"  r="3.2" fill="#FFC131"/>
   <circle cx="50"  cy="94" r="3.2" fill="#FFC131"/>
   <circle cx="6"   cy="50" r="3.2" fill="#FFC131"/>
   <circle cx="94"  cy="50" r="3.2" fill="#FFC131"/>
-  <!-- Tick highlights -->
   <circle cx="50"  cy="6"  r="1.4" fill="#FFE070" opacity="0.6"/>
   <circle cx="50"  cy="94" r="1.4" fill="#FFE070" opacity="0.6"/>
   <circle cx="6"   cy="50" r="1.4" fill="#FFE070" opacity="0.6"/>
   <circle cx="94"  cy="50" r="1.4" fill="#FFE070" opacity="0.6"/>
 
-  <!-- Middle dashed ring -->
   <circle cx="50" cy="50" r="30" fill="none" stroke="#FFC131" stroke-width="2.2"
           stroke-dasharray="5.5 3.8"/>
 
-  <!-- Connector lines (outer-to-inner, vertical axis) -->
-  <line x1="50" y1="20" x2="50" y2="32"
-        stroke="#FFC131" stroke-width="2.8" stroke-linecap="round"/>
-  <line x1="50" y1="68" x2="50" y2="80"
-        stroke="#FFC131" stroke-width="2.8" stroke-linecap="round"/>
-  <!-- Connector highlights -->
-  <line x1="50" y1="20" x2="50" y2="26"
-        stroke="#FFD860" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+  <line x1="50" y1="20" x2="50" y2="32" stroke="#FFC131" stroke-width="2.8" stroke-linecap="round"/>
+  <line x1="50" y1="68" x2="50" y2="80" stroke="#FFC131" stroke-width="2.8" stroke-linecap="round"/>
+  <line x1="50" y1="20" x2="50" y2="26" stroke="#FFD860" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
 
-  <!-- Inner filled circle with gradient -->
   <circle cx="50" cy="50" r="18" fill="url(#tauri-inner-rg)"/>
-  <!-- Inner circle rim highlight -->
   <circle cx="50" cy="50" r="18" fill="none" stroke="#FFE070" stroke-width="0.7" opacity="0.5"/>
 
-  <!-- Centre bore -->
   <circle cx="50" cy="50" r="8" fill="url(#tauri-bore-rg)"/>
-  <!-- Bore rim -->
   <circle cx="50" cy="50" r="8" fill="none" stroke="#FFC131" stroke-width="0.6" opacity="0.45"/>
 </svg>

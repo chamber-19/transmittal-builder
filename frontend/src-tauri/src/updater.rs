@@ -1,4 +1,5 @@
-// frontend/src-tauri/src/updater.rs
+// SOURCED FROM kc-framework@v1.0.0 — do not edit directly; sync via scripts/sync-framework-tauri.mjs.
+// tauri-template/src-tauri-base/src/updater.rs
 //
 // Shared-drive update check and force-update flow.
 //
@@ -14,10 +15,7 @@
 // Override for dev/testing by setting `TRANSMITTAL_UPDATE_PATH`.
 //
 // File logging (release builds only):
-//   %LOCALAPPDATA%\R3P Transmittal Builder\updater.log
-//   Each line: [<unix-epoch-seconds>] <message>
-//   To convert a timestamp in PowerShell:
-//     [DateTimeOffset]::FromUnixTimeSeconds(<secs>).LocalDateTime
+//   %LOCALAPPDATA%\<CARGO_PKG_NAME>\updater.log
 
 // In debug builds these items are only used in release code paths; suppress
 // the resulting dead-code warnings without affecting release builds.
@@ -32,7 +30,11 @@ use serde::Deserialize;
 use tauri::AppHandle;
 use tauri::Emitter;
 
+/// Default update path for Transmittal Builder (tool-specific constant).
 const DEFAULT_UPDATE_PATH: &str = r"G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder";
+
+/// Override the default update path via this environment variable.
+pub const UPDATE_PATH_ENV_VAR: &str = "TRANSMITTAL_UPDATE_PATH";
 
 /// Contents of `latest.json` on the shared drive.
 #[derive(Deserialize, Clone, Debug)]
@@ -59,7 +61,7 @@ pub enum UpdateCheckResult {
 
 /// Return the configured update path (env var override or default G:\ path).
 pub fn get_update_path() -> PathBuf {
-    std::env::var("TRANSMITTAL_UPDATE_PATH")
+    std::env::var(UPDATE_PATH_ENV_VAR)
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(DEFAULT_UPDATE_PATH))
 }
@@ -68,9 +70,7 @@ pub fn get_update_path() -> PathBuf {
 
 /// Append a timestamped message to the updater log file (release builds only).
 ///
-/// Log location: `%LOCALAPPDATA%\R3P Transmittal Builder\updater.log`
-/// Timestamp format: Unix epoch seconds.  To decode in PowerShell:
-///   `[DateTimeOffset]::FromUnixTimeSeconds(<secs>).LocalDateTime`
+/// Log location: `%LOCALAPPDATA%\<CARGO_PKG_NAME>\updater.log`
 ///
 /// Silently ignores I/O errors so a missing/unwritable log never aborts the
 /// update flow.
@@ -87,10 +87,9 @@ pub fn log_updater(msg: &str) {
         .or_else(|_| std::env::var("TEMP"))
         .unwrap_or_else(|_| String::from("C:\\Temp"));
     let log_path = PathBuf::from(base)
-        .join("R3P Transmittal Builder")
+        .join(env!("CARGO_PKG_NAME"))
         .join("updater.log");
 
-    // Ensure the directory exists (it should already, but be safe).
     if let Some(parent) = log_path.parent() {
         let _ = fs::create_dir_all(parent);
     }

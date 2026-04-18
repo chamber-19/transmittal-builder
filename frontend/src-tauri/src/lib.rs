@@ -1,4 +1,5 @@
-// Tauri app entry point.
+// SOURCED FROM kc-framework@v1.0.0 — do not edit directly; sync via scripts/sync-framework-tauri.mjs.
+// tauri-template/src-tauri-base/src/lib.rs — Tauri app entry point.
 //
 // Startup sequence:
 //   1. Splash window opens with visible:false; React invokes `splash_ready`
@@ -251,12 +252,12 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
     let start = Instant::now();
 
     // Read optional debug hold (dev only; no-op in production when unset).
-    let hold_ms: u64 = match std::env::var("TRANSMITTAL_SPLASH_HOLD_MS") {
+    let hold_ms: u64 = match std::env::var("SPLASH_HOLD_MS") {
         Ok(val) => match val.parse::<u64>() {
             Ok(ms) => ms,
             Err(_) => {
                 eprintln!(
-                    "[splash] TRANSMITTAL_SPLASH_HOLD_MS is set to {:?} but is not a valid u64; defaulting to 0",
+                    "[splash] SPLASH_HOLD_MS is set to {:?} but is not a valid u64; defaulting to 0",
                     val
                 );
                 0
@@ -556,7 +557,7 @@ fn run_update_check_with_status(app: &tauri::AppHandle, hold_ms: u64) -> UpdateO
 
 fn do_spawn_backend(child_arc: &Arc<Mutex<Option<Child>>>) -> String {
     // Production: try the PyInstaller sidecar first.
-    if let Some(sidecar_path) = sidecar::find_sidecar_path() {
+    if let Some(sidecar_path) = sidecar::find_sidecar_path("transmittal-backend") {
         println!("[sidecar] Found sidecar at: {}", sidecar_path.display());
         match sidecar::spawn_sidecar(&sidecar_path) {
             Ok((proc, port)) => {

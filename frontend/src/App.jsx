@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useId } from "react";
-import { initBackendUrl, refreshBackendUrl, getBackendUrl } from "./api/backend.js";
-import { APP_VERSION } from "./version.js";
+import { initBackendUrl, refreshBackendUrl, getBackendUrl } from "@koraji95-coder/kc-framework/ipc";
+import { APP_VERSION } from "@koraji95-coder/kc-framework/utils/version";
 
 /* ═══════════════════════════════════════════════════════════════
    R3P TRANSMITTAL BUILDER — Wired Frontend

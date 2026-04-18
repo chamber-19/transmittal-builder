@@ -10,9 +10,12 @@
     "tauri": "tauri",
     "desktop": "tauri dev",
     "desktop:build": "tauri build",
-    "icons:generate": "node scripts/generate-icons.mjs"
+    "icons:generate": "node ../scripts/generate-icons.mjs",
+    "latest-json": "node ../scripts/generate-latest-json.mjs",
+    "publish-to-drive": "pwsh ../scripts/publish-to-drive.ps1"
   },
   "dependencies": {
+    "@koraji95-coder/kc-framework": "file:./vendor/kc-framework",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "@vercel/speed-insights": "^2.0.0",

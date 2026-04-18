@@ -1,8 +1,11 @@
+// SOURCED FROM kc-framework@v1.0.0 — js/packages/kc-framework/src/utils/version.js
+// Do not edit this vendor copy directly. Remove this directory and update
+// frontend/package.json dependency URL once kc-framework has a root package.json.
 /**
  * Single source of truth for the app version inside the React bundle.
  *
  * Build-time: Vite injects __APP_VERSION__ from `package.json` (see
- * frontend/vite.config.js). Runtime fallbacks let the value still resolve
+ * vite.config.js). Runtime fallbacks let the value still resolve
  * when the bundle is loaded outside Vite (e.g. raw browser preview of
  * splash.html), but in production the injected constant always wins.
  *

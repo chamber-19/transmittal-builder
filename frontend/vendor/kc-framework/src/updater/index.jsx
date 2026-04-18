@@ -1,5 +1,7 @@
+// SOURCED FROM kc-framework@v1.0.0 — js/packages/kc-framework/src/updater/index.jsx
+// Do not edit this vendor copy directly.
 /**
- * updater.jsx — Force-update progress window.
+ * updater/index.jsx — Force-update progress window.
  *
  * Shown by Rust when an update is available on the shared drive.
  * Listens for `update_info` (once) and `update_progress` events emitted
@@ -58,7 +60,7 @@ function Updater() {
       {/* Title */}
       <div className="updater-title-block">
         <div className="updater-title">
-          {version ? `Updating to v${version}` : "Updating Transmittal Builder…"}
+          {version ? `Updating to v${version}` : "Updating…"}
         </div>
         <div className="updater-subtitle">
           Please wait. Do not close this window.
@@ -83,7 +85,7 @@ function Updater() {
 
       {/* Version metadata footer */}
       <div className="updater-footer">
-        {version ? `v${version}` : ""}&nbsp;&middot;&nbsp;R3P Transmittal Builder
+        {version ? `v${version}` : ""}
       </div>
     </div>
   );

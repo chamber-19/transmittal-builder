@@ -1,4 +1,5 @@
-// frontend/src-tauri/src/splash.rs
+// SOURCED FROM kc-framework@v1.0.0 — do not edit directly; sync via scripts/sync-framework-tauri.mjs.
+// tauri-template/src-tauri-base/src/splash.rs
 //
 // Splash screen integration.
 //
@@ -68,32 +69,22 @@ struct SplashSeen {
 
 /// Returns `true` if this is the first launch after an install or update.
 ///
-/// Reads `%APPDATA%\com.r3p.transmittal\splash-seen.json` (created on first
+/// Reads `%APPDATA%\<CARGO_PKG_NAME>\splash-seen.json` (created on first
 /// run) and compares the stored version against `CARGO_PKG_VERSION`.
 /// If they differ (or the file is absent) it writes the current version back
 /// and returns `true` so the full 9.5 s animation plays.
 /// On subsequent launches with the same version it returns `false`, triggering
 /// the short (~3.2 s) mode.
 pub fn splash_first_launch_after_update() -> bool {
-    // ── Dev override: TRANSMITTAL_SPLASH_FORCE_FRESH ──────────────────────
-    // When set to "1", "true", or "yes" (case-insensitive), always return true
-    // so the full 11-second splash plays on every launch regardless of the
-    // splash-seen.json sentinel.  The sentinel is NOT written in this path, so
-    // it remains unchanged and short-mode resumes once the var is unset.
-    if let Ok(val) = std::env::var("TRANSMITTAL_SPLASH_FORCE_FRESH") {
+    if let Ok(val) = std::env::var("SPLASH_FORCE_FRESH") {
         let v = val.to_ascii_lowercase();
         if v == "1" || v == "true" || v == "yes" {
-            eprintln!("[splash] TRANSMITTAL_SPLASH_FORCE_FRESH set — forcing first-run mode");
             return true;
         }
     }
 
     let current = env!("CARGO_PKG_VERSION");
 
-    // Resolve %APPDATA%\com.r3p.transmittal\ on Windows,
-    // $HOME/.local/share/com.r3p.transmittal/ on Linux/macOS.
-    // If the base directory variable is absent, return `true` (full-mode fallback)
-    // so the sentinel is not written to an invalid relative path.
     let base_opt = {
         #[cfg(windows)]
         let v = std::env::var("APPDATA").ok();
@@ -112,8 +103,9 @@ pub fn splash_first_launch_after_update() -> bool {
         }
     };
 
+    // Use the Cargo package name as the app identifier directory.
     let sentinel_path = std::path::PathBuf::from(base)
-        .join("com.r3p.transmittal")
+        .join(env!("CARGO_PKG_NAME"))
         .join("splash-seen.json");
 
     // Try to read the sentinel; treat read errors as "first run".

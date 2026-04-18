@@ -1,5 +1,8 @@
 ; ---------------------------------------------------------------------------
 ; R3P Transmittal Builder — NSIS installer hooks
+; Rendered from kc-framework@v1.0.0 — installer/hooks.nsh.template
+; Substitution applied: PRODUCT_NAME=R3P Transmittal Builder
+; Sync via: scripts/sync-framework-tauri.mjs
 ;
 ; Wired in via tauri.conf.json -> bundle.windows.nsis.installerHooks.
 ; Tauri's default installer template `!include`s this file VERY early

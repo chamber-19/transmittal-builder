@@ -1,3 +1,4 @@
+/* SOURCED FROM kc-framework@v1.0.0 — js/packages/kc-framework/src/splash/splash.css */
 /* splash.css — Forge-branded splash screen styles & keyframe animations */
 
 /* ── Reset ─────────────────────────────────────────────────────────────── */
@@ -156,14 +157,6 @@
 }
 
 /* ── Hammer — pendulum swing (1.4s per cycle, impact at 50% = 0.7s) ──────── */
-/* The hammer is now mounted to the LEFT of the sprocket and pivots at its
-   grip end (transform-origin 0% 50%). Negative rotation lifts the head up
-   and back (CCW); rotate(0deg) is the horizontal impact pose where the
-   striking face meets the gear's left tooth tip.
-   The lift phase uses ease-out so the hammer decelerates as it approaches the
-   raised position and then dwells briefly at the top. Without this the eye
-   reacquires the hammer mid-lift at high constant velocity right as the
-   impact flash fades, which reads as a jarring "reset". */
 .forge-scene #hammer {
   transform-box: fill-box;
   transform-origin: 0% 50%;
@@ -171,12 +164,6 @@
   animation: hammer-swing 1.4s linear infinite;
 }
 
-/* Single back-and-forth swing: fall → strike → rebound → wind-up → dwell.
-     0  → 50%  ease-in fall (gravity-like, no hover at top of arc)
-     50 → 57%  snappy spring-out on impact (small overshoot to sell the hit)
-     57 → 62%  quick rebound off the anvil
-     62 → 95%  ease-out lift (decelerates into the wind-up position)
-     95 → 100% dwell at the top so the next fall reads as a deliberate stroke */
 @keyframes hammer-swing {
   0%   { transform: rotate(-45deg); animation-timing-function: ease-in; }
   50%  { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
@@ -187,11 +174,9 @@
 }
 
 /* ── Strike-point tooth heat (synced to hammer impact at 50% of 1.4s = 0.7s) ── */
-/* Strike point is now at the 9 o'clock tooth (tooth-glow-12 ≈ 124,180). */
 .forge-scene .tooth-glow-12 {
   animation: tooth-heat-pulse 1.4s 0.7s ease-out infinite;
 }
-/* Neighboring teeth glow faintly as the sprocket rotates past the strike point */
 .forge-scene .tooth-glow-11,
 .forge-scene .tooth-glow-13 {
   animation: tooth-heat-pulse 1.4s 0.72s ease-out infinite;
@@ -222,7 +207,6 @@
 }
 
 /* ── SVG spark elements (pre-placed at strike point, fly outward via CSS) ─── */
-/* Sparks fire on every hammer strike — 1.4s period, 0.7s delay = impact instant. */
 .forge-scene .spark-1 { animation: spark-fly-1 1.4s 0.70s ease-out infinite; }
 .forge-scene .spark-2 { animation: spark-fly-2 1.4s 0.71s ease-out infinite; }
 .forge-scene .spark-3 { animation: spark-fly-3 1.4s 0.70s ease-out infinite; }
@@ -232,11 +216,6 @@
 .forge-scene .spark-7 { animation: spark-fly-7 1.4s 0.73s ease-out infinite; }
 .forge-scene .spark-8 { animation: spark-fly-8 1.4s 0.70s ease-out infinite; }
 
-/* 8 pre-computed trajectories (angle, distance — hard-coded, no JS random).
-   Visible window is short (~0–35% of cycle) so each burst reads as a quick crackle.
-   With the hammer striking the gear from the LEFT, the gear sits to the right
-   of the strike point — so trajectories are biased leftward/up/down to keep
-   sparks flying outward instead of into the spinning sprocket body. */
 /* Direction 1: upper-left  */ @keyframes spark-fly-1 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-28px,-38px);opacity:0} 100%{transform:translate(-28px,-38px);opacity:0} }
 /* Direction 2: upper       */ @keyframes spark-fly-2 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-4px,-44px);opacity:0}  100%{transform:translate(-4px,-44px);opacity:0}  }
 /* Direction 3: upper-left  */ @keyframes spark-fly-3 { 0%{transform:translate(0,0);opacity:0} 3%{opacity:1} 35%{transform:translate(-26px,-40px);opacity:0} 100%{transform:translate(-26px,-40px);opacity:0} }
@@ -400,29 +379,16 @@
 }
 
 /* ── Accessibility: prefers-reduced-motion ──────────────────────────────── */
-/*
- * The hero forge scene (sprocket, hammer, sparks) is the splash's core brand
- * animation — played once per version to signal startup. It is intentionally
- * exempt from prefers-reduced-motion because it is functional identity, not
- * decorative filler.
- *
- * Incidental motion (status spinner frame cycling, checkmark pop-pulse,
- * cursor blink) IS reduced here because those are decorative affordances
- * that add nothing semantic when animated.
- */
 @media (prefers-reduced-motion: reduce) {
-  /* Terminal cursor: no blink */
   .cursor {
     animation: none !important;
     opacity: 1 !important;
   }
 
-  /* Status spinner: no cycling (JS can keep running — CSS masks it) */
   .terminal-line .status-spinner {
     animation: none !important;
   }
 
-  /* Resolved prefix: fade-in only (no scale pulse) */
   .terminal-line .prefix-resolved {
     animation: status-check-pop-reduced 250ms ease-out both !important;
   }

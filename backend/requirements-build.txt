@@ -4,4 +4,6 @@
 #   pip install -r requirements.txt -r requirements-build.txt
 #
 # PyInstaller ≥ 6.10 is required for Python 3.13 support.
+# The framework's canonical requirements-build.txt lives at:
+#   python/kc_framework/pyinstaller/requirements-build.txt in kc-framework@v1.0.0
 pyinstaller>=6.10

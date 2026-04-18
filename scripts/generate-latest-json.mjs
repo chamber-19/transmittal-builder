@@ -5,10 +5,12 @@
  * Generates the `latest.json` update manifest that the Tauri app reads from
  * the shared drive on every launch.
  *
+ * Sourced from kc-framework@v1.0.0 — build-scripts/generate-latest-json.mjs
+ *
  * Inputs (environment variables):
- *   TAG_NAME       - Git tag, e.g. "v4.1.0"
+ *   TAG_NAME       - Git tag, e.g. "v5.0.0"
  *   INSTALLER_NAME - NSIS installer filename,
- *                    e.g. "R3P-Transmittal-Builder_4.1.0_x64-setup.exe"
+ *                    e.g. "R3P-Transmittal-Builder_5.0.0_x64-setup.exe"
  *
  * Output: latest.json written to the repository root (then uploaded as a
  * release artefact by the GitHub Actions workflow).
@@ -37,9 +39,8 @@ if (!installerName) {
 const version = tagName.replace(/^v/, "");
 
 // ── Release notes ────────────────────────────────────────────────────────
-// Use RELEASE_NOTES.md if present (written by git tag -m or a prior step),
-// otherwise use a generic message.
-let notes = `R3P Transmittal Builder ${tagName}`;
+// Use RELEASE_NOTES.md if present, otherwise use a generic message.
+let notes = `Release ${tagName}`;
 const notesPath = join(process.cwd(), "RELEASE_NOTES.md");
 if (existsSync(notesPath)) {
   notes = readFileSync(notesPath, "utf8").trim();

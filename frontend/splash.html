@@ -8,6 +8,9 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/splash.jsx"></script>
+    <!-- Tool-specific config for the kc-framework splash component.
+         Must be set before the module script loads so SplashApp can read it. -->
+    <script>window.__SPLASH_CONFIG__ = { appName: "R3P Transmittal Builder", appOrg: "ROOT3POWER" };</script>
+    <script type="module" src="/src/splash-entry.jsx"></script>
   </body>
 </html>

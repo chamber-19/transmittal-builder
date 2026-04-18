@@ -1,3 +1,6 @@
+// SOURCED FROM kc-framework@v1.0.0 — js/packages/kc-framework/src/ipc/backend.js
+// Do not edit this vendor copy directly. Remove this directory and update
+// frontend/package.json dependency URL once kc-framework has a root package.json.
 /**
  * backend.js — Resolves the backend base URL at runtime.
  *

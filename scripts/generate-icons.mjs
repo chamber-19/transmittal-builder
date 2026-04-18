@@ -1,8 +1,10 @@
+// SOURCED FROM kc-framework@v1.0.0 — build-scripts/generate-icons.mjs
+// Do not edit directly. Sync via: scripts/sync-framework-tauri.mjs
 #!/usr/bin/env node
 /**
  * generate-icons.mjs
  *
- * Reads frontend/src-tauri/icons/icon-master.svg and emits all required
+ * Reads src-tauri/icons/icon-master.svg and emits all required
  * icon sizes for Tauri + Windows Store, plus NSIS installer BMPs.
  *
  * Usage (from the frontend/ directory):
@@ -30,9 +32,10 @@ import { dirname, join } from "path";
 import sharp from "sharp";
 import pngToIco from "png-to-ico";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = dirname(__filename);
-const root       = join(__dirname, "..");   // frontend/ directory
+// When run via `npm run icons:generate` from the frontend/ directory,
+// process.cwd() = frontend/.  This is used as the root for Tauri paths.
+// __dirname here is scripts/ (at repo root), so we can't rely on it.
+const root = process.cwd();  // = frontend/ when invoked via npm run
 
 // ── Paths ─────────────────────────────────────────────────────────────────
 const ICON_MASTER_SVG    = join(root, "src-tauri/icons/icon-master.svg");
@@ -116,23 +119,12 @@ for (const sz of icoSizes) {
 }
 
 // ── Step 4: NSIS installer BMPs ───────────────────────────────────────────
-// NSIS requires Windows BMP v3, 24-bit, no compression.
-// Sharp cannot output BMP, so we read the raw pixel data and encode manually.
 console.log("\n[4/4] Generating NSIS installer BMPs…");
 
 /**
  * Encode raw RGBA pixel data (top-to-bottom) to a Windows BMP v3 buffer.
- * Output is 24-bit RGB, uncompressed, bottom-to-top row order (standard BMP).
- * Each row is padded to a 4-byte boundary.
- *
- * @param {Buffer} rawRgba - Raw pixel data, 4 bytes/pixel, RGBA top-down
- * @param {number} width   - Image width in pixels
- * @param {number} height  - Image height in pixels
- * @param {object} [bgRgb] - Background colour to blend alpha over { r, g, b }
- * @returns {Buffer} Windows BMP v3 buffer
  */
 function encodeBmp24(rawRgba, width, height, bgRgb = { r: 26, g: 18, b: 16 }) {
-  // Row size rounded up to 4-byte boundary, in bytes (3 channels)
   const rowBytes   = Math.ceil((width * 3) / 4) * 4;
   const pixelBytes = rowBytes * height;
   const fileSize   = 54 + pixelBytes;
@@ -140,26 +132,23 @@ function encodeBmp24(rawRgba, width, height, bgRgb = { r: 26, g: 18, b: 16 }) {
   const buf = Buffer.alloc(fileSize, 0);
   let off = 0;
 
-  // ── BITMAPFILEHEADER (14 bytes) ──
   buf.write("BM", off, "ascii");                     off += 2;
   buf.writeUInt32LE(fileSize, off);                  off += 4;
-  buf.writeUInt32LE(0, off);                         off += 4;  // reserved
-  buf.writeUInt32LE(54, off);                        off += 4;  // pixel data offset
+  buf.writeUInt32LE(0, off);                         off += 4;
+  buf.writeUInt32LE(54, off);                        off += 4;
 
-  // ── BITMAPINFOHEADER (40 bytes) ──
-  buf.writeUInt32LE(40, off);                        off += 4;  // header size
-  buf.writeInt32LE(width, off);                      off += 4;  // width
-  buf.writeInt32LE(height, off);                     off += 4;  // height (positive = bottom-up)
-  buf.writeUInt16LE(1, off);                         off += 2;  // planes
-  buf.writeUInt16LE(24, off);                        off += 2;  // bits/pixel
-  buf.writeUInt32LE(0, off);                         off += 4;  // compression (none)
-  buf.writeUInt32LE(pixelBytes, off);                off += 4;  // image size
-  buf.writeInt32LE(2835, off);                       off += 4;  // X px/meter (~72 dpi)
-  buf.writeInt32LE(2835, off);                       off += 4;  // Y px/meter
-  buf.writeUInt32LE(0, off);                         off += 4;  // colors used
-  buf.writeUInt32LE(0, off);                         off += 4;  // colors important
+  buf.writeUInt32LE(40, off);                        off += 4;
+  buf.writeInt32LE(width, off);                      off += 4;
+  buf.writeInt32LE(height, off);                     off += 4;
+  buf.writeUInt16LE(1, off);                         off += 2;
+  buf.writeUInt16LE(24, off);                        off += 2;
+  buf.writeUInt32LE(0, off);                         off += 4;
+  buf.writeUInt32LE(pixelBytes, off);                off += 4;
+  buf.writeInt32LE(2835, off);                       off += 4;
+  buf.writeInt32LE(2835, off);                       off += 4;
+  buf.writeUInt32LE(0, off);                         off += 4;
+  buf.writeUInt32LE(0, off);                         off += 4;
 
-  // ── Pixel data (BGR, bottom-up rows) ──
   for (let y = height - 1; y >= 0; y--) {
     for (let x = 0; x < width; x++) {
       const srcOff = (y * width + x) * 4;
@@ -168,16 +157,14 @@ function encodeBmp24(rawRgba, width, height, bgRgb = { r: 26, g: 18, b: 16 }) {
       const b = rawRgba[srcOff + 2];
       const a = rawRgba[srcOff + 3] / 255;
 
-      // Alpha-composite over background
       const fr = Math.round(r * a + bgRgb.r * (1 - a));
       const fg = Math.round(g * a + bgRgb.g * (1 - a));
       const fb = Math.round(b * a + bgRgb.b * (1 - a));
 
-      buf[off++] = fb;  // Blue
-      buf[off++] = fg;  // Green
-      buf[off++] = fr;  // Red
+      buf[off++] = fb;
+      buf[off++] = fg;
+      buf[off++] = fr;
     }
-    // Pad row to 4-byte boundary
     const pad = rowBytes - width * 3;
     off += pad;
   }

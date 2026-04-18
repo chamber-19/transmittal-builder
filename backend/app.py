@@ -30,7 +30,7 @@ from pydantic import BaseModel
 
 from core.render import render_transmittal, _normalize_xmtl_num
 from core.excel_parser import parse_drawing_index
-from core.pdf_merge import docx_to_pdf, merge_source_pdfs
+from kc_framework.utils.pdf_merge import docx_to_pdf, merge_source_pdfs
 
 
 # ─── Copy-intent checkbox key → abbreviation mapping ─────────
@@ -948,7 +948,7 @@ async def api_email(req: EmailRequest):
     Send a transmittal email.
     Note: SMTP credentials must be provided per-request or via env vars.
     """
-    from emails.sender import send_email
+    from kc_framework.utils.email_sender import send_email
 
     sender = req.sender or os.environ.get("SMTP_SENDER", "")
     password = req.password or os.environ.get("SMTP_PASSWORD", "")
@@ -986,8 +986,9 @@ def cleanup_temp_dirs():
 # ─── PyInstaller / sidecar entry point ───────────────────────
 # When the backend is bundled as a standalone executable by PyInstaller
 # and launched by the Tauri Rust shell, this block runs:
-#   1. Reads TRANSMITTAL_BACKEND_PORT env var (set by Rust) or picks a
-#      free OS port.
+#   1. Reads SIDECAR_BACKEND_PORT env var (set by Rust, as per kc-framework
+#      convention) or falls back to TRANSMITTAL_BACKEND_PORT (legacy), or
+#      picks a free OS port.
 #   2. Prints the actual port on stdout so Rust can capture it.
 #   3. Starts uvicorn on that port.
 # In normal development (`uvicorn app:app --port 8000`) this block is
@@ -997,7 +998,7 @@ if __name__ == "__main__":
     import socket
     import uvicorn
 
-    port_env = os.environ.get("TRANSMITTAL_BACKEND_PORT", "0")
+    port_env = os.environ.get("SIDECAR_BACKEND_PORT") or os.environ.get("TRANSMITTAL_BACKEND_PORT", "0")
     try:
         port = int(port_env)
     except ValueError:

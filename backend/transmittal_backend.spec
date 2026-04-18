@@ -1,7 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# PyInstaller spec for the Transmittal Builder backend sidecar.
-# Requires PyInstaller >= 6.10 (Python 3.13 support).
+# Rendered from kc-framework@v1.0.0 — python/kc_framework/pyinstaller/sidecar.spec.template
+# Substitutions applied: TOOL_NAME=transmittal-backend, TOOL_SPEC_NAME=transmittal_backend
+#
+# DO NOT EDIT the template placeholders — edit this rendered copy directly.
+# To re-sync from the framework template, run:
+#   node scripts/sync-framework-tauri.mjs  (see scripts/ for the sync script)
 #
 # Build (from the backend/ directory):
 #   pip install -r requirements.txt -r requirements-build.txt
@@ -71,6 +75,11 @@ a = Analysis(
         'email.mime.text',
         'email.mime.base',
         'email.mime.application',
+        # kc-framework utilities bundled into the sidecar
+        'kc_framework',
+        'kc_framework.utils',
+        'kc_framework.utils.pdf_merge',
+        'kc_framework.utils.email_sender',
     ],
     hookspath=[],
     hooksconfig={},
