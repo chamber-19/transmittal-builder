@@ -50,14 +50,14 @@ export default function UpdateModal({
 
   async function handleInstallNow() {
     setInstalling(true);
-    // Brief visible delay so the "Installing update…" message is readable
-    // before the process exits.  Without this pause the transition to the
-    // NSIS installer can look like a crash.
-    await new Promise((resolve) => setTimeout(resolve, 2500));
     try {
-      await invoke("apply_update", { installerPath });
+      // Invoke start_update which immediately shows the branded updater window
+      // and returns once the background install thread is spawned. The main
+      // window (and this modal) will be closed by Rust shortly after, so no
+      // further UI change is needed here.
+      await invoke("start_update", { installerPath, version: availableVersion });
     } catch (e) {
-      console.error("[updater] apply_update failed:", e);
+      console.error("[updater] start_update failed:", e);
       setInstalling(false);
     }
   }
@@ -91,7 +91,7 @@ export default function UpdateModal({
         }}
       >
         {installing ? (
-          /* Installing state */
+          /* Brief transitional state while the updater window takes over */
           <div style={{ textAlign: "center", padding: "16px 0" }}>
             <div
               style={{
@@ -101,12 +101,7 @@ export default function UpdateModal({
                 marginBottom: "12px",
               }}
             >
-              Installing update…
-            </div>
-            <div style={{ fontSize: "13px", color: T.t2, lineHeight: 1.6 }}>
-              The application will close and install v{availableVersion}.
-              <br />
-              This takes about 30 seconds.
+              Starting update…
             </div>
           </div>
         ) : (

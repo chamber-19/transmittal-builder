@@ -23,11 +23,13 @@
       },
       {
         "label": "updater",
-        "title": "Transmittal Builder — Update",
+        "title": "Updating Transmittal Builder",
         "url": "updater.html",
-        "width": 520,
-        "height": 320,
+        "width": 480,
+        "height": 280,
         "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
         "resizable": false,
         "center": true,
         "visible": false

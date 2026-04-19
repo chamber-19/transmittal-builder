@@ -1,4 +1,4 @@
-/* updater.css — Force-update window styles (matches splash warm-gradient world) */
+/* updater.css — Branded update progress window (mirrors splash aesthetic) */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -12,27 +12,28 @@
   height: 100vh;
   background: linear-gradient(180deg, #1a1210 0%, #0a0806 100%);
   color: #f0f0f0;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 14px;
   user-select: none;
   padding: 32px;
   position: relative;
   overflow: hidden;
+  -webkit-app-region: no-drag;
 }
 
-/* Faint diagonal hatching (matches splash) */
+/* Faint diagonal hatching (matches splash ~3% opacity) */
 .updater-root::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image: repeating-linear-gradient(
     -45deg,
-    rgba(200, 130, 58, 0.025) 0px,
-    rgba(200, 130, 58, 0.025) 1px,
+    rgba(200, 130, 58, 0.03) 0px,
+    rgba(200, 130, 58, 0.03) 1px,
     transparent 1px,
     transparent 8px
   );
@@ -57,48 +58,34 @@
   z-index: 1;
 }
 
-/* ── Updater logo ────────────────────────────────────────────────────────── */
-.updater-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #C8823A 0%, #a06830 100%);
-  color: #fff;
-  font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ── Forge icon (sprocket-hammer SVG at small size) ──────────────────────── */
+.updater-icon {
+  width: 56px;
+  height: 56px;
   flex-shrink: 0;
 }
 
-/* ── Title block ─────────────────────────────────────────────────────────── */
-.updater-title-block {
-  text-align: center;
+/* Scale the inline SVG to fill its container */
+.updater-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
+/* ── Headline ────────────────────────────────────────────────────────────── */
 .updater-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   font-variant: small-caps;
   letter-spacing: 0.05em;
-  color: #f0f0f0;
-  margin-bottom: 4px;
+  color: #f0ece4;
+  text-align: center;
 }
 
-.updater-subtitle {
-  font-size: 11px;
-  color: rgba(156, 163, 175, 0.7);
-  letter-spacing: 0.02em;
-}
-
-/* ── Progress bar ─────────────────────────────────────────────────────────── */
+/* ── Indeterminate progress bar ──────────────────────────────────────────── */
 .updater-progress-track {
   width: 100%;
-  max-width: 360px;
-  height: 6px;
+  max-width: 340px;
+  height: 5px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 3px;
   overflow: hidden;
@@ -106,73 +93,36 @@
   position: relative;
 }
 
-/* Amber gradient fill — bolt-silhouette inspired */
+/* Amber fill — slides end-to-end in an indeterminate loop */
 .updater-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #C8823A 0%, #ffcc66 50%, #C8823A 100%);
-  border-radius: 3px;
-  transition: width 0.25s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Pale electric-arc shimmer sliding across every 2 s */
-.updater-progress-fill::after {
-  content: '';
   position: absolute;
   top: 0;
-  left: -60%;
-  width: 60%;
   height: 100%;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(168, 216, 255, 0.45) 50%,
-    transparent 100%
-  );
-  animation: shimmer-slide 2s ease-in-out infinite;
+  width: 55%;
+  background: linear-gradient(90deg, #C8823A 0%, #ffcc66 50%, #C8823A 100%);
+  border-radius: 3px;
+  animation: indeterminate-slide 1.6s ease-in-out infinite;
 }
 
-@keyframes shimmer-slide {
-  0%   { left: -60%; opacity: 0; }
-  10%  { opacity: 1; }
-  80%  { opacity: 1; }
-  100% { left: 110%; opacity: 0; }
+@keyframes indeterminate-slide {
+  0%   { left: -60%; }
+  100% { left: 110%; }
 }
 
 /* ── Status text ─────────────────────────────────────────────────────────── */
 .updater-status {
-  font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
   font-size: 11px;
   color: rgba(107, 114, 128, 0.9);
   letter-spacing: 0.02em;
-}
-
-/* ── Release notes ───────────────────────────────────────────────────────── */
-.updater-notes {
-  width: 100%;
-  max-width: 360px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 10px 14px;
-  font-size: 11px;
-  color: rgba(156, 163, 175, 0.8);
-  max-height: 72px;
-  overflow-y: auto;
-  line-height: 1.5;
-}
-
-/* ── Footer metadata ─────────────────────────────────────────────────────── */
-.updater-footer {
-  font-size: 10px;
-  color: rgba(75, 85, 99, 0.7);
-  letter-spacing: 0.04em;
-  margin-top: 4px;
+  text-align: center;
 }
 
 /* ── Accessibility: prefers-reduced-motion ──────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .updater-progress-fill::after {
+  .updater-progress-fill {
     animation: none !important;
+    left: 25%;
+    width: 50%;
   }
 }

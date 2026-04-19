@@ -1,94 +1,92 @@
 /**
- * updater.jsx — Force-update progress window.
+ * updater.jsx — Branded update progress window.
  *
- * Shown by Rust when an update is available on the shared drive.
- * Listens for `update_info` (once) and `update_progress` events emitted
- * by the Rust updater module and displays a branded progress bar while the
- * installer is copied from the shared drive to %TEMP%.
+ * Shown by Rust when the user clicks "Install Now" in the mandatory
+ * UpdateModal. This window persists for the duration of the silent NSIS
+ * install so the user has clear visual feedback instead of a dead screen.
  *
- * The user cannot cancel — this is intentional per the product spec.
+ * Listens for `updater://status` events emitted by the Rust `start_update`
+ * command and updates the displayed phase text. The indeterminate progress
+ * bar animates continuously — NSIS silent mode does not emit real progress,
+ * so no percentage is available.
+ *
+ * The user cannot dismiss this window — it is non-interactive by design.
  */
 
-import { StrictMode, useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { createRoot } from "react-dom/client";
-import { listen, emit } from "@tauri-apps/api/event";
+import sprocketHammerSvg from "./assets/splash/sprocket-hammer.svg?raw";
 import "./updater.css";
 
-// ── Updater component ────────────────────────────────────────────────────
+// ── Runtime Tauri guard ────────────────────────────────────────────────────
+// window.__TAURI_INTERNALS__ is injected by the Tauri webview; absent in any
+// plain browser. All IPC calls must be guarded by this flag.
+const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+// ── ForgeIcon: memoized SVG container — never re-renders ──────────────────
+const ForgeIcon = memo(function ForgeIcon() {
+  return (
+    <div
+      className="updater-icon"
+      dangerouslySetInnerHTML={{ __html: sprocketHammerSvg }}
+      aria-hidden="true"
+    />
+  );
+});
+
+// ── Updater component ─────────────────────────────────────────────────────
 function Updater() {
-  const [version, setVersion]   = useState("");
-  const [notes, setNotes]       = useState(null);
-  const [percent, setPercent]   = useState(0);
-  const [status, setStatus]     = useState("Preparing update…");
+  const [status,  setStatus]  = useState("Preparing update\u2026");
+  const [version, setVersion] = useState("");
 
   useEffect(() => {
-    // Receive version / notes from Rust before copy starts.
-    const unlisten1 = listen("update_info", (ev) => {
-      setVersion(ev.payload?.version ?? "");
-      setNotes(ev.payload?.notes ?? null);
-      setStatus(`Downloading update to v${ev.payload?.version ?? "…"}…`);
-    });
+    if (!isTauri) return;
 
-    // Receive copy progress events.
-    const unlisten2 = listen("update_progress", (ev) => {
-      const p = ev.payload?.percent ?? 0;
-      setPercent(p);
-      if (p >= 100) {
-        setStatus("Launching installer…");
-      }
-    });
+    let unlistenStatus;
 
-    // Signal Rust that both listeners are registered and it is safe to
-    // start emitting update_info / update_progress events.
-    Promise.all([unlisten1, unlisten2]).then(() => {
-      emit("updater_ready");
-    });
+    const setup = async () => {
+      const [{ listen }, { emit }] = await Promise.all([
+        import("@tauri-apps/api/event"),
+        import("@tauri-apps/api/event"),
+      ]);
+
+      unlistenStatus = await listen("updater://status", (ev) => {
+        const { message, version: v } = ev.payload ?? {};
+        if (message) setStatus(message);
+        if (v)       setVersion(v);
+      });
+
+      // Signal Rust that the listener is registered and it is safe to emit
+      // updater://status events. Rust waits up to 2 s for this handshake.
+      await emit("updater_ready");
+    };
+
+    setup().catch(console.error);
 
     return () => {
-      unlisten1.then((f) => f());
-      unlisten2.then((f) => f());
+      if (unlistenStatus) unlistenStatus();
     };
   }, []);
 
   return (
     <div className="updater-root">
+      {/* Forge icon — same SVG as splash screen */}
+      <ForgeIcon />
 
-      {/* Title */}
-      <div className="updater-title-block">
-        <div className="updater-title">
-          {version ? `Updating to v${version}` : "Updating Transmittal Builder…"}
-        </div>
-        <div className="updater-subtitle">
-          Please wait. Do not close this window.
-        </div>
+      {/* Headline */}
+      <div className="updater-title">
+        {version ? `Updating to v${version}` : "Updating Transmittal Builder"}
       </div>
 
-      {/* Progress bar */}
-      <div className="updater-progress-track">
-        <div
-          className="updater-progress-fill"
-          style={{ width: `${percent}%` }}
-        />
+      {/* Indeterminate progress bar */}
+      <div className="updater-progress-track" role="progressbar" aria-label="Update progress">
+        <div className="updater-progress-fill" />
       </div>
 
-      {/* Status text */}
+      {/* Phase status text */}
       <div className="updater-status">{status}</div>
-
-      {/* Release notes */}
-      {notes && (
-        <div className="updater-notes">{notes}</div>
-      )}
-
-      {/* Version metadata footer */}
-      <div className="updater-footer">
-        {version ? `v${version}` : ""}&nbsp;&middot;&nbsp;Transmittal Builder
-      </div>
     </div>
   );
 }
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <Updater />
-  </StrictMode>
-);
+createRoot(document.getElementById("root")).render(<Updater />);

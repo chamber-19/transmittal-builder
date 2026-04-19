@@ -241,6 +241,163 @@ fn apply_update(app: tauri::AppHandle, installer_path: String) {
     }
 }
 
+/// Emit a `updater://status` event to all windows.
+fn emit_updater_status(app: &tauri::AppHandle, message: &str) {
+    let _ = app.emit(
+        "updater://status",
+        serde_json::json!({ "message": message }),
+    );
+}
+
+/// Orchestrated silent update with a branded progress window.
+///
+/// Flow (Option B3 — updater window stays alive past main-window close):
+///  1. Show the updater window (already loaded at startup, just hidden).
+///  2. Emit "Preparing update…" so the user sees immediate feedback.
+///  3. Close main + splash windows (updater is now the only window).
+///  4. Kill the backend sidecar so the installer has no file locks.
+///  5. Spawn the NSIS installer with `/S` and `DETACHED_PROCESS`.
+///  6. Background thread waits for the installer process to exit.
+///  7. Emit "Almost done…", sleep 2 s, then launch the new exe and exit.
+///
+/// Keeping the updater window alive as the last window prevents Tauri from
+/// auto-exiting before the installer finishes.
+#[tauri::command]
+fn start_update(app: tauri::AppHandle, installer_path: String, version: String) {
+    updater::log_updater(&format!(
+        "start_update: installer='{installer_path}' version='{version}'"
+    ));
+
+    // Show the updater window immediately so the user sees branded UI
+    // the moment they click Install Now.
+    if let Some(win) = app.get_webview_window("updater") {
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+
+    // Emit "Preparing update…" right away. The webview was loaded at startup
+    // (visible:false) so the listener is already registered by this point.
+    emit_updater_status(&app, "Preparing update\u{2026}");
+
+    // Spawn the rest of the sequence in a background thread so the Tauri
+    // command returns quickly (the JS invoke() resolves and the main window
+    // can start closing itself).
+    let app_clone = app.clone();
+    let installer_path_clone = installer_path.clone();
+    let version_clone = version.clone();
+    thread::spawn(move || {
+        // Short pause — let the updater window finish its entrance render
+        // and the JS listener absorb the first status event.
+        thread::sleep(Duration::from_millis(400));
+
+        // ── Close main + splash windows ─────────────────────────────────
+        emit_updater_status(&app_clone, "Closing application\u{2026}");
+        let app_for_close = app_clone.clone();
+        let _ = app_clone.run_on_main_thread(move || {
+            for label in &["main", "splash"] {
+                if let Some(win) = app_for_close.get_webview_window(label) {
+                    let _ = win.close();
+                }
+            }
+        });
+
+        thread::sleep(Duration::from_millis(400));
+
+        // ── Kill backend sidecar ─────────────────────────────────────────
+        emit_updater_status(&app_clone, "Stopping background services\u{2026}");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            updater::log_updater("start_update: taskkill transmittal-backend.exe");
+            let _ = std::process::Command::new("taskkill")
+                .args(["/F", "/IM", "transmittal-backend.exe", "/T"])
+                .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+                .status();
+        }
+
+        thread::sleep(Duration::from_millis(500));
+
+        // ── Spawn NSIS installer ─────────────────────────────────────────
+        emit_updater_status(
+            &app_clone,
+            &format!("Installing version {version_clone}\u{2026}"),
+        );
+
+        let mut cmd = std::process::Command::new(&installer_path_clone);
+        cmd.arg("/S");
+
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // DETACHED_PROCESS — installer outlives the parent process.
+            cmd.creation_flags(0x0000_0008);
+        }
+
+        match cmd.spawn() {
+            Ok(mut child) => {
+                updater::log_updater(&format!(
+                    "start_update: installer launched (PID {}), waiting for completion",
+                    child.id()
+                ));
+
+                // Wait for the installer to finish before launching the new app.
+                let _ = child.wait();
+                updater::log_updater("start_update: installer exited");
+
+                emit_updater_status(&app_clone, "Almost done\u{2026}");
+
+                // Give the NSIS post-install hook a moment to run.
+                thread::sleep(Duration::from_secs(2));
+
+                // Launch the newly installed exe. NSIS silent install may or
+                // may not auto-launch depending on the template; spawning it
+                // explicitly here is safe — if it already launched, a second
+                // instance will just silently exit or reuse the existing one.
+                #[cfg(windows)]
+                {
+                    use std::os::windows::process::CommandExt;
+                    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+                        let new_exe = std::path::PathBuf::from(local_app_data)
+                            .join("Transmittal Builder")
+                            .join("transmittal-builder.exe");
+                        if new_exe.exists() {
+                            updater::log_updater(&format!(
+                                "start_update: launching new exe: {}",
+                                new_exe.display()
+                            ));
+                            let _ = std::process::Command::new(&new_exe)
+                                .creation_flags(0x0000_0008) // DETACHED_PROCESS
+                                .spawn();
+                        } else {
+                            updater::log_updater(&format!(
+                                "start_update: new exe not found at {}, skipping launch",
+                                new_exe.display()
+                            ));
+                        }
+                    }
+                }
+
+                // Exit the old process — updater window closes with it.
+                app_clone.exit(0);
+            }
+            Err(e) => {
+                updater::log_updater(&format!(
+                    "start_update: failed to launch installer: {e}"
+                ));
+                eprintln!(
+                    "[updater] start_update: failed to launch installer '{installer_path_clone}': {e}"
+                );
+                // Show an error status; the updater window stays open so the
+                // user can see it rather than being left with a blank screen.
+                emit_updater_status(
+                    &app_clone,
+                    "Install failed \u{2014} please run the installer manually.",
+                );
+            }
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let child: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
@@ -254,6 +411,7 @@ pub fn run() {
             peek_subfolders,
             check_for_update,
             apply_update,
+            start_update,
             splash::splash_is_first_run,
             splash::splash_ready,
             splash::splash_fade_complete,
