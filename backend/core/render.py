@@ -53,7 +53,7 @@ def format_xmtl_label(raw: str) -> str:
 
 
 def extract_doc_meta(filename: str) -> dict:
-    """Parse an R3P filename into doc_no, desc, rev."""
+    """Parse a document filename into doc_no, desc, rev."""
     base = os.path.splitext(os.path.basename(filename))[0]
     m = DOC_ID_RE.search(base)
     if not m:

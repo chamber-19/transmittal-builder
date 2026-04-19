@@ -52,8 +52,6 @@ function Updater() {
 
   return (
     <div className="updater-root">
-      {/* R3P rounded-square gradient logo — official corporate mark */}
-      <div className="updater-logo" aria-label="R3P">R3P</div>
 
       {/* Title */}
       <div className="updater-title-block">
@@ -83,7 +81,7 @@ function Updater() {
 
       {/* Version metadata footer */}
       <div className="updater-footer">
-        {version ? `v${version}` : ""}&nbsp;&middot;&nbsp;R3P Transmittal Builder
+        {version ? `v${version}` : ""}&nbsp;&middot;&nbsp;Transmittal Builder
       </div>
     </div>
   );

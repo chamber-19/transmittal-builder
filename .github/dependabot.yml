@@ -1,6 +1,6 @@
 # Dependabot configuration
 # ---------------------------------------------------------------------------
-# R3P Transmittal Builder ships a Windows-only NSIS installer (see
+# Transmittal Builder ships a Windows-only NSIS installer (see
 # frontend/src-tauri/tauri.conf.json -> bundle.targets = ["nsis"] and the
 # Release workflow which only runs on windows-latest). The Tauri/gtk-rs
 # crate graph still pulls a handful of Linux-only GUI crates as transitive

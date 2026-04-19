@@ -1,12 +1,12 @@
 <svg viewBox="0 0 164 314" xmlns="http://www.w3.org/2000/svg"
-  role="img" aria-label="R3P Transmittal Builder installer sidebar">
+  role="img" aria-label="Transmittal Builder installer sidebar">
 
   <defs>
     <linearGradient id="sb-bg" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%"   stop-color="#1e1612"/>
       <stop offset="100%" stop-color="#0a0806"/>
     </linearGradient>
-    <!-- White outline filter for R3 mark -->
+    <!-- White outline filter for monogram mark -->
     <filter id="sb-outline" color-interpolation-filters="sRGB"
             x="-5%" y="-5%" width="110%" height="110%">
       <feMorphology operator="dilate" radius="2" in="SourceAlpha" result="thick"/>
@@ -50,13 +50,8 @@
   <!-- ── Bottom tagline block ── -->
   <line x1="20" y1="256" x2="144" y2="256" stroke="rgba(200,130,58,0.15)" stroke-width="1"/>
 
-  <text x="82" y="270" text-anchor="middle" dominant-baseline="middle"
-    font-family="Inter, system-ui, sans-serif" font-size="7.5" font-weight="700"
-    font-variant="small-caps" letter-spacing="0.15em"
-    fill="rgba(200,130,58,0.9)">R3P</text>
-
-  <text x="82" y="283" text-anchor="middle" dominant-baseline="middle"
-    font-family="Inter, system-ui, sans-serif" font-size="6.5" font-weight="600"
+  <text x="82" y="276" text-anchor="middle" dominant-baseline="middle"
+    font-family="Inter, system-ui, sans-serif" font-size="7.5" font-weight="600"
     letter-spacing="0.14em"
     fill="rgba(156,163,175,0.6)">TRANSMITTAL BUILDER</text>
 

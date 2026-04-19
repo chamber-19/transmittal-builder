@@ -68,7 +68,7 @@ struct SplashSeen {
 
 /// Returns `true` if this is the first launch after an install or update.
 ///
-/// Reads `%APPDATA%\com.r3p.transmittal\splash-seen.json` (created on first
+/// Reads `%APPDATA%\<CARGO_PKG_NAME>\splash-seen.json` (created on first
 /// run) and compares the stored version against `CARGO_PKG_VERSION`.
 /// If they differ (or the file is absent) it writes the current version back
 /// and returns `true` so the full 9.5 s animation plays.
@@ -90,8 +90,8 @@ pub fn splash_first_launch_after_update() -> bool {
 
     let current = env!("CARGO_PKG_VERSION");
 
-    // Resolve %APPDATA%\com.r3p.transmittal\ on Windows,
-    // $HOME/.local/share/com.r3p.transmittal/ on Linux/macOS.
+    // Resolve %APPDATA%\<CARGO_PKG_NAME>\ on Windows,
+    // $HOME/.local/share/<CARGO_PKG_NAME>/ on Linux/macOS.
     // If the base directory variable is absent, return `true` (full-mode fallback)
     // so the sentinel is not written to an invalid relative path.
     let base_opt = {
@@ -113,7 +113,7 @@ pub fn splash_first_launch_after_update() -> bool {
     };
 
     let sentinel_path = std::path::PathBuf::from(base)
-        .join("com.r3p.transmittal")
+        .join(env!("CARGO_PKG_NAME"))
         .join("splash-seen.json");
 
     // Try to read the sentinel; treat read errors as "first run".

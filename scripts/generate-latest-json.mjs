@@ -8,7 +8,7 @@
  * Inputs (environment variables):
  *   TAG_NAME       - Git tag, e.g. "v4.1.0"
  *   INSTALLER_NAME - NSIS installer filename,
- *                    e.g. "R3P-Transmittal-Builder_4.1.0_x64-setup.exe"
+ *                    e.g. "Transmittal.Builder_6.0.0_x64-setup.exe"
  *
  * Output: latest.json written to the repository root (then uploaded as a
  * release artefact by the GitHub Actions workflow).
@@ -39,7 +39,7 @@ const version = tagName.replace(/^v/, "");
 // ── Release notes ────────────────────────────────────────────────────────
 // Use RELEASE_NOTES.md if present (written by git tag -m or a prior step),
 // otherwise use a generic message.
-let notes = `R3P Transmittal Builder ${tagName}`;
+let notes = `Transmittal Builder ${tagName}`;
 const notesPath = join(process.cwd(), "RELEASE_NOTES.md");
 if (existsSync(notesPath)) {
   notes = readFileSync(notesPath, "utf8").trim();
