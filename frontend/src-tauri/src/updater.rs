@@ -14,7 +14,7 @@
 // Override for dev/testing by setting `TRANSMITTAL_UPDATE_PATH`.
 //
 // File logging (release builds only):
-//   %LOCALAPPDATA%\R3P Transmittal Builder\updater.log
+//   %LOCALAPPDATA%\Transmittal Builder\updater.log
 //   Each line: [<unix-epoch-seconds>] <message>
 //   To convert a timestamp in PowerShell:
 //     [DateTimeOffset]::FromUnixTimeSeconds(<secs>).LocalDateTime
@@ -68,7 +68,7 @@ pub fn get_update_path() -> PathBuf {
 
 /// Append a timestamped message to the updater log file (release builds only).
 ///
-/// Log location: `%LOCALAPPDATA%\R3P Transmittal Builder\updater.log`
+/// Log location: `%LOCALAPPDATA%\Transmittal Builder\updater.log`
 /// Timestamp format: Unix epoch seconds.  To decode in PowerShell:
 ///   `[DateTimeOffset]::FromUnixTimeSeconds(<secs>).LocalDateTime`
 ///
@@ -87,7 +87,7 @@ pub fn log_updater(msg: &str) {
         .or_else(|_| std::env::var("TEMP"))
         .unwrap_or_else(|_| String::from("C:\\Temp"));
     let log_path = PathBuf::from(base)
-        .join("R3P Transmittal Builder")
+        .join("Transmittal Builder")
         .join("updater.log");
 
     // Ensure the directory exists (it should already, but be safe).

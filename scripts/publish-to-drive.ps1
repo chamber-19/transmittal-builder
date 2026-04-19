@@ -1,28 +1,28 @@
 <#
 .SYNOPSIS
-    Copies a tagged Transmittal Builder release from GitHub to the R3P shared drive.
+    Copies a tagged Transmittal Builder release from GitHub to the shared drive.
 
 .DESCRIPTION
     Downloads the NSIS installer and latest.json from a GitHub Release, archives
     the previous installer on the shared drive, and replaces it with the new one.
 
     Requires the GitHub CLI (gh) to be installed and authenticated.
-    Requires Google Drive for Desktop to be running with the R3P shared drive mounted.
+    Requires Google Drive for Desktop to be running with the shared drive mounted.
 
 .PARAMETER Tag
-    The Git tag to publish, e.g. "v4.1.0".
+    The Git tag to publish, e.g. "v6.0.0".
 
 .PARAMETER DrivePath
     Override the shared drive path (default: G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder).
 
 .PARAMETER Repo
-    GitHub repository in owner/name format (default: Koraji95-coder/Transmittal-Builder).
+    GitHub repository in owner/name format (default: chamber-19/transmittal-builder).
 
 .EXAMPLE
-    .\scripts\publish-to-drive.ps1 -Tag v4.1.0
+    .\scripts\publish-to-drive.ps1 -Tag v6.0.0
 
 .EXAMPLE
-    .\scripts\publish-to-drive.ps1 -Tag v4.1.0 -DrivePath "D:\TestDrive\TransmittalBuilder"
+    .\scripts\publish-to-drive.ps1 -Tag v6.0.0 -DrivePath "D:\TestDrive\TransmittalBuilder"
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -32,7 +32,7 @@ param(
 
     [string]$DrivePath = "G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder",
 
-    [string]$Repo = "Koraji95-coder/Transmittal-Builder"
+    [string]$Repo = "chamber-19/transmittal-builder"
 )
 
 Set-StrictMode -Version Latest
@@ -54,7 +54,7 @@ Write-OK "gh CLI found"
 
 # Verify shared drive is accessible
 if (-not (Test-Path $DrivePath)) {
-    throw "Shared drive path not found: $DrivePath`nEnsure Google Drive for Desktop is running and the R3P drive is mounted."
+    throw "Shared drive path not found: $DrivePath`nEnsure Google Drive for Desktop is running and the shared drive is mounted."
 }
 Write-OK "Shared drive accessible: $DrivePath"
 

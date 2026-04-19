@@ -1,8 +1,8 @@
 [package]
-name = "r3p-transmittal-builder"
+name = "transmittal-builder"
 version = "5.0.0"
-description = "R3P Transmittal Builder — Tauri desktop shell"
-authors = ["ROOT3POWER ENGINEERING"]
+description = "Transmittal Builder — Tauri desktop shell"
+authors = ["Koraji"]
 license = "MIT"
 edition = "2021"
 rust-version = "1.77.2"

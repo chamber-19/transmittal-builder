@@ -316,7 +316,7 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
             splash::emit_status(
                 &app,
                 "final",
-                "Cannot reach R3P shared drive",
+                "Cannot reach shared drive",
                 splash::StatusKind::Error,
             );
             OFFLINE_EXTRA_MS + hold_ms
@@ -360,7 +360,7 @@ fn startup_sequence(app: tauri::AppHandle, child_arc: Arc<Mutex<Option<Child>>>)
             splash::close_splash(&app);
             app.dialog()
                 .message(format!(
-                    "Cannot reach R3P shared drive at `{}`.\n\
+                    "Cannot reach shared drive at `{}`.\n\
                      Connect to the network (Drive for Desktop must be \
                      running) and try again.",
                     path.display()

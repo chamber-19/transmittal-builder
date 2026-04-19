@@ -1,5 +1,5 @@
 ; ---------------------------------------------------------------------------
-; R3P Transmittal Builder — NSIS installer hooks
+; Transmittal Builder — NSIS installer hooks
 ;
 ; Wired in via tauri.conf.json -> bundle.windows.nsis.installerHooks.
 ; Tauri's default installer template `!include`s this file VERY early
@@ -29,50 +29,50 @@
 
 ; ── Title-bar captions ────────────────────────────────────────────────────
 ; Without these NSIS uses "<Name> Setup" and "<Name> Uninstall", which is
-; what produces the "R3P Transmittal Builder Uninstall" caption visible in
+; what produces the "Transmittal Builder Uninstall" caption visible in
 ; the bug report screenshot.
-Caption          "R3P Transmittal Builder — Setup"
-UninstallCaption "R3P Transmittal Builder — Uninstaller"
+Caption          "Transmittal Builder — Setup"
+UninstallCaption "Transmittal Builder — Uninstaller"
 
 ; ── Installer: INSTFILES page headers ─────────────────────────────────────
-!define MUI_TEXT_INSTALLING_TITLE                "Installing R3P Transmittal Builder"
+!define MUI_TEXT_INSTALLING_TITLE                "Installing Transmittal Builder"
 !define MUI_TEXT_INSTALLING_SUBTITLE             "One moment while we forge the install…"
 
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT      "Installation complete"
-!define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT   "R3P Transmittal Builder is ready to launch."
+!define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT   "Transmittal Builder is ready to launch."
 
 !define MUI_INSTFILESPAGE_ABORTHEADER_TEXT       "Installation interrupted"
 !define MUI_INSTFILESPAGE_ABORTHEADER_SUBTEXT    "Setup did not finish. You can safely re-run the installer."
 
 ; ── Uninstaller: INSTFILES page headers (the page in the screenshot) ──────
-!define MUI_UNTEXT_UNINSTALLING_TITLE            "Removing R3P Transmittal Builder"
+!define MUI_UNTEXT_UNINSTALLING_TITLE            "Removing Transmittal Builder"
 !define MUI_UNTEXT_UNINSTALLING_SUBTITLE         "Cleaning up app files and shortcuts…"
 
 !define MUI_UNINSTFILESPAGE_FINISHHEADER_TEXT    "Uninstall complete"
-!define MUI_UNINSTFILESPAGE_FINISHHEADER_SUBTEXT "R3P Transmittal Builder has been removed. Thanks for using it."
+!define MUI_UNINSTFILESPAGE_FINISHHEADER_SUBTEXT "Transmittal Builder has been removed. Thanks for using it."
 
 !define MUI_UNINSTFILESPAGE_ABORTHEADER_TEXT     "Uninstall interrupted"
 !define MUI_UNINSTFILESPAGE_ABORTHEADER_SUBTEXT  "Removal did not finish. You can re-run the uninstaller from Apps & Features."
 
 ; ── Welcome / Finish wizard pages (when shown) ────────────────────────────
-!define MUI_TEXT_WELCOME_INFO_TITLE              "Welcome to the R3P Transmittal Builder Setup"
-!define MUI_TEXT_WELCOME_INFO_TEXT               "This will install R3P Transmittal Builder on your computer.$\r$\n$\r$\nClick Next to continue."
+!define MUI_TEXT_WELCOME_INFO_TITLE              "Welcome to the Transmittal Builder Setup"
+!define MUI_TEXT_WELCOME_INFO_TEXT               "This will install Transmittal Builder on your computer.$\r$\n$\r$\nClick Next to continue."
 
 !define MUI_TEXT_FINISH_TITLE                    "All set"
-!define MUI_TEXT_FINISH_SUBTITLE                 "R3P Transmittal Builder is installed and ready."
+!define MUI_TEXT_FINISH_SUBTITLE                 "Transmittal Builder is installed and ready."
 !define MUI_TEXT_FINISH_INFO_TITLE               "Setup complete"
-!define MUI_TEXT_FINISH_INFO_TEXT                "R3P Transmittal Builder has been installed on your computer.$\r$\n$\r$\nClick Finish to close Setup."
+!define MUI_TEXT_FINISH_INFO_TEXT                "Transmittal Builder has been installed on your computer.$\r$\n$\r$\nClick Finish to close Setup."
 
-!define MUI_UNTEXT_WELCOME_INFO_TITLE            "Welcome to the R3P Transmittal Builder Uninstaller"
-!define MUI_UNTEXT_WELCOME_INFO_TEXT             "This will remove R3P Transmittal Builder from your computer.$\r$\n$\r$\nClick Next to continue."
+!define MUI_UNTEXT_WELCOME_INFO_TITLE            "Welcome to the Transmittal Builder Uninstaller"
+!define MUI_UNTEXT_WELCOME_INFO_TEXT             "This will remove Transmittal Builder from your computer.$\r$\n$\r$\nClick Next to continue."
 
 !define MUI_UNTEXT_FINISH_TITLE                  "Uninstall complete"
-!define MUI_UNTEXT_FINISH_SUBTITLE               "Thanks for using R3P Transmittal Builder."
+!define MUI_UNTEXT_FINISH_SUBTITLE               "Thanks for using Transmittal Builder."
 !define MUI_UNTEXT_FINISH_INFO_TITLE             "Uninstall complete"
-!define MUI_UNTEXT_FINISH_INFO_TEXT              "R3P Transmittal Builder has been removed from your computer.$\r$\n$\r$\nClick Finish to close the uninstaller."
+!define MUI_UNTEXT_FINISH_INFO_TEXT              "Transmittal Builder has been removed from your computer.$\r$\n$\r$\nClick Finish to close the uninstaller."
 
 ; ── Confirm-uninstall page ────────────────────────────────────────────────
-!define MUI_UNTEXT_CONFIRM_TITLE                 "Remove R3P Transmittal Builder"
+!define MUI_UNTEXT_CONFIRM_TITLE                 "Remove Transmittal Builder"
 !define MUI_UNTEXT_CONFIRM_SUBTITLE              "Confirm that you want to uninstall."
 
 ; Tauri's installer.nsi.tera looks for these optional macros and

@@ -28,7 +28,6 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { createRoot } from "react-dom/client";
 import "./splash.css";
 import sprocketHammerSvg from "./assets/splash/sprocket-hammer.svg?raw";
-import r3pLogoUrl from "./assets/splash/r3p-logo-transparent.svg";
 import { APP_VERSION } from "./version.js";
 
 // ── Runtime Tauri guard ────────────────────────────────────────────────────
@@ -460,14 +459,6 @@ function Splash({ onLoopRestart = null }) {
 
       <div className={contentClass}>
 
-        <img
-          src={r3pLogoUrl}
-          className="r3p-header-logo"
-          role="img"
-          aria-label="R3P"
-          alt="R3P"
-        />
-
         <div className={`app-title${contentVisible ? " visible" : ""}`}>
           Transmittal Builder
         </div>
@@ -510,7 +501,7 @@ function Splash({ onLoopRestart = null }) {
       </div>
 
       <div className={`version-meta${chromeVisible ? " visible" : ""}`}>
-        v{APP_VERSION}&nbsp;&middot;&nbsp;R3P Transmittal Builder
+        v{APP_VERSION}&nbsp;&middot;&nbsp;Transmittal Builder
       </div>
     </div>
   );

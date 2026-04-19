@@ -1,5 +1,5 @@
 {
-  "name": "r3p-transmittal-builder",
+  "name": "transmittal-builder",
   "private": true,
   "version": "5.0.0",
   "type": "module",
@@ -13,6 +13,7 @@
     "icons:generate": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
+    "@chamber-19/desktop-toolkit": "^1.1.0",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "@vercel/speed-insights": "^2.0.0",

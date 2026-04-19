@@ -3,7 +3,7 @@ import { initBackendUrl, refreshBackendUrl, getBackendUrl } from "./api/backend.
 import { APP_VERSION } from "./version.js";
 
 /* ═══════════════════════════════════════════════════════════════
-   R3P TRANSMITTAL BUILDER — Wired Frontend
+   TRANSMITTAL BUILDER — Wired Frontend
    API: /api/parse-index, /api/render, /api/email,
         /api/scan-projects, /api/scan-folder, /api/render-to-folder
    ═══════════════════════════════════════════════════════════════ */
@@ -235,7 +235,7 @@ function FileChip({name,type,onRemove}){
 // ─── Project Search Panel ─────────────────────────────────────
 function ProjectSearchPanel({onProjectSelect,showToast}){
   const[root,setRoot]=useState(()=>{
-    try{return localStorage.getItem("r3p_projects_root")||""}catch{return ""}
+    try{return localStorage.getItem("tb_projects_root")||""}catch{return ""}
   });
   const[query,setQuery]=useState("");
   const[results,setResults]=useState([]);
@@ -262,7 +262,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
   const saveRoot=v=>{
     setRoot(v);
     setRootTouched(true);
-    try{localStorage.setItem("r3p_projects_root",v)}catch{}
+    try{localStorage.setItem("tb_projects_root",v)}catch{}
   };
 
   const handleBrowse=async()=>{
@@ -429,7 +429,7 @@ function ProjectSection({draft,u,nextXmtlNum,projectFolderPath,onNextXmtl}){
   const xmtlId=useId();
   return <Card>
   <SL>Project Information</SL>
-  <Row><TF label="Job Number" value={draft.jobNum} onChange={v=>u("jobNum",v)} placeholder="R3P-XXXX" mono/>
+  <Row><TF label="Job Number" value={draft.jobNum} onChange={v=>u("jobNum",v)} placeholder="XXXX" mono/>
     <div style={{flex:1,minWidth:0}}>
       <label htmlFor={xmtlId} style={{display:"block",fontSize:"12px",fontWeight:500,color:T.t2,marginBottom:"3px"}}>Transmittal No.</label>
       <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
@@ -629,7 +629,7 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
 
 // ─── Header ──────────────────────────────────────────────────
 // Mirrors the splash/loader treatment: wordmark in small-caps with the
-// "Engineered to Deliver" tagline beneath in amber. The gradient R3P
+// "Engineered to Deliver" tagline beneath in amber. The gradient logo
 // square was retired from the loader, so we drop it here too. The right
 // side of the bar is intentionally empty — the previous "Tools" button
 // was a no-op and is removed pending a real menu.
@@ -668,8 +668,8 @@ export default function App(){
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
   // Load saved contacts
-  useEffect(()=>{try{const v=localStorage.getItem("r3p_contact_lists");if(v)setSavedLists(JSON.parse(v))}catch(e){}},[]);
-  const persistLists=useCallback(l=>{setSavedLists(l);try{localStorage.setItem("r3p_contact_lists",JSON.stringify(l))}catch(e){}},[]);
+  useEffect(()=>{try{const v=localStorage.getItem("tb_contact_lists");if(v)setSavedLists(JSON.parse(v))}catch(e){}},[]);
+  const persistLists=useCallback(l=>{setSavedLists(l);try{localStorage.setItem("tb_contact_lists",JSON.stringify(l))}catch(e){}},[]);
 
   const u=useCallback((k,v)=>setDraft(p=>({...p,[k]:v})),[]);
 
@@ -1038,7 +1038,7 @@ export default function App(){
         </div>
       </div>
       <footer style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3,letterSpacing:"0.04em"}}>
-        <span>v{APP_VERSION} · Built by Dustin</span><span>© 2019–2026 ROOT3POWER ENGINEERING</span>
+        <span>v{APP_VERSION} · Built by Dustin</span><span>© 2019–2026 Koraji</span>
       </footer>
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)} duration={toast?.duration||5000}/>

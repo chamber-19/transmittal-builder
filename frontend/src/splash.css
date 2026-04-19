@@ -83,15 +83,6 @@
   transition: opacity 1s ease;
 }
 
-/* ── R3P header logo (img element — monogram SVG at 48×48) ─────────────── */
-.r3p-header-logo {
-  width: 48px;
-  height: 48px;
-  display: block;
-  margin-bottom: 6px;
-  flex-shrink: 0;
-}
-
 /* ── App title (TRANSMITTAL BUILDER wordmark) ───────────────────────────── */
 .app-title {
   font-family: 'Inter', system-ui, sans-serif;

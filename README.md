@@ -1,10 +1,10 @@
-# R3P Transmittal Builder v4.0
+# Transmittal Builder
 
-A desktop-first application for generating engineering transmittal packages at ROOT3POWER ENGINEERING. Build professional transmittals by dropping files, auto-populating from project folders, and generating combined PDF packages — all from a single interface.
+A desktop-first application for generating engineering transmittal packages. Build professional transmittals by dropping files, auto-populating from project folders, and generating combined PDF packages — all from a single interface.
 
 **Key capabilities:**
 
-- **Project folder integration** — Scan a root directory for R3P project folders, auto-detect job numbers, contacts, existing transmittals, and source PDFs
+- **Project folder integration** — Scan a root directory for project folders, auto-detect job numbers, contacts, existing transmittals, and source PDFs
 - **Smart file routing** — Drag & drop `.docx` templates, `.xlsx` drawing indexes, and `.pdf` source drawings; each is automatically routed to the right slot
 - **Transmittal rendering** — Fill a Word template with project fields, checkboxes, contacts, and a document table, then convert to PDF
 - **Combined PDF output** — Merge the transmittal cover letter with all source drawings into a single combined PDF
@@ -15,7 +15,7 @@ A desktop-first application for generating engineering transmittal packages at R
 
 ## Installation (non-developers)
 
-> **R3P staff:** The installer lives on the shared Google Drive at:
+> **Users:** The installer lives on the shared Google Drive at:
 > ```
 > G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\
 > ```
@@ -87,7 +87,7 @@ once the backend is reachable.
 | Method | Path                 | Description                                                   |
 |--------|----------------------|---------------------------------------------------------------|
 | GET    | /api/health          | Health check (returns version)                                |
-| GET    | /api/scan-projects   | Scan a root directory for R3P project folders                 |
+| GET    | /api/scan-projects   | Scan a root directory for project folders                     |
 | POST   | /api/scan-folder     | Deep-scan a specific project folder for PDFs, contacts, index |
 | POST   | /api/parse-index     | Upload Excel drawing index → parsed document rows             |
 | POST   | /api/render          | Render transmittal → ZIP package (docx + pdf + drawings)      |
@@ -98,11 +98,11 @@ once the backend is reachable.
 
 ## Output Filenames
 
-The app produces files using R3P's naming convention:
+The app produces files using the standard naming convention:
 
-- **Transmittal letter:** `R3P-{JobNum}-XMTL-{NNN} - DOCUMENT INDEX.docx` / `.pdf`
-- **Combined PDF:** `R3P-{JobNum} - {PROJECT DESC} - {IFP}_{YYYYMMDD}.pdf`
-- **ZIP package:** `R3P-{JobNum}-XMTL-{NNN}-Package.zip`
+- **Transmittal letter:** `{JobNum}-XMTL-{NNN} - DOCUMENT INDEX.docx` / `.pdf`
+- **Combined PDF:** `{JobNum} - {PROJECT DESC} - {IFP}_{YYYYMMDD}.pdf`
+- **ZIP package:** `{JobNum}-XMTL-{NNN}-Package.zip`
 
 The copy-intent abbreviation (IFP, IFC, IFA, etc.) is derived from the single selected checkbox.
 
@@ -113,6 +113,7 @@ The copy-intent abbreviation (IFP, IFC, IFA, etc.) is derived from the single se
 ```bash
 # Terminal 1 — Python backend
 cd backend
+export NODE_AUTH_TOKEN=ghp_yourTokenHere   # required for pip install from private repo
 pip install -r requirements.txt
 uvicorn app:app --reload --port 8000
 
@@ -360,11 +361,37 @@ resulting binary files along with any SVG master changes.
 ## Architecture roadmap
 
 Shared scaffolding (UI primitives, installer templates, logging, updater)
-will be extracted into [`kc-framework`](https://github.com/Koraji95-coder/kc-framework)
-and consumed here as a versioned dependency.
+is consumed from [`@chamber-19/desktop-toolkit`](https://github.com/chamber-19/desktop-toolkit)
+as a versioned dependency.
 See [docs/framework-extraction/](./docs/framework-extraction/README.md) for the inventory and migration plan.
 
 ---
 
-ROOT3POWER ENGINEERING
+## Local Setup
+
+This project consumes `@chamber-19/desktop-toolkit` from GitHub Packages,
+which requires authentication for `npm install`.
+
+1. Create a GitHub classic PAT at https://github.com/settings/tokens/new
+   with the `read:packages` scope.
+2. Set the env var before running `npm install` in `frontend/`:
+
+   **macOS/Linux:**
+   ```bash
+   export NODE_AUTH_TOKEN=ghp_yourTokenHere
+   cd frontend && npm install
+   ```
+
+   **Windows PowerShell:**
+   ```powershell
+   $env:NODE_AUTH_TOKEN = "ghp_yourTokenHere"
+   cd frontend; npm install
+   ```
+
+3. After install, the env var is no longer needed for development —
+   only for re-running `npm install`.
+
+---
+
+© 2019–2026 Koraji
 

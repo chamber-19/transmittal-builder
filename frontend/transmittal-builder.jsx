@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 
 /* ═══════════════════════════════════════════════════════════════
-   R3P TRANSMITTAL BUILDER v3.0 — Wired Frontend
+   TRANSMITTAL BUILDER v3.0 — Wired Frontend (legacy)
    API: /api/parse-index, /api/render, /api/email
    ═══════════════════════════════════════════════════════════════ */
 
@@ -104,7 +104,7 @@ function FileChip({name,type,onRemove}){
 // ─── Sections ────────────────────────────────────────────────
 function ProjectSection({draft,u}){return <Card>
   <SL>Project Information</SL>
-  <Row><TF label="Job Number" value={draft.jobNum} onChange={v=>u("jobNum",v)} placeholder="R3P-XXXX" mono/><TF label="Transmittal No." value={draft.xmtlNum} onChange={v=>u("xmtlNum",v)} placeholder="XMTL-001" mono/></Row>
+  <Row><TF label="Job Number" value={draft.jobNum} onChange={v=>u("jobNum",v)} placeholder="XXXX" mono/><TF label="Transmittal No." value={draft.xmtlNum} onChange={v=>u("xmtlNum",v)} placeholder="XMTL-001" mono/></Row>
   <div style={{marginTop:"12px"}}><TF label="Client / Site Name" value={draft.client} onChange={v=>u("client",v)} placeholder="Client Name — Site Name"/></div>
   <div style={{marginTop:"12px"}}><TF label="Project Description" value={draft.projectDesc} onChange={v=>u("projectDesc",v)} placeholder="Enter project description"/></div>
   <div style={{marginTop:"12px",maxWidth:"200px"}}><TF label="Date" value={draft.date} onChange={v=>u("date",v)} placeholder="MM/DD/YYYY" mono/></div>
@@ -237,8 +237,8 @@ function Sidebar({draft,checks,contacts,documents,pdfFiles,templateFile,indexFil
 // ─── Header ──────────────────────────────────────────────────
 function Header(){return <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 32px",borderBottom:`1px solid ${T.bd}`,background:T.bgEl}}>
   <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
-    <div style={{width:"36px",height:"36px",borderRadius:"6px",background:`linear-gradient(135deg,${T.acc},#A06830)`,display:"flex",alignItems:"center",justifyContent:"center",color:T.tOn,fontFamily:T.fM,fontWeight:700,fontSize:"11px",letterSpacing:"-0.02em"}}>R3P</div>
-    <div><div style={{fontFamily:T.fD,fontSize:"18px",color:T.t1,lineHeight:1.2}}>Transmittal Builder</div><div style={{fontSize:"10px",fontFamily:T.fM,color:T.t3,letterSpacing:"0.06em"}}>ROOT3POWER</div></div>
+    <div style={{width:"36px",height:"36px",borderRadius:"6px",background:`linear-gradient(135deg,${T.acc},#A06830)`,display:"flex",alignItems:"center",justifyContent:"center",color:T.tOn,fontFamily:T.fM,fontWeight:700,fontSize:"11px",letterSpacing:"-0.02em"}}>TB</div>
+    <div><div style={{fontFamily:T.fD,fontSize:"18px",color:T.t1,lineHeight:1.2}}>Transmittal Builder</div></div>
   </div>
   <Btn variant="ghost" icon={I.grid}>Tools</Btn>
 </header>;}
@@ -265,8 +265,8 @@ export default function App(){
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
   // Load saved contacts
-  useEffect(()=>{(async()=>{try{const r=await window.storage.get("r3p_contact_lists");if(r)setSavedLists(JSON.parse(r.value))}catch(e){}})()},[]);
-  const persistLists=useCallback(async l=>{setSavedLists(l);try{await window.storage.set("r3p_contact_lists",JSON.stringify(l))}catch(e){}},[]);
+  useEffect(()=>{(async()=>{try{const r=await window.storage.get("tb_contact_lists");if(r)setSavedLists(JSON.parse(r.value))}catch(e){}})()},[]);
+  const persistLists=useCallback(async l=>{setSavedLists(l);try{await window.storage.set("tb_contact_lists",JSON.stringify(l))}catch(e){}},[]);
 
   const u=useCallback((k,v)=>setDraft(p=>({...p,[k]:v})),[]);
   const toggle=useCallback(k=>setChecks(p=>({...p,[k]:!p[k]})),[]);
@@ -391,7 +391,7 @@ export default function App(){
         </div>
       </div>
       <footer style={{padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,display:"flex",justifyContent:"space-between",fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
-        <span>R3P TRANSMITTAL BUILDER v3.0</span><span>ROOT3POWER ENGINEERING</span>
+        <span>TRANSMITTAL BUILDER v3.0</span><span>© 2019–2026 Koraji</span>
       </footer>
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)}/>

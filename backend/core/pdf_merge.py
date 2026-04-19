@@ -211,7 +211,7 @@ def build_combined_pdf(
         docx_path: Path to the rendered transmittal .docx
         source_pdfs: List of source document PDF paths
         work_dir: Temporary working directory
-        output_name: Filename for the combined PDF (e.g. "R3P-1234_XMTL-001_Combined.pdf")
+        output_name: Filename for the combined PDF (e.g. "JOB-1234_XMTL-001_Combined.pdf")
 
     Returns:
         (combined_pdf_path, error_message) — one will be None.

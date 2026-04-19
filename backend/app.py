@@ -1,5 +1,5 @@
 """
-R3P Transmittal Builder — Backend API
+Transmittal Builder — Backend API
 
 Routes:
     POST /api/parse-index       Parse an Excel drawing index → document rows
@@ -74,7 +74,7 @@ def _build_combined_pdf_name(job_label: str, project_desc: str, checks: dict,
                               date_str: str) -> str:
     """
     Build the combined PDF filename in the format:
-    R3P-25074 - NANULAK 180MW BESS SUBSTATION - IFP_20251017.pdf
+    JOB-25074 - NANULAK 180MW BESS SUBSTATION - IFP_20251017.pdf
     """
     intent = _get_copy_intent_abbrev(checks)
     date_part = _parse_date_to_yyyymmdd(date_str)
@@ -91,9 +91,9 @@ def _build_combined_pdf_name(job_label: str, project_desc: str, checks: dict,
 # ─── App Setup ────────────────────────────────────────────────
 
 app = FastAPI(
-    title="R3P Transmittal Builder",
+    title="Transmittal Builder",
     version="4.0.0",
-    description="Backend API for the ROOT3POWER Transmittal Builder",
+    description="Backend API for the Transmittal Builder desktop app",
 )
 
 app.add_middleware(
@@ -165,7 +165,7 @@ async def api_parse_index(file: UploadFile = File(...)):
 
 # ─── Filesystem helpers ───────────────────────────────────────
 
-# Pattern matching typical job numbers like "R3P-2401" or "ABC-1234"
+# Pattern matching typical job numbers like "R3P-2401", "ABC-1234", etc.
 _JOB_NUM_RE = re.compile(r'^([A-Z][A-Z0-9]*-\d{3,})', re.IGNORECASE)
 # Pattern matching numeric-prefixed job numbers like "25074-HEN"
 _JOB_NUM_RE2 = re.compile(r'^(\d+[A-Z]?-[A-Z]{2,})', re.IGNORECASE)
@@ -180,10 +180,10 @@ def _parse_project_name(folder_name: str) -> tuple[str, str]:
     Split a project folder name into (job_num, client_site).
 
     Handles two naming conventions:
-      "R3P-2401-Brazos-Substation"              → ("R3P-2401", "Brazos Substation")
+      "ABC-2401-Project-Name"                   → ("ABC-2401", "Project Name")
       "25074-HEN - NANULAK 180 MW BESS DESIGN"  → ("25074-HEN", "NANULAK 180 MW BESS DESIGN")
     """
-    # Try primary pattern first (letter-led: R3P-2401)
+    # Try primary pattern first (letter-led: e.g. ABC-2401)
     m = _JOB_NUM_RE.match(folder_name)
     if m:
         job_num = m.group(1).upper()
@@ -712,9 +712,9 @@ async def api_render_to_folder(
         # Pad to 3 digits if purely numeric; non-numeric values (e.g. "ABC") are
         # passed through unchanged — this is intentional for non-standard numbering.
         xmtl_num_padded = xmtl_num.zfill(3) if xmtl_num.isdigit() else xmtl_num
-        # Avoid doubling any leading "R3P-" that the client already included
+        # Preserve the job_num as-is if it already has a prefix; otherwise prepend "R3P-"
         job_label = job_num if job_num.upper().startswith("R3P-") else f"R3P-{job_num}"
-        # Transmittal letter: R3P-JobNumber-XMTL-016 - DOCUMENT INDEX
+        # Transmittal letter filename: e.g. R3P-JobNumber-XMTL-016 - DOCUMENT INDEX
         base_name = f"{job_label}-XMTL-{xmtl_num_padded} - DOCUMENT INDEX"
 
         # Create the XMTL output sub-folder
@@ -873,9 +873,9 @@ async def api_render(
         project_desc = fields_dict.get("project_desc", "").strip()
         date_str = fields_dict.get("date", "")
         xmtl_num_padded = xmtl_num.zfill(3) if xmtl_num.isdigit() else xmtl_num
-        # Avoid doubling any leading "R3P-" that the client already included
+        # Preserve the job_num as-is if it already has a prefix; otherwise prepend "R3P-"
         job_label = job_num if job_num.upper().startswith("R3P-") else f"R3P-{job_num}"
-        # Transmittal letter: R3P-JobNumber-XMTL-016 - DOCUMENT INDEX
+        # Transmittal letter filename: e.g. R3P-JobNumber-XMTL-016 - DOCUMENT INDEX
         base_name = f"{job_label}-XMTL-{xmtl_num_padded} - DOCUMENT INDEX"
 
         # Render the .docx

@@ -4,12 +4,15 @@ name: Release
 #
 # Prerequisites:
 #   - Repository secret GITHUB_TOKEN (automatic) for creating releases.
+#   - Repository secret CHAMBER19_PACKAGES_TOKEN (classic PAT with read:packages
+#     + repo scopes) for installing @chamber-19/desktop-toolkit from GitHub Packages
+#     and the chamber19-desktop-toolkit Python package from the private repo.
 #
 # Artifacts produced:
-#   - R3P.Transmittal.Builder_<version>_x64-setup.exe  (NSIS installer)
+#   - Transmittal.Builder_<version>_x64-setup.exe  (NSIS installer)
 #     Note: softprops/action-gh-release sanitises spaces to dots on upload,
 #     so the on-disk name differs from the tauri.conf.json productName.
-#   - latest.json                                        (update manifest)
+#   - latest.json                                    (update manifest)
 
 on:
   push:
@@ -62,8 +65,11 @@ jobs:
 
       # ── 3. Python backend → PyInstaller sidecar ─────────────────────────
       - name: Install backend dependencies
+        working-directory: backend
+        env:
+          GITHUB_TOKEN: ${{ secrets.CHAMBER19_PACKAGES_TOKEN }}
         run: |
-          cd backend
+          git config --global url."https://${{ secrets.CHAMBER19_PACKAGES_TOKEN }}@github.com/".insteadOf "https://github.com/"
           pip install -r requirements.txt -r requirements-build.txt
 
       - name: Build PyInstaller sidecar
@@ -81,9 +87,10 @@ jobs:
 
       # ── 4. Frontend build ────────────────────────────────────────────────
       - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm ci
+        working-directory: frontend
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.CHAMBER19_PACKAGES_TOKEN }}
+        run: npm ci
 
       - name: Build Vite frontend
         run: |
@@ -127,7 +134,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          name:     "R3P Transmittal Builder ${{ github.ref_name }}"
+          name:     "Transmittal Builder ${{ github.ref_name }}"
           fail_on_unmatched_files: true
           files: |
             ${{ steps.find_installer.outputs.path }}

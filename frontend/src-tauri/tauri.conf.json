@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "R3P Transmittal Builder",
+  "productName": "Transmittal Builder",
   "version": "5.0.0",
-  "identifier": "com.root3power.transmittal-builder",
+  "identifier": "com.chamber-19.transmittal-builder",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "R3P Transmittal Builder",
+        "title": "Transmittal Builder",
         "width": 1280,
         "height": 900,
         "minWidth": 960,

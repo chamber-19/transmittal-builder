@@ -1,7 +1,7 @@
 # Transmittal Builder — Troubleshooting
 
 This document covers common issues encountered when installing, running, or
-building R3P Transmittal Builder.
+building Transmittal Builder.
 
 ---
 
@@ -30,11 +30,11 @@ exactly where `signtool` slots in. See `RELEASING.md §1 — Code signing`.
 
 ---
 
-## 2. App refuses to open — "Cannot reach R3P shared drive"
+## 2. App refuses to open — "Cannot reach shared drive"
 
 **Symptom:** The splash screen appears, then the app shows an error dialog:
 
-> Cannot reach R3P shared drive. Connect to VPN or map the G:\ drive and
+> Cannot reach shared drive. Connect to VPN or map the G:\ drive and
 > try again.
 
 The app then exits without opening the main window.
@@ -46,7 +46,7 @@ disconnected — the app refuses to start.
 
 **Fix:**
 1. Ensure **Google Drive for Desktop** is running and signed in.
-2. Verify the R3P shared drive is mounted at `G:` in File Explorer.
+2. Verify the shared drive is mounted at `G:` in File Explorer.
 3. If the drive letter changed, set the `TRANSMITTAL_UPDATE_PATH` environment
    variable to the correct path:
    ```powershell
@@ -216,18 +216,18 @@ animate, or the installer is never launched.
 (`println!`/`eprintln!`) is swallowed by the Windows GUI subsystem.  All
 updater activity is written to a log file instead.
 
-**Log file location:**
+**Log file location (v6+):**
 ```
-%LOCALAPPDATA%\R3P Transmittal Builder\updater.log
+%LOCALAPPDATA%\Transmittal Builder\updater.log
 ```
 For most users this resolves to:
 ```
-C:\Users\<username>\AppData\Local\R3P Transmittal Builder\updater.log
+C:\Users\<username>\AppData\Local\Transmittal Builder\updater.log
 ```
 
 **View the log in PowerShell:**
 ```powershell
-Get-Content "$env:LOCALAPPDATA\R3P Transmittal Builder\updater.log" | Select-Object -Last 50
+Get-Content "$env:LOCALAPPDATA\Transmittal Builder\updater.log" | Select-Object -Last 50
 ```
 
 **Decode a timestamp line:**
@@ -280,7 +280,7 @@ alerts against transitive crates pulled in by Tauri:
 - `rand 0.7.x`  — soundness issue in the legacy `rand` line
 
 **Cause:** Both crates come in via `gtk-rs 0.18 → tao → tauri-runtime-wry`,
-and only compile when targeting **Linux/GTK**. R3P Transmittal Builder
+and only compile when targeting **Linux/GTK**. Transmittal Builder
 ships a Windows-only NSIS installer (see `bundle.targets` in
 `frontend/src-tauri/tauri.conf.json` and the `windows-latest` runner in
 `.github/workflows/release.yml`), so the vulnerable code is never built
