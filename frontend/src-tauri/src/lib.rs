@@ -242,11 +242,14 @@ fn apply_update(app: tauri::AppHandle, installer_path: String) {
 }
 
 /// Emit a `updater://status` event to all windows.
+/// Logs a warning on failure so the developer can diagnose silent IPC issues.
 fn emit_updater_status(app: &tauri::AppHandle, message: &str) {
-    let _ = app.emit(
+    if let Err(e) = app.emit(
         "updater://status",
         serde_json::json!({ "message": message }),
-    );
+    ) {
+        eprintln!("[updater] emit_updater_status failed ('{message}'): {e}");
+    }
 }
 
 /// Orchestrated silent update with a branded progress window.
@@ -275,10 +278,6 @@ fn start_update(app: tauri::AppHandle, installer_path: String, version: String) 
         let _ = win.set_focus();
     }
 
-    // Emit "Preparing update…" right away. The webview was loaded at startup
-    // (visible:false) so the listener is already registered by this point.
-    emit_updater_status(&app, "Preparing update\u{2026}");
-
     // Spawn the rest of the sequence in a background thread so the Tauri
     // command returns quickly (the JS invoke() resolves and the main window
     // can start closing itself).
@@ -286,9 +285,15 @@ fn start_update(app: tauri::AppHandle, installer_path: String, version: String) 
     let installer_path_clone = installer_path.clone();
     let version_clone = version.clone();
     thread::spawn(move || {
-        // Short pause — let the updater window finish its entrance render
-        // and the JS listener absorb the first status event.
+        // Brief pause — lets the updater window finish its first paint and
+        // ensures the React listener is registered before we emit events.
+        // The webview is loaded at startup (visible:false), so React has had
+        // several seconds to mount by the time a user triggers an update, but
+        // a small guard here makes the handshake reliable even in edge cases.
         thread::sleep(Duration::from_millis(400));
+
+        emit_updater_status(&app_clone, "Preparing update\u{2026}");
+        thread::sleep(Duration::from_millis(600));
 
         // ── Close main + splash windows ─────────────────────────────────
         emit_updater_status(&app_clone, "Closing application\u{2026}");

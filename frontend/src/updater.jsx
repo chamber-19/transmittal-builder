@@ -45,10 +45,7 @@ function Updater() {
     let unlistenStatus;
 
     const setup = async () => {
-      const [{ listen }, { emit }] = await Promise.all([
-        import("@tauri-apps/api/event"),
-        import("@tauri-apps/api/event"),
-      ]);
+      const { listen, emit } = await import("@tauri-apps/api/event");
 
       unlistenStatus = await listen("updater://status", (ev) => {
         const { message, version: v } = ev.payload ?? {};
