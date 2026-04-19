@@ -48,9 +48,9 @@
     fill="rgba(200,130,58,0.9)">ENGINEERED TO DELIVER</text>
 
   <!-- ── Bottom tagline block ── -->
-  <line x1="20" y1="256" x2="144" y2="256" stroke="rgba(200,130,58,0.15)" stroke-width="1"/>
+  <line x1="20" y1="221" x2="144" y2="221" stroke="rgba(200,130,58,0.15)" stroke-width="1"/>
 
-  <text x="82" y="276" text-anchor="middle" dominant-baseline="middle"
+  <text x="82" y="241" text-anchor="middle" dominant-baseline="middle"
     font-family="Inter, system-ui, sans-serif" font-size="7.5" font-weight="600"
     letter-spacing="0.14em"
     fill="rgba(156,163,175,0.6)">TRANSMITTAL BUILDER</text>
