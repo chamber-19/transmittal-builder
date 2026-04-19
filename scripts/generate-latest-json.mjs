@@ -22,7 +22,10 @@ import { join } from "path";
 
 // ── Resolve inputs ──────────────────────────────────────────────────────
 const tagName = process.env.TAG_NAME ?? "";
-const installerName = process.env.INSTALLER_NAME ?? "";
+// softprops/action-gh-release (and Tauri's NSIS bundler) replace spaces with
+// dots in the uploaded artifact filename, so normalise here to ensure the
+// value we write into latest.json matches the file users actually download.
+const installerName = (process.env.INSTALLER_NAME ?? "").replace(/ /g, ".");
 
 if (!tagName) {
   console.error("[generate-latest-json] TAG_NAME env var is required");
