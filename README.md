@@ -393,5 +393,5 @@ which requires authentication for `npm install`.
 
 ---
 
-© 2019–2026 Koraji
+© 2026 Transmittal Builder
 

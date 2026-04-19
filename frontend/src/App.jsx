@@ -1038,7 +1038,7 @@ export default function App(){
         </div>
       </div>
       <footer style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,fontSize:"11px",fontFamily:T.fM,color:T.t3,letterSpacing:"0.04em"}}>
-        <span>v{APP_VERSION} · Built by Dustin</span><span>© 2019–2026 Koraji</span>
+        <span>v{APP_VERSION}</span><span>© 2026 Transmittal Builder</span>
       </footer>
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)} duration={toast?.duration||5000}/>

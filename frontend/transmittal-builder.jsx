@@ -391,7 +391,7 @@ export default function App(){
         </div>
       </div>
       <footer style={{padding:"14px 32px",borderTop:`1px solid ${T.bdSub}`,display:"flex",justifyContent:"space-between",fontSize:"11px",fontFamily:T.fM,color:T.t3}}>
-        <span>TRANSMITTAL BUILDER v3.0</span><span>© 2019–2026 Koraji</span>
+        <span>TRANSMITTAL BUILDER</span><span>© 2026 Transmittal Builder</span>
       </footer>
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)}/>
