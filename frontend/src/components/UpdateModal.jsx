@@ -1,15 +1,12 @@
 /**
- * UpdateModal.jsx — Blocking update-available modal.
+ * UpdateModal.jsx — Mandatory update modal.
  *
  * Shown when `check_for_update` returns `{ updateAvailable: true }`.
- * The modal covers the main app and presents two choices:
- *   • Install Now  — invokes `apply_update` and shows a brief installing
- *                    message (~2.5 s) before the app exits.
- *   • Remind Me Later — session-only dismiss (no persistence).
- *                       The modal will reappear on the next launch.
+ * The modal is non-dismissible — the only path forward is Install Now.
+ * There is no close button, no ESC-to-close, no backdrop-click dismiss.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 // ── Design tokens (match App.jsx) ────────────────────────────────────────
@@ -34,16 +31,22 @@ const T = {
  * @param {string}   props.availableVersion — remote version, e.g. "6.0.4"
  * @param {string}   props.installerPath    — absolute path to the installer exe
  * @param {string|null} props.notes         — release notes from latest.json
- * @param {function} props.onDismiss        — called when "Remind Me Later" clicked
  */
 export default function UpdateModal({
   currentVersion,
   availableVersion,
   installerPath,
   notes,
-  onDismiss,
 }) {
   const [installing, setInstalling] = useState(false);
+
+  // Block ESC at the document level so the modal cannot be dismissed
+  // via keyboard. The handler is attached once on mount and removed on unmount.
+  useEffect(() => {
+    const blockEsc = (e) => { if (e.key === "Escape") e.preventDefault(); };
+    document.addEventListener("keydown", blockEsc, true);
+    return () => document.removeEventListener("keydown", blockEsc, true);
+  }, []);
 
   async function handleInstallNow() {
     setInstalling(true);
@@ -60,7 +63,8 @@ export default function UpdateModal({
   }
 
   return (
-    /* Full-screen backdrop */
+    /* Full-screen backdrop — no onClick handler so clicks do not dismiss
+       the modal. ESC is blocked via a document-level keydown listener. */
     <div
       style={{
         position: "fixed",
@@ -106,7 +110,7 @@ export default function UpdateModal({
             </div>
           </div>
         ) : (
-          /* Update available state */
+          /* Update required state */
           <>
             <div
               style={{
@@ -116,7 +120,7 @@ export default function UpdateModal({
                 marginBottom: "8px",
               }}
             >
-              Update Available
+              Update Required
             </div>
             <div
               style={{
@@ -126,7 +130,8 @@ export default function UpdateModal({
                 lineHeight: 1.6,
               }}
             >
-              A new version of Transmittal Builder is available.
+              A new version of Transmittal Builder is available and must be
+              installed before continuing.
             </div>
 
             {/* Version comparison */}
@@ -181,29 +186,13 @@ export default function UpdateModal({
               automatically. This takes about 30 seconds.
             </div>
 
-            {/* Action buttons */}
+            {/* Single mandatory action */}
             <div
               style={{
                 display: "flex",
-                gap: "10px",
                 justifyContent: "flex-end",
               }}
             >
-              <button
-                onClick={onDismiss}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: T.r,
-                  border: `1px solid ${T.bd}`,
-                  background: "transparent",
-                  color: T.t2,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  fontFamily: T.fB,
-                }}
-              >
-                Remind Me Later
-              </button>
               <button
                 onClick={handleInstallNow}
                 style={{
@@ -227,3 +216,4 @@ export default function UpdateModal({
     </div>
   );
 }
+

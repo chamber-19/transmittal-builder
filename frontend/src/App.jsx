@@ -668,9 +668,7 @@ export default function App(){
 
   // ─── Auto-updater state ────────────────────────────────────
   // updateInfo: { version, installerPath, notes } | null
-  // updateDismissed: session-only flag; resets on next launch
   const[updateInfo,setUpdateInfo]=useState(null);
-  const[updateDismissed,setUpdateDismissed]=useState(false);
 
   // Check for updates on mount (Tauri only). Errors degrade silently.
   useEffect(()=>{
@@ -1064,13 +1062,12 @@ export default function App(){
     </div>
     <Toast message={toast?.message} type={toast?.type} onDismiss={()=>setToast(null)} duration={toast?.duration||5000}/>
     <ConfirmDialog open={!!confirmDialog} title={confirmDialog?.title} message={confirmDialog?.message} onConfirm={confirmDialog?.onConfirm} onCancel={confirmDialog?.onCancel||(()=>setConfirmDialog(null))} confirmLabel={confirmDialog?.confirmLabel} cancelLabel={confirmDialog?.cancelLabel}/>
-    {updateInfo&&!updateDismissed&&(
+    {updateInfo&&(
       <UpdateModal
         currentVersion={APP_VERSION}
         availableVersion={updateInfo.version}
         installerPath={updateInfo.installerPath}
         notes={updateInfo.notes}
-        onDismiss={()=>setUpdateDismissed(true)}
       />
     )}
   </>;

@@ -76,14 +76,23 @@ UninstallCaption "Transmittal Builder — Uninstaller"
 !define MUI_UNTEXT_CONFIRM_SUBTITLE              "Confirm that you want to uninstall."
 
 ; Tauri's installer.nsi.tera looks for these optional macros and
-; `!insertmacro`s them at the appropriate point if defined. We don't
-; need any extra logic right now, but defining empty macros keeps the
-; hook surface explicit and documents intent for future tweaks.
+; `!insertmacro`s them at the appropriate point if defined.
 !macro NSIS_HOOK_PREINSTALL
+  ; Kill any running app or sidecar instances before file-write phase.
+  ; /F = force, /IM = by image name, /T = include child process tree.
+  ; nsExec discards the exit code, so "no such process" is not an error.
+  nsExec::Exec 'taskkill /F /IM transmittal-builder.exe /T'
+  nsExec::Exec 'taskkill /F /IM transmittal-backend.exe /T'
+  ; Give the OS a moment to release file handles before we overwrite files.
+  Sleep 1000
 !macroend
 !macro NSIS_HOOK_POSTINSTALL
 !macroend
 !macro NSIS_HOOK_PREUNINSTALL
+  ; Kill any running app or sidecar instances before the uninstaller removes files.
+  nsExec::Exec 'taskkill /F /IM transmittal-builder.exe /T'
+  nsExec::Exec 'taskkill /F /IM transmittal-backend.exe /T'
+  Sleep 1000
 !macroend
 !macro NSIS_HOOK_POSTUNINSTALL
 !macroend

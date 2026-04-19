@@ -90,9 +90,9 @@ const MIN_GAP_MS = 400;
 
 // ── Fade-out timing (success hold + cross-fade) ──────────────────────────
 // FADE_HOLD_MS: time the fully-loaded success state (✓ rows, 100 % bar)
-// stays on screen before the cross-fade starts.  Gives the user a clear
-// "done" beat rather than dissolving the moment the last status lands.
-const FADE_HOLD_MS = 800;
+// stays on screen before the cross-fade starts.  Short enough that the
+// bar does not appear to hang at 100 %, long enough to register "done".
+const FADE_HOLD_MS = 300;
 // FADE_DURATION_MS: opacity transition duration on `.splash-root`. Must
 // match the CSS `transition: opacity Ns ease` on `.splash-root`.
 const FADE_DURATION_MS = 1000;
