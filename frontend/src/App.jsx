@@ -1,7 +1,11 @@
 import { useState, useCallback, useRef, useEffect, useId } from "react";
 import { initBackendUrl, refreshBackendUrl, getBackendUrl } from "./api/backend.js";
-import { APP_VERSION } from "./version.js";
-import UpdateModal from "./components/UpdateModal.jsx";
+import { UpdateModal } from "@chamber-19/desktop-toolkit/components/UpdateModal";
+
+/* global __APP_VERSION__ */
+// Sourced from Vite's define block (vite.config.js), which reads package.json.
+// Falls back to "0.0.0" when running outside Vite (e.g. plain browser preview).
+const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
 
 /* ═══════════════════════════════════════════════════════════════
    TRANSMITTAL BUILDER — Wired Frontend

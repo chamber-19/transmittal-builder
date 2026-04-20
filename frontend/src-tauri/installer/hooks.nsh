@@ -1,4 +1,9 @@
 ; ---------------------------------------------------------------------------
+; SYNCED FROM desktop-toolkit v2.0.0 — DO NOT EDIT HERE.
+; Source of truth: https://github.com/chamber-19/desktop-toolkit (installer/hooks.nsh)
+; Keep this local copy until tauri.conf.json can reference the file inside
+; node_modules/@chamber-19/desktop-toolkit/installer/ (tracked for Phase 3).
+; ---------------------------------------------------------------------------
 ; Transmittal Builder — NSIS installer hooks
 ;
 ; Wired in via tauri.conf.json -> bundle.windows.nsis.installerHooks.

@@ -1,3 +1,8 @@
+// SYNCED FROM desktop-toolkit v2.0.0 — DO NOT EDIT HERE.
+// Source of truth: https://github.com/chamber-19/desktop-toolkit (src-tauri/src/updater.rs)
+// Remove this file and import from the framework crate once the Rust crate is
+// published (tracked for Phase 3).
+//
 // frontend/src-tauri/src/updater.rs
 //
 // G:\-based update check for internal distribution.

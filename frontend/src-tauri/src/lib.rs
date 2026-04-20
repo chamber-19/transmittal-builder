@@ -13,6 +13,11 @@
 //   4. The splash closes and the main window opens. The React app then
 //      invokes `check_for_update` on mount and shows the UpdateModal if
 //      a newer version is found on the shared drive.
+//
+// Phase 2 note: `mod splash` and `mod updater` are SYNCED LOCAL COPIES from
+// desktop-toolkit v2.0.0.  They will be replaced by a crate dependency in
+// Phase 3 once the framework publishes a consumable Rust crate.
+// `mod sidecar` is TB-specific (binary names, port protocol) — keep here.
 
 mod sidecar;
 mod splash;

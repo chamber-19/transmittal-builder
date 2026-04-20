@@ -1,4 +1,9 @@
 """
+SYNCED FROM desktop-toolkit v2.0.0 — DO NOT EDIT HERE.
+Source of truth: https://github.com/chamber-19/desktop-toolkit (python/chamber19_desktop_toolkit/pdf_merge.py)
+Remove this file and update imports to `from chamber19_desktop_toolkit.pdf_merge import ...`
+once the framework Python package module paths are verified at v2.0.0.
+
 Combined PDF generation.
 
 Merges the rendered transmittal cover sheet (converted from .docx to PDF)
