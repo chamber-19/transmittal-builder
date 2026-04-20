@@ -1,6 +1,6 @@
 [package]
 name = "transmittal-builder"
-version = "6.2.0"
+version = "6.2.1"
 description = "Transmittal Builder — Tauri desktop shell"
 authors = ["Koraji"]
 license = "MIT"
@@ -23,7 +23,7 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-dialog = "2"
-desktop-toolkit = { git = "https://github.com/chamber-19/desktop-toolkit", tag = "v2.1.2" }
+desktop-toolkit = { git = "https://github.com/chamber-19/desktop-toolkit", tag = "v2.1.3" }
 
 [profile.release]
 # Shrink binary size for the distributed installer.
