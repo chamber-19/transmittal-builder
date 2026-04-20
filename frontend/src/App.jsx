@@ -688,6 +688,15 @@ export default function App(){
     }).catch(()=>{});
   },[]);
 
+  const handleInstallUpdate=useCallback(()=>{
+    if(!isTauri)return;
+    import("@tauri-apps/api/core").then(({invoke})=>{
+      invoke("start_update").catch(e=>{
+        console.error("[updater] start_update failed:",e);
+      });
+    }).catch(()=>{});
+  },[]);
+
   const showToast=(message,type="info",duration=5000)=>{setToast({message,type,duration:type!=="loading"?duration:0});if(type!=="loading")setTimeout(()=>setToast(null),duration);};
 
   // Load saved contacts
@@ -1068,10 +1077,9 @@ export default function App(){
     <ConfirmDialog open={!!confirmDialog} title={confirmDialog?.title} message={confirmDialog?.message} onConfirm={confirmDialog?.onConfirm} onCancel={confirmDialog?.onCancel||(()=>setConfirmDialog(null))} confirmLabel={confirmDialog?.confirmLabel} cancelLabel={confirmDialog?.cancelLabel}/>
     {updateInfo&&(
       <UpdateModal
-        currentVersion={APP_VERSION}
-        availableVersion={updateInfo.version}
-        installerPath={updateInfo.installerPath}
+        version={updateInfo.version}
         notes={updateInfo.notes}
+        onInstall={handleInstallUpdate}
       />
     )}
   </>;

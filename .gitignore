@@ -20,6 +20,20 @@ backend/__pycache__/
 frontend/src-tauri/binaries/transmittal-backend/*.exe
 frontend/src-tauri/binaries/transmittal-backend/_internal/
 
+# Tauri NSIS installer assets — synced at build time from
+# node_modules/@chamber-19/desktop-toolkit/installer/nsis/ via
+# the `prebuild` npm script (desktop-toolkit-sync-installer-assets).
+# Never commit these; they are build artifacts.
+frontend/src-tauri/installer/hooks.nsh
+frontend/src-tauri/installer/nsis-header.bmp
+frontend/src-tauri/installer/nsis-header.svg
+frontend/src-tauri/installer/nsis-sidebar.bmp
+frontend/src-tauri/installer/nsis-sidebar.svg
+
+# desktop-toolkit-updater shim — built by CI (cargo build -p desktop-toolkit-updater)
+# and placed here for NSIS to bundle.  Local devs can run scripts/fetch-updater-shim.ps1.
+frontend/src-tauri/desktop-toolkit-updater.exe
+
 # Tauri build output
 frontend/src-tauri/target/
 

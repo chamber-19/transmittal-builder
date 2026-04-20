@@ -30,7 +30,7 @@ from pydantic import BaseModel
 
 from core.render import render_transmittal, _normalize_xmtl_num
 from core.excel_parser import parse_drawing_index
-from core.pdf_merge import docx_to_pdf, merge_source_pdfs
+from chamber19_desktop_toolkit.utils.pdf_merge import docx_to_pdf, merge_source_pdfs
 
 
 # ─── Copy-intent checkbox key → abbreviation mapping ─────────
@@ -948,7 +948,7 @@ async def api_email(req: EmailRequest):
     Send a transmittal email.
     Note: SMTP credentials must be provided per-request or via env vars.
     """
-    from emails.sender import send_email
+    from chamber19_desktop_toolkit.utils.email_sender import send_email
 
     sender = req.sender or os.environ.get("SMTP_SENDER", "")
     password = req.password or os.environ.get("SMTP_PASSWORD", "")

@@ -13,15 +13,11 @@
 //   4. The splash closes and the main window opens. The React app then
 //      invokes `check_for_update` on mount and shows the UpdateModal if
 //      a newer version is found on the shared drive.
-//
-// Phase 2 note: `mod splash` and `mod updater` are SYNCED LOCAL COPIES from
-// desktop-toolkit v2.0.0.  They will be replaced by a crate dependency in
-// Phase 3 once the framework publishes a consumable Rust crate.
-// `mod sidecar` is TB-specific (binary names, port protocol) — keep here.
 
 mod sidecar;
-mod splash;
-mod updater;
+
+use desktop_toolkit::{splash, updater};
+use desktop_toolkit::updater::UpdateState;
 
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -175,243 +171,105 @@ fn find_backend_dir() -> Option<PathBuf> {
     None
 }
 
-// ── Tauri commands: update check / apply ──────────────────────────────────
+// ── TB updater constants ──────────────────────────────────────────────────
+
+/// Directory on the shared drive that contains `latest.json` and the installer.
+/// Consumers can override this by setting the `TOOL_UPDATE_PATH` environment
+/// variable before launching the app.
+const TB_UPDATE_PATH_DEFAULT: &str =
+    r"G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder";
+
+/// Sub-directory of `%LOCALAPPDATA%` used for the updater log.
+const TB_LOG_DIR: &str = "Transmittal Builder";
+
+/// App data directory name used for the splash-seen sentinel
+/// (`%APPDATA%\<id>\splash-seen.json`).
+const TB_APP_IDENTIFIER: &str = "Transmittal Builder";
+
+/// PyInstaller sidecar binary name (without `.exe`).
+const TB_SIDECAR_NAME: &str = "transmittal-backend";
+
+// ── Tauri commands: update check / start ──────────────────────────────────
+
+/// Returned by the `check_for_update` Tauri command.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CheckUpdateResult {
+    update_available: bool,
+    version: Option<String>,
+    notes: Option<String>,
+}
 
 /// Check whether a newer version is available on the shared drive.
 ///
-/// Returns `{ updateAvailable: false }` on any error or when up-to-date.
-/// Returns `{ updateAvailable: true, version, installerPath, notes }` when
-/// a newer installer is found on the G:\ shared drive.
+/// Reads the shared-drive path from the `TOOL_UPDATE_PATH` environment
+/// variable (defaults to the G:\ share if not set).  All failures degrade
+/// silently — returns `{ updateAvailable: false }` so the user can still use
+/// the app when the drive is unreachable.
 ///
-/// All failures degrade silently — no user-facing error popup is shown.
+/// On success the pending update is stored in `UpdateState` so `start_update`
+/// can retrieve it without the frontend having to pass the installer path.
 #[tauri::command]
-fn check_for_update() -> updater::CheckUpdateResult {
-    updater::cmd_check_for_update()
-}
-
-/// Spawn the NSIS installer silently (`/S`) and exit the current process so
-/// that all locked files are released before the installer overwrites them.
-///
-/// Before spawning the installer, kills the backend sidecar so it does not
-/// hold file handles. Do NOT taskkill `transmittal-builder.exe` (the current
-/// process): `/T` kills the whole process tree including ourselves, so the
-/// installer would never be spawned. `app.exit(0)` is the correct way to
-/// release our own file handles.
-///
-/// The React caller should display an "Installing update…" message for ~2-3 s
-/// before invoking this command so the transition does not feel like a crash.
-#[tauri::command]
-fn apply_update(app: tauri::AppHandle, installer_path: String) {
-    updater::log_updater(&format!("apply_update: spawning '{installer_path}'"));
-
-    // ── Kill ONLY the sidecar — do NOT kill transmittal-builder.exe ──────
-    // Killing the current process image with /T would include ourselves in
-    // the kill and prevent cmd.spawn() from ever being reached.
-    // app.exit(0) below releases our own file handles cleanly.
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        updater::log_updater("apply_update: taskkill /F /IM transmittal-backend.exe /T");
-        let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "transmittal-backend.exe", "/T"])
-            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
-            .status();
-        // Brief pause so the OS releases file handles before the installer
-        // starts overwriting files.
-        std::thread::sleep(std::time::Duration::from_millis(200));
-    }
-
-    let mut cmd = std::process::Command::new(&installer_path);
-    cmd.arg("/S");
-
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        // DETACHED_PROCESS — let the installer outlive the parent process.
-        cmd.creation_flags(0x0000_0008);
-    }
-
-    match cmd.spawn() {
-        Ok(child) => {
-            updater::log_updater(&format!(
-                "Installer launched (PID {}) — exiting",
-                child.id()
-            ));
-            app.exit(0);
+fn check_for_update(state: tauri::State<UpdateState>) -> CheckUpdateResult {
+    match updater::check_for_update(env!("CARGO_PKG_VERSION"), TB_LOG_DIR) {
+        updater::UpdateCheckResult::UpdateAvailable { latest, update_path } => {
+            *state.latest.lock().unwrap() = Some(latest.clone());
+            *state.update_path.lock().unwrap() = Some(update_path);
+            CheckUpdateResult {
+                update_available: true,
+                version: Some(latest.version),
+                notes: latest.notes,
+            }
         }
-        Err(e) => {
-            updater::log_updater(&format!("Failed to launch installer: {e}"));
-            eprintln!("[updater] Failed to launch installer '{installer_path}': {e}");
-        }
+        _ => CheckUpdateResult {
+            update_available: false,
+            version: None,
+            notes: None,
+        },
     }
 }
 
-/// Emit a `updater://status` event to all windows.
-/// Logs a warning on failure so the developer can diagnose silent IPC issues.
-fn emit_updater_status(app: &tauri::AppHandle, message: &str) {
-    if let Err(e) = app.emit(
-        "updater://status",
-        serde_json::json!({ "message": message }),
-    ) {
-        eprintln!("[updater] emit_updater_status failed ('{message}'): {e}");
-    }
-}
-
-/// Orchestrated silent update with a branded progress window.
+/// Delegate the update orchestration to the `desktop-toolkit-updater.exe` shim.
 ///
-/// Flow (Option B3 — updater window stays alive past main-window close):
-///  1. Show the updater window (already loaded at startup, just hidden).
-///  2. Emit "Preparing update…" so the user sees immediate feedback.
-///  3. Close main + splash windows (updater is now the only window).
-///  4. Kill the backend sidecar so the installer has no file locks.
-///  5. Spawn the NSIS installer with `/S` and `DETACHED_PROCESS`.
-///  6. Background thread waits for the installer process to exit.
-///  7. Emit "Almost done…", sleep 2 s, then launch the new exe and exit.
+/// v2.1.0 architecture: the shim process survives the parent app's exit, so
+/// NSIS can overwrite the main exe without a file-lock.  The sequence is:
+///   1. Copy the installer from the shared drive to `%TEMP%` (emits
+///      `update_progress` events so the frontend can show a progress bar).
+///   2. Spawn `desktop-toolkit-updater.exe` as a fully-detached process.
+///   3. Call `app.exit(0)` — releases all file handles so NSIS can replace them.
 ///
-/// Keeping the updater window alive as the last window prevents Tauri from
-/// auto-exiting before the installer finishes.
+/// The shim then kills the sidecar, waits for the installer, and relaunches
+/// the new app version.
 #[tauri::command]
-fn start_update(app: tauri::AppHandle, installer_path: String, version: String) {
-    updater::log_updater(&format!(
-        "start_update: installer='{installer_path}' version='{version}'"
-    ));
-
-    // Show the updater window immediately so the user sees branded UI
-    // the moment they click Install Now.
-    if let Some(win) = app.get_webview_window("updater") {
-        let _ = win.show();
-        let _ = win.set_focus();
-    }
-
-    // Spawn the rest of the sequence in a background thread so the Tauri
-    // command returns quickly (the JS invoke() resolves and the main window
-    // can start closing itself).
-    let app_clone = app.clone();
-    let installer_path_clone = installer_path.clone();
-    let version_clone = version.clone();
-    thread::spawn(move || {
-        // Brief pause — lets the updater window finish its first paint and
-        // ensures the React listener is registered before we emit events.
-        // The webview is loaded at startup (visible:false), so React has had
-        // several seconds to mount by the time a user triggers an update, but
-        // a small guard here makes the handshake reliable even in edge cases.
-        thread::sleep(Duration::from_millis(400));
-
-        emit_updater_status(&app_clone, "Preparing update\u{2026}");
-        thread::sleep(Duration::from_millis(600));
-
-        // ── Close main + splash windows ─────────────────────────────────
-        emit_updater_status(&app_clone, "Closing application\u{2026}");
-        let app_for_close = app_clone.clone();
-        let _ = app_clone.run_on_main_thread(move || {
-            for label in &["main", "splash"] {
-                if let Some(win) = app_for_close.get_webview_window(label) {
-                    let _ = win.close();
-                }
-            }
-        });
-
-        thread::sleep(Duration::from_millis(400));
-
-        // ── Kill backend sidecar ─────────────────────────────────────────
-        emit_updater_status(&app_clone, "Stopping background services\u{2026}");
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            updater::log_updater("start_update: taskkill transmittal-backend.exe");
-            let _ = std::process::Command::new("taskkill")
-                .args(["/F", "/IM", "transmittal-backend.exe", "/T"])
-                .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
-                .status();
-        }
-
-        thread::sleep(Duration::from_millis(500));
-
-        // ── Spawn NSIS installer ─────────────────────────────────────────
-        emit_updater_status(
-            &app_clone,
-            &format!("Installing version {version_clone}\u{2026}"),
-        );
-
-        let mut cmd = std::process::Command::new(&installer_path_clone);
-        cmd.arg("/S");
-
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            // DETACHED_PROCESS — installer outlives the parent process.
-            cmd.creation_flags(0x0000_0008);
-        }
-
-        match cmd.spawn() {
-            Ok(mut child) => {
-                updater::log_updater(&format!(
-                    "start_update: installer launched (PID {}), waiting for completion",
-                    child.id()
-                ));
-
-                // Wait for the installer to finish before launching the new app.
-                let _ = child.wait();
-                updater::log_updater("start_update: installer exited");
-
-                emit_updater_status(&app_clone, "Almost done\u{2026}");
-
-                // Give the NSIS post-install hook a moment to run.
-                thread::sleep(Duration::from_secs(2));
-
-                // Launch the newly installed exe. NSIS silent install may or
-                // may not auto-launch depending on the template; spawning it
-                // explicitly here is safe — if it already launched, a second
-                // instance will just silently exit or reuse the existing one.
-                #[cfg(windows)]
-                {
-                    use std::os::windows::process::CommandExt;
-                    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                        let new_exe = std::path::PathBuf::from(local_app_data)
-                            .join("Transmittal Builder")
-                            .join("transmittal-builder.exe");
-                        if new_exe.exists() {
-                            updater::log_updater(&format!(
-                                "start_update: launching new exe: {}",
-                                new_exe.display()
-                            ));
-                            let _ = std::process::Command::new(&new_exe)
-                                .creation_flags(0x0000_0008) // DETACHED_PROCESS
-                                .spawn();
-                        } else {
-                            updater::log_updater(&format!(
-                                "start_update: new exe not found at {}, skipping launch",
-                                new_exe.display()
-                            ));
-                        }
-                    }
-                }
-
-                // Exit the old process — updater window closes with it.
-                app_clone.exit(0);
-            }
-            Err(e) => {
-                updater::log_updater(&format!(
-                    "start_update: failed to launch installer: {e}"
-                ));
-                eprintln!(
-                    "[updater] start_update: failed to launch installer '{installer_path_clone}': {e}"
-                );
-                // Show an error status; the updater window stays open so the
-                // user can see it rather than being left with a blank screen.
-                emit_updater_status(
-                    &app_clone,
-                    "Install failed \u{2014} please run the installer manually.",
-                );
-            }
-        }
-    });
+fn start_update(
+    app: tauri::AppHandle,
+    state: tauri::State<UpdateState>,
+) -> Result<(), String> {
+    updater::start_update(app, state, TB_SIDECAR_NAME, TB_LOG_DIR)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let child: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
     let child_for_setup = child.clone();
+
+    // Set the default shared-drive update path for the framework's updater module.
+    // SAFETY: `std::env::set_var` is unsafe in multi-threaded programs (Rust 1.81+).
+    // This call is safe here because `run()` is called from `main()` before the
+    // Tauri builder creates any threads.  `tauri::Builder::default()` and its
+    // `.run()` call are what spawn the internal Tauri thread pool, so the
+    // environment is single-threaded at this point.
+    //
+    // Consumers can bypass this default by setting TOOL_UPDATE_PATH in the
+    // process environment before launching the app (e.g. via a .env file or a
+    // system environment variable).
+    if std::env::var(updater::UPDATE_PATH_ENV_VAR).is_err() {
+        #[allow(unsafe_code)]
+        // SAFETY: single-threaded at this point — see above.
+        unsafe {
+            std::env::set_var(updater::UPDATE_PATH_ENV_VAR, TB_UPDATE_PATH_DEFAULT);
+        }
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -420,7 +278,6 @@ pub fn run() {
             get_backend_url,
             peek_subfolders,
             check_for_update,
-            apply_update,
             start_update,
             splash::splash_is_first_run,
             splash::splash_ready,
@@ -429,7 +286,11 @@ pub fn run() {
         .manage(BackendState {
             url: Mutex::new(String::from("http://127.0.0.1:8000")),
         })
-        .manage(splash::SplashState::new(splash::splash_first_launch_after_update()))
+        .manage(UpdateState::new())
+        .manage(splash::SplashState::new(splash::first_launch_after_update(
+            TB_APP_IDENTIFIER,
+            env!("CARGO_PKG_VERSION"),
+        )))
         .setup(move |app| {
             let app_handle = app.handle().clone();
             let child_arc = child_for_setup.clone();
@@ -453,6 +314,7 @@ pub fn run() {
         let _ = proc.wait();
     }
 }
+
 
 // ── Startup sequence ──────────────────────────────────────────────────────
 

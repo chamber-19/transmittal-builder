@@ -21,7 +21,6 @@ a = Analysis(
     binaries=[],
     datas=[
         ('core',   'core'),
-        ('emails', 'emails'),
     ],
     hiddenimports=[
         # uvicorn internals loaded dynamically
@@ -61,6 +60,11 @@ a = Analysis(
         'docx',
         # pypdf
         'pypdf',
+        # chamber19-desktop-toolkit (pdf_merge and email_sender)
+        'chamber19_desktop_toolkit',
+        'chamber19_desktop_toolkit.utils',
+        'chamber19_desktop_toolkit.utils.pdf_merge',
+        'chamber19_desktop_toolkit.utils.email_sender',
         # python-multipart (FastAPI file upload)
         'multipart',
         'multipart.multipart',

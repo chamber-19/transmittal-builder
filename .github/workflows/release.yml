@@ -85,6 +85,28 @@ jobs:
           Write-Host "Sidecar copied to $dest"
         shell: pwsh
 
+      # ── 3b. Build desktop-toolkit-updater shim ─────────────────────────────
+      # The shim (desktop-toolkit-updater.exe) is a small standalone binary from
+      # the desktop-toolkit framework that survives the parent app's exit and
+      # handles the install + relaunch sequence.  It must be present at
+      # frontend/src-tauri/desktop-toolkit-updater.exe before `tauri build` so
+      # the NSIS HOOK_POSTINSTALL can bundle it alongside the main exe.
+      - name: Build desktop-toolkit-updater shim
+        run: |
+          git clone --depth 1 --branch v2.1.0 `
+            https://github.com/chamber-19/desktop-toolkit `
+            "$env:RUNNER_TEMP\dtk"
+          cargo build --release `
+            --manifest-path "$env:RUNNER_TEMP\dtk\crates\desktop-toolkit-updater\Cargo.toml" `
+            --target-dir "$env:RUNNER_TEMP\dtk-target"
+          $shimExe = "$env:RUNNER_TEMP\dtk-target\release\desktop-toolkit-updater.exe"
+          if (-not (Test-Path $shimExe)) {
+            throw "[shim] Build failed — binary not found at $shimExe"
+          }
+          Copy-Item -Force $shimExe "frontend\src-tauri\desktop-toolkit-updater.exe"
+          Write-Host "[shim] Placed at frontend\src-tauri\desktop-toolkit-updater.exe"
+        shell: pwsh
+
       # ── 4. Frontend build ────────────────────────────────────────────────
       - name: Install frontend dependencies
         working-directory: frontend
