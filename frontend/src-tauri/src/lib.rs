@@ -187,9 +187,11 @@ fn check_for_update() -> updater::CheckUpdateResult {
 /// Spawn the NSIS installer silently (`/S`) and exit the current process so
 /// that all locked files are released before the installer overwrites them.
 ///
-/// Before spawning the installer, defensively kills any running instances of
-/// the backend sidecar and the app itself so the installer does not hit
-/// file-in-use errors.
+/// Before spawning the installer, kills the backend sidecar so it does not
+/// hold file handles. Do NOT taskkill `transmittal-builder.exe` (the current
+/// process): `/T` kills the whole process tree including ourselves, so the
+/// installer would never be spawned. `app.exit(0)` is the correct way to
+/// release our own file handles.
 ///
 /// The React caller should display an "Installing update…" message for ~2-3 s
 /// before invoking this command so the transition does not feel like a crash.
@@ -197,23 +199,21 @@ fn check_for_update() -> updater::CheckUpdateResult {
 fn apply_update(app: tauri::AppHandle, installer_path: String) {
     updater::log_updater(&format!("apply_update: spawning '{installer_path}'"));
 
-    // ── Kill lingering processes before the installer touches any files ──
-    // Use taskkill /F /IM /T to force-kill the named image and its entire
-    // child-process tree. Exit codes are ignored — if the process is already
-    // gone that's fine.
+    // ── Kill ONLY the sidecar — do NOT kill transmittal-builder.exe ──────
+    // Killing the current process image with /T would include ourselves in
+    // the kill and prevent cmd.spawn() from ever being reached.
+    // app.exit(0) below releases our own file handles cleanly.
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        for image in &["transmittal-backend.exe", "transmittal-builder.exe"] {
-            updater::log_updater(&format!("apply_update: taskkill /F /IM {image} /T"));
-            let _ = std::process::Command::new("taskkill")
-                .args(["/F", "/IM", image, "/T"])
-                .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
-                .status();
-        }
+        updater::log_updater("apply_update: taskkill /F /IM transmittal-backend.exe /T");
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "transmittal-backend.exe", "/T"])
+            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+            .status();
         // Brief pause so the OS releases file handles before the installer
         // starts overwriting files.
-        std::thread::sleep(std::time::Duration::from_millis(400));
+        std::thread::sleep(std::time::Duration::from_millis(200));
     }
 
     let mut cmd = std::process::Command::new(&installer_path);
