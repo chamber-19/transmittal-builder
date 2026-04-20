@@ -1,13 +1,8 @@
 /**
- * updater.jsx — Thin mount for the framework Updater component.
+ * updater.jsx — Side-effect entry that loads the framework Updater.
  *
- * The full Updater implementation lives in @chamber-19/desktop-toolkit v2.0.0.
- * This file is a 3-line wrapper that mounts it in the Tauri updater window.
- *
- * Verify export path with framework package.json `exports` field at v2.0.0.
+ * @chamber-19/desktop-toolkit/updater is a self-mounting script: importing it
+ * for side effect causes it to call createRoot(#root).render(<Updater />).
  */
 
-import { createRoot } from "react-dom/client";
-import { Updater } from "@chamber-19/desktop-toolkit/updater";
-
-createRoot(document.getElementById("root")).render(<Updater />);
+import "@chamber-19/desktop-toolkit/updater";

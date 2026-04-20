@@ -1,15 +1,12 @@
 /**
- * splash.jsx — Thin mount for the framework Splash component.
+ * splash.jsx — Side-effect entry that loads the framework Splash.
  *
- * The full Splash implementation lives in @chamber-19/desktop-toolkit v2.0.0.
- * This file is a 3-line wrapper that mounts it in the Tauri splash window.
+ * @chamber-19/desktop-toolkit/splash is a self-mounting script: importing it
+ * for side effect causes it to call createRoot(#root).render(<SplashApp />).
  *
- * If the framework's Splash component accepts configuration props (e.g.
- * appName, appOrg), pass them here. Verify export path with framework
- * package.json `exports` field at v2.0.0.
+ * Optional configuration (appName, appOrg) is read by the framework from
+ * window.__SPLASH_CONFIG__, which is set inline by splash.html before this
+ * module loads.
  */
 
-import { createRoot } from "react-dom/client";
-import { Splash } from "@chamber-19/desktop-toolkit/splash";
-
-createRoot(document.getElementById("root")).render(<Splash />);
+import "@chamber-19/desktop-toolkit/splash";
