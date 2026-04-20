@@ -4262,7 +4262,7 @@ dependencies = [
 
 [[package]]
 name = "transmittal-builder"
-version = "6.1.6"
+version = "6.2.0"
 dependencies = [
  "desktop-toolkit",
  "serde",
