@@ -4251,7 +4251,7 @@ dependencies = [
 
 [[package]]
 name = "transmittal-builder"
-version = "6.1.5"
+version = "6.1.6"
 dependencies = [
  "semver",
  "serde",
