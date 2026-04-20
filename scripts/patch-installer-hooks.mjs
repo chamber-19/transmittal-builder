@@ -60,8 +60,8 @@ if (original.includes(PATCH_SENTINEL)) {
   process.exit(0);
 }
 
-const define = `; TB-specific token: sidecar binary name used by the kill macro.\n!define TOOL_SIDECAR_NAME "${SIDECAR_NAME}"\n\n`;
-const patched = define + original;
+const nsisDefine = `; TB-specific token: sidecar binary name used by the kill macro.\n!define TOOL_SIDECAR_NAME "${SIDECAR_NAME}"\n\n`;
+const patched = nsisDefine + original;
 
 writeFileSync(hooksPath, patched, "utf8");
 console.log(

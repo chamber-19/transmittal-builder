@@ -254,12 +254,18 @@ pub fn run() {
     let child_for_setup = child.clone();
 
     // Set the default shared-drive update path for the framework's updater module.
-    // SAFETY: called before tauri::Builder::default() spawns any threads.
-    // Consumers can override by setting TOOL_UPDATE_PATH in the environment
-    // before launching the app.
+    // SAFETY: `std::env::set_var` is unsafe in multi-threaded programs (Rust 1.81+).
+    // This call is safe here because `run()` is called from `main()` before the
+    // Tauri builder creates any threads.  `tauri::Builder::default()` and its
+    // `.run()` call are what spawn the internal Tauri thread pool, so the
+    // environment is single-threaded at this point.
+    //
+    // Consumers can bypass this default by setting TOOL_UPDATE_PATH in the
+    // process environment before launching the app (e.g. via a .env file or a
+    // system environment variable).
     if std::env::var(updater::UPDATE_PATH_ENV_VAR).is_err() {
         #[allow(unsafe_code)]
-        // SAFETY: no other threads are running at this point.
+        // SAFETY: single-threaded at this point — see above.
         unsafe {
             std::env::set_var(updater::UPDATE_PATH_ENV_VAR, TB_UPDATE_PATH_DEFAULT);
         }
