@@ -704,8 +704,8 @@ dependencies = [
 
 [[package]]
 name = "desktop-toolkit"
-version = "2.1.3"
-source = "git+https://github.com/chamber-19/desktop-toolkit?tag=v2.1.3#91e0dbb971e6cafb985f7e353fb259894dc05c0c"
+version = "2.2.4"
+source = "git+https://github.com/chamber-19/desktop-toolkit?tag=v2.2.4#5aff8e4d70e3b90287b370a0b4dbc1522a061f09"
 dependencies = [
  "semver",
  "serde",
@@ -4262,7 +4262,7 @@ dependencies = [
 
 [[package]]
 name = "transmittal-builder"
-version = "6.2.1"
+version = "6.2.2"
 dependencies = [
  "desktop-toolkit",
  "serde",
