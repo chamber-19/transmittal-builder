@@ -17,7 +17,7 @@ independent ways:
 - **Tag:** `v5.0.0` — immutable snapshot of the pre-extraction code.
 - **Branch:** `legacy/standalone-v1` — protected (`legacy/**` ruleset
   blocks force-push and deletion); can receive emergency hotfixes via PR.
-- **GitHub Release:** https://github.com/chamber-19/transmittal-builder/releases/tag/v5.0.0
+- **GitHub Release:** [v5.0.0](https://github.com/chamber-19/transmittal-builder/releases/tag/v5.0.0)
   with the signed Windows installer
   (`R3P.Transmittal.Builder_5.0.0_x64-setup.exe`) attached.
 
@@ -243,7 +243,7 @@ git checkout -b refactor/use-kc-framework
 
 Edit `backend/requirements.txt`:
 
-```
+```txt
 kc-framework @ git+https://github.com/Koraji95-coder/kc-framework@v1.0.0#subdirectory=python
 ```
 

@@ -28,7 +28,7 @@ product lineup.
 ## 2. Repository map
 
 | Repo | Role | Consumes |
-|---|---|---|
+| --- | --- | --- |
 | [`kc-framework`](https://github.com/Koraji95-coder/kc-framework) | Shared UI kit, installer templates, common Python utilities, auth/license, logging, updater hooks, IPC helpers | — |
 | [`transmittal-builder`](https://github.com/chamber-19/transmittal-builder) | Transmittal generation tool | `kc-framework` |
 | [`Drawing-List-Manager`](https://github.com/Koraji95-coder/Drawing-List-Manager) | Drawing list tool | `kc-framework` |
@@ -42,7 +42,7 @@ assembles them into a single distributable.
 ## 3. Branching model
 
 | Branch | Purpose |
-|---|---|
+| --- | --- |
 | `main` | Always releasable. Protected — no direct pushes. |
 | `legacy/standalone-v1` | Frozen snapshot of the pre-framework standalone build. Protected — never delete or force-push. |
 | `feat/<short-name>` | New features |
@@ -66,11 +66,13 @@ Once `kc-framework` is extracted, this repo pins to **exact framework tags**
 firewall that prevents an upstream change from silently breaking a tool.
 
 **Python** (`backend/requirements.txt`):
-```
+
+```txt
 kc-framework @ git+https://github.com/Koraji95-coder/kc-framework@vX.Y.Z
 ```
 
 **JavaScript** (`frontend/package.json`):
+
 ```json
 "kc-framework": "github:Koraji95-coder/kc-framework#vX.Y.Z"
 ```
@@ -95,10 +97,12 @@ kc-framework @ git+https://github.com/Koraji95-coder/kc-framework@vX.Y.Z
 2. Bump the version in `frontend/package.json`, `frontend/src-tauri/tauri.conf.json`,
    and `frontend/src-tauri/Cargo.toml` (all three must match).
 3. Tag `vX.Y.Z` and push the tag:
+
    ```powershell
    git tag vX.Y.Z
    git push && git push --tags
    ```
+
 4. CI builds the PyInstaller sidecar, the Vite frontend, and the Tauri
    installer; a GitHub Release is created with the installer attached.
 5. Smoke-test the built installer locally before publishing to the shared drive
@@ -146,7 +150,7 @@ Remember to revert to a pinned tag before opening a PR.
 This project encourages **[Conventional Commits](https://www.conventionalcommits.org/)**:
 
 | Prefix | Use for |
-|---|---|
+| --- | --- |
 | `feat:` | New user-facing feature |
 | `fix:` | Bug fix |
 | `docs:` | Documentation only |
