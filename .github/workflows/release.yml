@@ -4,9 +4,12 @@ name: Release
 #
 # Prerequisites:
 #   - Repository secret GITHUB_TOKEN (automatic) for creating releases.
-#   - Repository secret CHAMBER19_PACKAGES_TOKEN (classic PAT with read:packages
-#     + repo scopes) for installing @chamber-19/desktop-toolkit from GitHub Packages
-#     and the chamber19-desktop-toolkit Python package from the private repo.
+#   - The `chamber-19/transmittal-builder` repository must be granted
+#     read access under the `@chamber-19/desktop-toolkit` package's
+#     "Manage Actions access" settings so the workflow `GITHUB_TOKEN`
+#     can install the private GitHub Package.
+#   - Repository secret CHAMBER19_PACKAGES_TOKEN remains available for any
+#     fallback/manual maintenance that still needs a classic PAT.
 #
 # Artifacts produced:
 #   - Transmittal.Builder_<version>_x64-setup.exe  (NSIS installer)
@@ -24,6 +27,7 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write   # needed to create the GitHub Release
+      packages: read    # needed to install @chamber-19/desktop-toolkit via GITHUB_TOKEN
 
     steps:
       # ── 1. Checkout ─────────────────────────────────────────────────────
@@ -37,6 +41,8 @@ jobs:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
+          registry-url: https://npm.pkg.github.com
+          scope: "@chamber-19"
 
       - name: Set up Python 3.13
         # PyInstaller >= 6.10 is required for Python 3.13 support.
@@ -110,7 +116,7 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.CHAMBER19_PACKAGES_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm ci
 
       - name: Build Vite frontend
