@@ -231,7 +231,7 @@ fn check_for_update(state: tauri::State<UpdateState>) -> CheckUpdateResult {
 
 /// Delegate the update orchestration to the `desktop-toolkit-updater.exe` shim.
 ///
-/// v2.1.0 architecture: the shim process survives the parent app's exit, so
+/// desktop-toolkit architecture: the shim process survives the parent app's exit, so
 /// NSIS can overwrite the main exe without a file-lock.  The sequence is:
 ///   1. Copy the installer from the shared drive to `%TEMP%` (emits
 ///      `update_progress` events so the frontend can show a progress bar).

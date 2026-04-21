@@ -18,6 +18,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $DestPath = Join-Path $RepoRoot "frontend\src-tauri\desktop-toolkit-updater.exe"
 $TmpCloneDir = Join-Path $env:TEMP "dtk-updater-shim-src"
+$DesktopToolkitTag = "v2.2.4"
 
 Write-Host "[fetch-updater-shim] Building desktop-toolkit-updater.exe from source..."
 
@@ -26,11 +27,11 @@ if (Test-Path $TmpCloneDir) {
     Write-Host "[fetch-updater-shim] Reusing existing clone at $TmpCloneDir"
     Push-Location $TmpCloneDir
     git fetch --tags --quiet
-    git checkout tags/v2.1.0 --quiet 2>$null
+    git checkout "tags/$DesktopToolkitTag" --quiet 2>$null
     Pop-Location
 } else {
-    Write-Host "[fetch-updater-shim] Cloning desktop-toolkit at v2.1.0..."
-    git clone --depth 1 --branch v2.1.0 `
+    Write-Host "[fetch-updater-shim] Cloning desktop-toolkit at $DesktopToolkitTag..."
+    git clone --depth 1 --branch $DesktopToolkitTag `
         https://github.com/chamber-19/desktop-toolkit.git `
         $TmpCloneDir
 }
@@ -48,5 +49,5 @@ if (-not (Test-Path $BuiltExe)) {
 
 # ── Copy to Tauri src dir ──────────────────────────────────────────────────
 Copy-Item -Force $BuiltExe $DestPath
-Write-Host "[fetch-updater-shim] Done — shim installed at $DestPath"
+Write-Host ("[fetch-updater-shim] Done - shim installed at {0}" -f $DestPath)
 Write-Host "You can now run: npm run desktop (from frontend/)"

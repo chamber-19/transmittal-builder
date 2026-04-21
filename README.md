@@ -113,12 +113,14 @@ The copy-intent abbreviation (IFP, IFC, IFA, etc.) is derived from the single se
 ```bash
 # Terminal 1 — Python backend
 cd backend
-export NODE_AUTH_TOKEN=ghp_yourTokenHere   # required for pip install from private repo
+# Requires Git auth to https://github.com/chamber-19/desktop-toolkit
+# (for example: `gh auth login` with repo access, or another Git credential helper)
 pip install -r requirements.txt
 uvicorn app:app --reload --port 8000
 
 # Terminal 2 — Vite dev server
 cd frontend
+# Requires NODE_AUTH_TOKEN / .npmrc auth for GitHub Packages
 npm install
 npm run dev          # http://localhost:1420
 ```
@@ -369,12 +371,18 @@ See [docs/framework-extraction/](./docs/framework-extraction/README.md) for the 
 
 ## Local Setup
 
-This project consumes `@chamber-19/desktop-toolkit` from GitHub Packages,
-which requires authentication for `npm install`.
+This project talks to GitHub in two different ways during local development:
 
-1. Create a GitHub classic PAT at https://github.com/settings/tokens/new
+1. `backend/requirements.txt` and `frontend/src-tauri/Cargo.toml` fetch
+   `chamber-19/desktop-toolkit` directly from `https://github.com/...`, so
+   Git must already be able to authenticate to that private repo.
+   `gh auth login` is the simplest option when using the GitHub CLI
+   credential helper.
+2. `frontend/package.json` consumes `@chamber-19/desktop-toolkit` from GitHub
+   Packages, which requires authentication for `npm install`.
+3. Create a GitHub classic PAT at https://github.com/settings/tokens/new
    with the `read:packages` scope.
-2. Set the env var before running `npm install` in `frontend/`:
+4. Set the env var before running `npm install` in `frontend/`:
 
    **macOS/Linux:**
    ```bash
@@ -388,8 +396,9 @@ which requires authentication for `npm install`.
    cd frontend; npm install
    ```
 
-3. After install, the env var is no longer needed for development —
-   only for re-running `npm install`.
+5. After install, the env var is no longer needed for development —
+   only for re-running `npm install`. Git auth is still required for
+   backend `pip install`, `cargo` fetches, and the updater shim helper.
 
 ---
 

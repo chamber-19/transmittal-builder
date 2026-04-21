@@ -66,8 +66,6 @@ jobs:
       # ── 3. Python backend → PyInstaller sidecar ─────────────────────────
       - name: Install backend dependencies
         working-directory: backend
-        env:
-          GITHUB_TOKEN: ${{ secrets.CHAMBER19_PACKAGES_TOKEN }}
         run: |
           git config --global url."https://${{ secrets.CHAMBER19_PACKAGES_TOKEN }}@github.com/".insteadOf "https://github.com/"
           pip install -r requirements.txt -r requirements-build.txt
@@ -93,7 +91,8 @@ jobs:
       # the NSIS HOOK_POSTINSTALL can bundle it alongside the main exe.
       - name: Build desktop-toolkit-updater shim
         run: |
-          git clone --depth 1 --branch v2.1.0 `
+          $desktopToolkitTag = "v2.2.4"
+          git clone --depth 1 --branch $desktopToolkitTag `
             https://github.com/chamber-19/desktop-toolkit `
             "$env:RUNNER_TEMP\dtk"
           cargo build --release `
