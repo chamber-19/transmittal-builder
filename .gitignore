@@ -45,5 +45,9 @@ RELEASE_NOTES.md
 .mcp/
 
 # Root-level node_modules (ad-hoc tool installs)
-node_modules/
-package-lock.json
+/node_modules/
+/package-lock.json
+
+# Auth token files
+.npmrc
+frontend/.npmrc
