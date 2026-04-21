@@ -49,5 +49,4 @@ RELEASE_NOTES.md
 /package-lock.json
 
 # Auth token files
-.npmrc
-frontend/.npmrc
+/.npmrc

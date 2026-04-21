@@ -6,4 +6,3 @@ dist/
 # Tauri build artifacts
 src-tauri/target/
 src-tauri/gen/
-frontend/.npmrc

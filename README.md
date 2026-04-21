@@ -120,7 +120,9 @@ uvicorn app:app --reload --port 8000
 
 # Terminal 2 — Vite dev server
 cd frontend
-# Requires NODE_AUTH_TOKEN / .npmrc auth for GitHub Packages
+# Requires NODE_AUTH_TOKEN env var (a GitHub PAT with `read:packages`) for GitHub Packages auth.
+# The .npmrc is committed to the repo and will pick up the token automatically.
+export NODE_AUTH_TOKEN=ghp_yourTokenHere
 npm install
 npm run dev          # http://localhost:1420
 ```
@@ -379,10 +381,13 @@ This project talks to GitHub in two different ways during local development:
    `gh auth login` is the simplest option when using the GitHub CLI
    credential helper.
 2. `frontend/package.json` consumes `@chamber-19/desktop-toolkit` from GitHub
-   Packages, which requires authentication for `npm install`.
+   Packages, which requires a `NODE_AUTH_TOKEN` env var for `npm install`.
+   The `frontend/.npmrc` is committed to the repo and points npm at
+   `https://npm.pkg.github.com` for the `@chamber-19` scope, picking up the
+   token automatically — you do **not** need to create your own `.npmrc`.
 3. Create a GitHub classic PAT at https://github.com/settings/tokens/new
    with the `read:packages` scope.
-4. Set the env var before running `npm install` in `frontend/`:
+4. Export the env var before running `npm install` in `frontend/`:
 
    **macOS/Linux:**
    ```bash
