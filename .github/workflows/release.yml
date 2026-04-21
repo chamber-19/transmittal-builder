@@ -3,13 +3,12 @@ name: Release
 # Builds the NSIS installer and publishes a GitHub Release on every v* tag.
 #
 # Prerequisites:
-#   - Repository secret GITHUB_TOKEN (automatic) for creating releases.
+#   - GITHUB_TOKEN (auto-provided) with `packages: read` permission is the
+#     only auth needed — no classic PAT required.
 #   - The `chamber-19/transmittal-builder` repository must be granted
 #     read access under the `@chamber-19/desktop-toolkit` package's
 #     "Manage Actions access" settings so the workflow `GITHUB_TOKEN`
-#     can install the private GitHub Package.
-#   - Repository secret CHAMBER19_PACKAGES_TOKEN remains available for any
-#     fallback/manual maintenance that still needs a classic PAT.
+#     can install the npm package from GitHub Packages.
 #
 # Artifacts produced:
 #   - Transmittal.Builder_<version>_x64-setup.exe  (NSIS installer)
@@ -70,11 +69,24 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       # ── 3. Python backend → PyInstaller sidecar ─────────────────────────
+      - name: Preflight — verify GitHub Packages access
+        shell: pwsh
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $headers = @{ Authorization = "Bearer $env:NODE_AUTH_TOKEN" }
+          try {
+            $resp = Invoke-WebRequest -Uri "https://npm.pkg.github.com/@chamber-19/desktop-toolkit" -Headers $headers -UseBasicParsing -ErrorAction Stop
+            Write-Host "✓ GitHub Packages auth OK (HTTP $($resp.StatusCode))"
+          } catch {
+            Write-Host "::error::Cannot authenticate to GitHub Packages for @chamber-19/desktop-toolkit. Error: $($_.Exception.Message)"
+            Write-Host "::error::Ensure this repo is granted access at https://github.com/orgs/chamber-19/packages/npm/desktop-toolkit/settings (Manage Actions access)."
+            throw
+          }
+
       - name: Install backend dependencies
         working-directory: backend
-        run: |
-          git config --global url."https://${{ secrets.CHAMBER19_PACKAGES_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          pip install -r requirements.txt -r requirements-build.txt
+        run: pip install -r requirements.txt -r requirements-build.txt
 
       - name: Build PyInstaller sidecar
         run: |

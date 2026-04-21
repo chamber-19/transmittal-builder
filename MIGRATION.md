@@ -52,8 +52,9 @@ Perform a silent uninstall of v5 followed by a silent install of v6:
 
 v6 consumes `@chamber-19/desktop-toolkit@^1.1.0` from GitHub Packages for the
 JS toolkit. See the [Local Setup](./README.md#local-setup) section in
-`README.md` for the `NODE_AUTH_TOKEN` setup.
+`README.md` for the `NODE_AUTH_TOKEN` setup (a PAT with `read:packages` scope
+is all that is needed for npm).
 
-The Python backend consumes `chamber19-desktop-toolkit` from the private
-`chamber-19/desktop-toolkit` repository. Ensure your `CHAMBER19_PACKAGES_TOKEN`
-has `repo` scope for pip's git+https clone to work.
+The Python backend consumes `chamber19-desktop-toolkit` from the **public**
+`chamber-19/desktop-toolkit` repository, so no token is required for
+`pip install` — the git+https clone works without authentication.

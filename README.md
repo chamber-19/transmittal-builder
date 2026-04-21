@@ -376,17 +376,19 @@ See [docs/framework-extraction/](./docs/framework-extraction/README.md) for the 
 This project talks to GitHub in two different ways during local development:
 
 1. `backend/requirements.txt` and `frontend/src-tauri/Cargo.toml` fetch
-   `chamber-19/desktop-toolkit` directly from `https://github.com/...`, so
-   Git must already be able to authenticate to that private repo.
-   `gh auth login` is the simplest option when using the GitHub CLI
-   credential helper.
+   `chamber-19/desktop-toolkit` directly from `https://github.com/...`.
+   Because `chamber-19/desktop-toolkit` is a **public** repository, no
+   authentication is needed — `pip install` and `cargo` fetches work without
+   `gh auth login` or any token.
 2. `frontend/package.json` consumes `@chamber-19/desktop-toolkit` from GitHub
    Packages, which requires a `NODE_AUTH_TOKEN` env var for `npm install`.
-   The `frontend/.npmrc` is committed to the repo and points npm at
-   `https://npm.pkg.github.com` for the `@chamber-19` scope, picking up the
-   token automatically — you do **not** need to create your own `.npmrc`.
+   GitHub Packages npm always requires auth even for public packages (known
+   platform limitation). The `frontend/.npmrc` is committed to the repo and
+   points npm at `https://npm.pkg.github.com` for the `@chamber-19` scope,
+   picking up the token automatically — you do **not** need to create your
+   own `.npmrc`.
 3. Create a GitHub classic PAT at https://github.com/settings/tokens/new
-   with the `read:packages` scope.
+   with **only** the `read:packages` scope.
 4. Export the env var before running `npm install` in `frontend/`:
 
    **macOS/Linux:**
@@ -402,8 +404,7 @@ This project talks to GitHub in two different ways during local development:
    ```
 
 5. After install, the env var is no longer needed for development —
-   only for re-running `npm install`. Git auth is still required for
-   backend `pip install`, `cargo` fetches, and the updater shim helper.
+   only for re-running `npm install`.
 
 ---
 
