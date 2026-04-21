@@ -4,7 +4,7 @@
   "version": "6.2.2",
   "type": "module",
   "scripts": {
-    "prebuild": "desktop-toolkit-sync-installer-assets",
+    "prebuild": "node scripts/sync-installer-assets-local.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

@@ -20,11 +20,12 @@ backend/__pycache__/
 frontend/src-tauri/binaries/transmittal-backend/*.exe
 frontend/src-tauri/binaries/transmittal-backend/_internal/
 
-# Tauri NSIS installer assets — synced at build time from
+# Tauri NSIS installer art assets — synced at build time from
 # node_modules/@chamber-19/desktop-toolkit/installer/nsis/ via
-# the `prebuild` npm script (desktop-toolkit-sync-installer-assets).
+# the `prebuild` npm script (scripts/sync-installer-assets-local.mjs).
 # Never commit these; they are build artifacts.
-frontend/src-tauri/installer/hooks.nsh
+# NOTE: hooks.nsh is intentionally NOT listed here — it is a TB-local
+# checked-in override.  See RELEASING.md §"Why we override hooks.nsh locally".
 frontend/src-tauri/installer/nsis-header.bmp
 frontend/src-tauri/installer/nsis-header.svg
 frontend/src-tauri/installer/nsis-sidebar.bmp

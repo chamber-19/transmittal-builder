@@ -65,7 +65,8 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "binaries/transmittal-backend/**/*"
+      "binaries/transmittal-backend/**/*",
+      "desktop-toolkit-updater.exe"
     ],
     "windows": {
       "nsis": {
