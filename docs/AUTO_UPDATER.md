@@ -37,13 +37,13 @@ requirement. Distribution is internal-only over Google Drive.
 
 Default path (baked in at build time, overridable per machine):
 
-```
+```text
 G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\latest.json
 ```
 
 The installer must live in the **same folder** as `latest.json`:
 
-```
+```text
 G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\
   ├── latest.json
   └── Transmittal.Builder_<version>_x64-setup.exe

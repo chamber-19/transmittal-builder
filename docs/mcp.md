@@ -1,5 +1,10 @@
 # MCP (Model Context Protocol) Setup
 
+> See [`.github/copilot-instructions.md`](../.github/copilot-instructions.md)
+> for the natural-language instructions that govern Copilot Chat and the
+> coding agent. This file describes the MCP servers; that file describes
+> the rules they operate under.
+
 This repo ships two MCP configurations:
 
 | File | Used by | Notes |

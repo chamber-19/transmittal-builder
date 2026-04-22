@@ -26,7 +26,7 @@ TRANSMITTAL_SPLASH_HOLD_MS=2000 npm run tauri dev
 
 When the variable is set you will see a log line at startup:
 
-```
+```text
 [splash] Debug hold mode active: 2000 ms per phase
 ```
 
@@ -90,7 +90,7 @@ cannot accidentally affect production behaviour.
 
 Active overrides are logged once to the console:
 
-```
+```text
 [splash] Preview overrides: phase=welding, loop=1
 ```
 

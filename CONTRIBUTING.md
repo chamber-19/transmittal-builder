@@ -32,7 +32,7 @@ product lineup.
 | [`kc-framework`](https://github.com/Koraji95-coder/kc-framework) | Shared UI kit, installer templates, common Python utilities, auth/license, logging, updater hooks, IPC helpers | — |
 | [`transmittal-builder`](https://github.com/chamber-19/transmittal-builder) | Transmittal generation tool | `kc-framework` |
 | [`Drawing-List-Manager`](https://github.com/Koraji95-coder/Drawing-List-Manager) | Drawing list tool | `kc-framework` |
-| `kc-suite` *(future)* | Meta-installer that bundles selected tools | `kc-framework`, tool repos |
+| `kc-suite` _*(future)*_ | Meta-installer that bundles selected tools | `kc-framework`, tool repos |
 
 Each tool repo is independent; `kc-suite` pins exact versions of each tool and
 assembles them into a single distributable.
@@ -172,3 +172,13 @@ Be respectful and constructive in all interactions.
 For questions, bug reports, or feature requests, open an
 [issue on GitHub](https://github.com/chamber-19/transmittal-builder/issues).
 The maintainer will respond as time allows.
+
+---
+
+## Documentation policy
+
+This repo enforces a "no stale docs" rule. See
+[`.github/copilot-instructions.md`](./.github/copilot-instructions.md) for
+the full mapping of code-paths-to-docs that must be kept in sync. Human
+contributors are bound by the same rule as the coding agent — if your PR
+changes code that has documented behaviour, the docs change in the same PR.
