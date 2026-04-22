@@ -7,7 +7,7 @@ future `kc-framework` repository and explains the rationale for each split.
 
 ## Proposed structure
 
-```
+```text
 kc-framework/
 ├── README.md
 ├── LICENSE
@@ -95,9 +95,11 @@ Python packages require a `pyproject.toml` (or `setup.py`) at a well-known
 root.  Keeping Python code under `python/` means:
 
 - Consumers install with:
-  ```
+
+  ```text
   kc-framework @ git+https://github.com/Koraji95-coder/kc-framework@v1.0.0#subdirectory=python
   ```
+
   or via PyPI once the package is published there.
 - The Python tree is completely isolated from JS — a pure-Python tool that
   never uses Tauri does not need to traverse the `js/` tree at all.
@@ -113,9 +115,11 @@ and pnpm).  Keeping JS under a nested `packages/` directory means:
 - Future additions (e.g. a second JS package `kc-forms`) fit naturally without
   restructuring.
 - Consumers install with:
-  ```
+
+  ```text
   "kc-framework": "git+https://github.com/Koraji95-coder/kc-framework.git#semver:^1.0.0&path:js/packages/kc-framework"
   ```
+
   (see [CONSUMPTION.md](./CONSUMPTION.md) for the recommended approach).
 - The `index.ts` barrel file lets consumers import from `"kc-framework"` with
   no path suffix for the most common utilities, while deep imports like
@@ -133,6 +137,7 @@ This is intentional and the `MIGRATION_PLAN.md` documents the copy step
 explicitly.
 
 Keeping it in `kc-framework` still provides:
+
 - A single source of truth for the baseline config.
 - A diff target when the framework evolves — tool repos can diff their local
   copy against `kc-framework/tauri-template/` to see what they've diverged on.

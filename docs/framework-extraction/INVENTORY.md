@@ -13,7 +13,7 @@ Files **not listed here** are tool-specific and stay in this repo permanently.
 - **Current path** — repo-relative path today.
 - **Target path** — where it lands inside `kc-framework/` after migration.
 - **Category** — one of `ui` | `theme` | `installer` | `updater` | `auth` | `logging` | `ipc` | `build` | `python-utils` | `js-utils` | `assets` | `ci`.
-- **Justification** — one-line answer to "would *any* future tool reuse this?".
+- **Justification** — one-line answer to "would _any_ future tool reuse this?".
 - **Tool-specific imports to invert** — any reference to a transmittal-specific
   symbol, path, or env var that must become a parameter once the file lives in
   the framework (dependency direction must always be tool → framework, never

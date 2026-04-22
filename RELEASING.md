@@ -25,10 +25,12 @@ The NSIS installer supports custom header and sidebar images. To add them:
 1. Create `frontend/src-tauri/icons/nsis-header.bmp` (150 × 57 px, 24-bit BMP)
 2. Create `frontend/src-tauri/icons/nsis-sidebar.bmp` (164 × 314 px, 24-bit BMP)
 3. Add the paths to `tauri.conf.json` under `bundle.windows.nsis`:
+
    ```json
    "headerImage":  "icons/nsis-header.bmp",
    "sidebarImage": "icons/nsis-sidebar.bmp"
    ```
+
 4. Commit the images and config change.
 
 Without these files the NSIS installer uses its built-in default images.
@@ -37,7 +39,7 @@ Without these files the NSIS installer uses its built-in default images.
 
 The app defaults to reading updates from:
 
-```
+```text
 G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\
 ```
 
@@ -102,6 +104,7 @@ The `.github/workflows/release.yml` workflow triggers on the tag push.
 Monitor it at `https://github.com/chamber-19/transmittal-builder/actions`.
 
 It will:
+
 1. Build the PyInstaller sidecar on Windows.
 2. Build the Vite frontend.
 3. Run `tauri build` → produces `R3P.Transmittal.Builder_4.0.0_x64-setup.exe`.
@@ -125,7 +128,8 @@ After CI completes and the GitHub Release is created:
    - `latest.json`
 
 2. **Open the shared drive folder** in File Explorer:
-   ```
+
+   ```text
    G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\
    ```
 
@@ -174,7 +178,7 @@ If a release has a critical bug:
 
 ## 4. User flow
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────┐
 │                         FIRST INSTALL                              │
 │  User copies installer from G:\ to desktop                        │
@@ -234,7 +238,7 @@ directive embeds file data at compile time and requires Section/Function
 context when the surrounding macro is defined — using it in a top-level macro
 definition causes makensis to abort with:
 
-```
+```text
 Error: command File not valid outside Section or Function
 ```
 
@@ -327,6 +331,7 @@ rogue processes with `netstat -an | findstr 127.0.0.1`.
 or the folder was renamed.
 
 **Fix:**
+
 1. Verify the mounted path in File Explorer.
 2. Set `TRANSMITTAL_UPDATE_PATH` to the correct path in the user's environment
    (System Properties → Environment Variables).
@@ -341,9 +346,11 @@ version exists.
 **Cause:** `latest.json` is malformed or has an invalid semver string.
 
 **Fix:** Validate the file manually:
+
 ```powershell
 Get-Content "G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\latest.json" | ConvertFrom-Json
 ```
+
 Ensure `version` is a valid semver string (e.g. `"4.0.0"`, not `"v4.0.0"`).
 
 ---

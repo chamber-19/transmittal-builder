@@ -16,6 +16,7 @@ building Transmittal Builder.
 distribution without a code-signing certificate.
 
 **Fix (users):**
+
 1. Click **"More info"** (the small link under the warning).
 2. Click **"Run anyway"**.
 3. The installer proceeds normally.
@@ -45,10 +46,12 @@ Google Drive for Desktop is not running, the drive is not mounted, or VPN is
 disconnected — the app refuses to start.
 
 **Fix:**
+
 1. Ensure **Google Drive for Desktop** is running and signed in.
 2. Verify the shared drive is mounted at `G:` in File Explorer.
 3. If the drive letter changed, set the `TRANSMITTAL_UPDATE_PATH` environment
    variable to the correct path:
+
    ```powershell
    [System.Environment]::SetEnvironmentVariable(
      "TRANSMITTAL_UPDATE_PATH",
@@ -56,14 +59,17 @@ disconnected — the app refuses to start.
      "User"
    )
    ```
+
    Then restart the app.
 4. If you are on VPN, ensure the VPN tunnel is connected before launching.
 
 **Dev/testing override:** Set `TRANSMITTAL_UPDATE_PATH` to a local folder
 containing a valid `latest.json` and the installer `.exe`:
+
 ```powershell
 $env:TRANSMITTAL_UPDATE_PATH = "C:\tmp\fake-drive"
 ```
+
 In this mode the app will run without a real shared drive.
 
 ---
@@ -80,6 +86,7 @@ the output is lost, Rust times out and falls back to the pre-allocated port
 (which the sidecar may not have bound yet).
 
 **Diagnostics:**
+
 1. Open the app's log (Tauri writes to stderr / Windows Event Log in debug builds).
 2. Look for `[sidecar]` lines:
    - `[sidecar] Found sidecar at: …` — sidecar binary was found.
@@ -87,13 +94,16 @@ the output is lost, Rust times out and falls back to the pre-allocated port
      launch.
    - `[sidecar] Sidecar spawned (PID …)` — success.
 3. Run the sidecar manually from a terminal to see its output:
+
    ```powershell
    $env:TRANSMITTAL_BACKEND_PORT = "9000"
    .\binaries\transmittal-backend\transmittal-backend.exe
    ```
+
    It should print `9000` on the first line and then start uvicorn.
 
 **Common causes & fixes:**
+
 - **Missing `_internal/` folder:** The NSIS installer bundles the whole
   `transmittal-backend/` one-dir output. If only `transmittal-backend.exe` was
   copied (missing `_internal/`), the sidecar will crash immediately.
@@ -118,9 +128,11 @@ internals changed in 3.13 and older PyInstaller versions cannot walk the
 module graph correctly.
 
 **Fix:**
+
 ```powershell
 pip install "pyinstaller>=6.10"
 ```
+
 Verify: `pyinstaller --version` should print `6.10.x` or higher.
 
 **If PyInstaller 6.10 still fails on 3.13 (rare):**
@@ -129,9 +141,11 @@ This can happen if a third-party package (e.g., an older version of
 diagnose:
 
 1. Run with `--debug all` for verbose import tracing:
+
    ```powershell
    pyinstaller transmittal_backend.spec --debug all 2>&1 | Tee-Object build.log
    ```
+
 2. Search the log for the first `ERROR` or `ModuleNotFoundError`.
 3. If the failing package does not support 3.13, pin it to the last 3.12-
    compatible release in `requirements.txt`.
@@ -151,12 +165,16 @@ shared drive, OR the app update dialog shows garbled version text.
 (`"v4.0.0"` instead of `"4.0.0"`), or was not uploaded correctly.
 
 **Fix:**
+
 1. Validate the file manually:
+
    ```powershell
    Get-Content "G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\latest.json" | ConvertFrom-Json
    ```
+
 2. Ensure `version` is a bare semver string, e.g. `"4.1.0"` (no `v` prefix).
 3. If the file is missing, re-run:
+
    ```powershell
    .\scripts\publish-to-drive.ps1 -Tag v4.1.0
    ```
@@ -181,11 +199,13 @@ shortcut. If missing, create it manually or re-run the installer.
 ## 7. "tauri build" fails — NSIS branding images missing
 
 **Symptom:**
-```
+
+```text
 error: icon file not found: icons/nsis-header.bmp
 ```
 
 **Fix:** Either:
+
 - Add the BMP files (150×57 px header, 164×314 px sidebar) to
   `frontend/src-tauri/icons/`, **or**
 - Remove the `headerImage` / `sidebarImage` keys from `tauri.conf.json`
@@ -198,6 +218,7 @@ error: icon file not found: icons/nsis-header.bmp
 **Symptom:** `tauri build` fails with a version mismatch warning/error.
 
 **Fix:** All three files must have the same version string:
+
 - `frontend/src-tauri/tauri.conf.json` → `"version"`
 - `frontend/src-tauri/Cargo.toml` → `version`
 - `frontend/package.json` → `"version"`
@@ -217,20 +238,25 @@ animate, or the installer is never launched.
 updater activity is written to a log file instead.
 
 **Log file location (v6+):**
-```
+
+```text
 %LOCALAPPDATA%\Transmittal Builder\updater.log
 ```
+
 For most users this resolves to:
-```
+
+```text
 C:\Users\<username>\AppData\Local\Transmittal Builder\updater.log
 ```
 
 **View the log in PowerShell:**
+
 ```powershell
 Get-Content "$env:LOCALAPPDATA\Transmittal Builder\updater.log" | Select-Object -Last 50
 ```
 
 **Decode a timestamp line:**
+
 ```powershell
 # Each log line starts with [<unix-epoch-seconds>]
 # e.g. [1713340345] Copy complete: 34567890 bytes in 420 ms → C:\...\transmittal-update.exe
@@ -238,7 +264,8 @@ Get-Content "$env:LOCALAPPDATA\Transmittal Builder\updater.log" | Select-Object 
 ```
 
 **What a healthy update log looks like:**
-```
+
+```text
 [...] Update path: G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder
 [...] latest.json: read OK
 [...] Version check: installed=4.0.0, remote=4.0.1
@@ -268,7 +295,6 @@ Get-Content "$env:LOCALAPPDATA\Transmittal Builder\updater.log" | Select-Object 
 is launched.  After the installer finishes, users must relaunch the app
 manually from the Start Menu or Desktop shortcut.
 
-
 ---
 
 ## 10. Dependabot RUSTSEC alerts on `glib 0.18` / `rand 0.7`
@@ -296,9 +322,9 @@ into the binary we distribute.
    - Go to **Security → Dependabot → alert #N**.
    - Click **Dismiss → Tolerable risk** (or **Vulnerable code is not
      actually used**).
-   - Reason text: *"Transitive Linux-only dependency via gtk-rs; we only ship
+   - Reason text: _"Transitive Linux-only dependency via gtk-rs; we only ship
      Windows NSIS bundles. Will be removed when Tauri upgrades past
-     gtk-rs 0.18."*
+     gtk-rs 0.18."_
 3. Re-evaluate when bumping Tauri to a release that updates gtk-rs past
    0.18 (then drop the `ignore:` entries in `dependabot.yml`).
 

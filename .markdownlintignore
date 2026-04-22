@@ -1,8 +1,7 @@
-node_modules/
-frontend/node_modules/
-frontend/src-tauri/target/
-backend/dist-sidecar/
-backend/build-sidecar/
-dist/
-build/
+**/node_modules/**
+frontend/src-tauri/target/**
+backend/dist-sidecar/**
+backend/build-sidecar/**
+dist/**
+build/**
 RELEASE_NOTES.md

@@ -9,7 +9,7 @@ described in [INVENTORY.md](./INVENTORY.md) are extracted.
 
 Add to `backend/requirements.txt`:
 
-```
+```text
 kc-framework @ git+https://github.com/Koraji95-coder/kc-framework@v1.0.0#subdirectory=python
 ```
 
@@ -18,7 +18,7 @@ the `kc-framework` repo, pinned to the `v1.0.0` tag.
 
 To update to a later release, change the tag:
 
-```
+```text
 kc-framework @ git+https://github.com/Koraji95-coder/kc-framework@v1.2.0#subdirectory=python
 ```
 
@@ -44,7 +44,7 @@ repo.  Consumers add:
 
 and an `.npmrc` file:
 
-```
+```text
 @koraji95-coder:registry=https://npm.pkg.github.com
 ```
 

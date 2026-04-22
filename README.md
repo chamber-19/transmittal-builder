@@ -16,9 +16,11 @@ A desktop-first application for generating engineering transmittal packages. Bui
 ## Installation (non-developers)
 
 > **Users:** The installer lives on the shared Google Drive at:
-> ```
+>
+> ```text
 > G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\
 > ```
+>
 > Double-click the latest `.exe` file, follow the prompts, and the app installs
 > to your local profile (no administrator rights needed).
 >
@@ -30,10 +32,9 @@ A desktop-first application for generating engineering transmittal packages. Bui
 
 ---
 
-
 ## Architecture
 
-```
+```text
 Transmittal-Builder/
 ├── backend/                   Python FastAPI service
 │   ├── app.py                 All API routes
@@ -62,9 +63,9 @@ Transmittal-Builder/
     └── vite.config.js
 ```
 
-**Data flow**
+### Data flow
 
-```
+```text
 ┌─────────────────────────────┐     HTTP/REST      ┌───────────────────┐
 │  Tauri WebView               │ ─────────────────► │  Python FastAPI   │
 │  React UI (port 1420 dev)   │ ◄───────────────── │  (port 8000)      │
@@ -133,22 +134,24 @@ API docs at <http://localhost:8000/docs>
 
 ## Quick Start — Tauri Desktop
 
-**Prerequisites (all platforms)**
+### Prerequisites (all platforms)
 
 1. Python 3.10+ with `pip` (or a Conda/virtualenv environment)
 2. Backend dependencies installed:
+
    ```bash
    cd backend
    pip install -r requirements.txt
    ```
+
 3. [Rust](https://www.rust-lang.org/tools/install) — `rustup` installs the toolchain
 4. Node.js ≥ 20 and npm
 
-**Additional prerequisites (Windows)**
+### Additional prerequisites (Windows)
 
 - Microsoft C++ Build Tools (or Visual Studio with "Desktop development with C++")
 
-**Additional prerequisites (Linux)**
+### Additional prerequisites (Linux)
 
 ```bash
 sudo apt update
@@ -193,13 +196,16 @@ The first candidate that passes a `python --version` check is used.
 
 - **Miniconda users (recommended):** Activate your conda environment in the
   terminal **before** running `npm run desktop`:
+
   ```bash
   conda activate base        # or your project environment
   cd frontend
   npm run desktop
   ```
+
 - **System Python users:** Ensure `python` is on `PATH` and backend
   dependencies are installed:
+
   ```bash
   pip install -r backend/requirements.txt
   ```
@@ -231,7 +237,7 @@ npm run desktop
 
 Tauri will detect the already-running backend and skip spawning.
 
-**Build a distributable installer**
+### Build a distributable installer
 
 ```bash
 # Generate high-quality icons from a source PNG first:
@@ -392,12 +398,14 @@ This project talks to GitHub in two different ways during local development:
 4. Export the env var before running `npm install` in `frontend/`:
 
    **macOS/Linux:**
+
    ```bash
    export NODE_AUTH_TOKEN=ghp_yourTokenHere
    cd frontend && npm install
    ```
 
    **Windows PowerShell:**
+
    ```powershell
    $env:NODE_AUTH_TOKEN = "ghp_yourTokenHere"
    cd frontend; npm install
@@ -409,4 +417,3 @@ This project talks to GitHub in two different ways during local development:
 ---
 
 © 2026 Transmittal Builder
-
