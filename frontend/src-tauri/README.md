@@ -121,6 +121,12 @@ We ship a small NSIS hook file at
 - Define the optional `NSIS_HOOK_PRE/POSTINSTALL` and `…UNINSTALL`
   macros if you ever need to run extra script at those points.
 
+One caveat: because the hook file is included before Tauri later emits
+`!define PRODUCTNAME` and `Name "${PRODUCTNAME}"`, immediate NSIS
+commands in the hook must not use `${PRODUCTNAME}` directly. For
+title-bar captions, use the runtime `$(^Name)` token instead. Deferred
+`!define MUI_*` strings can still safely reference `${PRODUCTNAME}`.
+
 This intentionally avoids forking Tauri's `installer.nsi.tera`, so we
 don't have to keep diffs in sync across Tauri upgrades. The trade-off is
 that anything requiring custom NSIS dialog controls (hiding the
@@ -131,4 +137,6 @@ a template fork. See `TROUBLESHOOTING.md §11` for the explicit scope.
 The companion BMP / SVG branding lives next to the hook file:
 `nsis-header.{svg,bmp}` (150×57) and `nsis-sidebar.{svg,bmp}` (164×314).
 Regenerate the BMPs from the SVG masters with `npm run icons:generate`
-from the `frontend/` directory.
+from the `frontend/` directory. The normal `prebuild` flow also re-renders the
+installer BMPs locally from the synced SVGs so stale packaged BMPs do not leak
+old branding into the installer.

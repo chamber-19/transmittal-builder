@@ -355,6 +355,11 @@ template. Things you can change there safely:
   these are the big bold strings on the green-progress-bar page
 - `Caption` / `UninstallCaption` — the title-bar text
 
+For captions specifically, do **not** use `${PRODUCTNAME}` directly in the
+hook file. Tauri includes `hooks.nsh` before it later emits
+`!define PRODUCTNAME` / `Name "${PRODUCTNAME}"`, so immediate commands such as
+`Caption` will render the placeholder literally. Use `$(^Name)` instead.
+
 Things you **cannot** change without forking the template (intentionally
 out-of-scope for now):
 
