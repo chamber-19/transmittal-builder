@@ -25,8 +25,12 @@
 ; ─────────────────────────────────────────────────────────────────────────
 
 ; ── Title-bar captions ────────────────────────────────────────────────────
-Caption          "${PRODUCTNAME} — Setup"
-UninstallCaption "${PRODUCTNAME} — Uninstaller"
+; Tauri includes this file before it emits `!define PRODUCTNAME`, so immediate
+; NSIS commands cannot safely use `${PRODUCTNAME}` here. Use the runtime
+; `$(^Name)` token instead; it resolves after the later `Name "${PRODUCTNAME}"`
+; statement in installer.nsi has run.
+Caption          "$(^Name) — Setup"
+UninstallCaption "$(^Name) — Uninstaller"
 
 ; ── Installer: INSTFILES page headers ─────────────────────────────────────
 !define MUI_TEXT_INSTALLING_TITLE                "Installing ${PRODUCTNAME}"

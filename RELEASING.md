@@ -246,6 +246,12 @@ definition causes makensis to abort with:
 Error: command File not valid outside Section or Function
 ```
 
+The same include ordering also matters for title-bar captions: immediate NSIS
+commands in `hooks.nsh` run before Tauri later emits `!define PRODUCTNAME` and
+`Name "${PRODUCTNAME}"`. That means `Caption "${PRODUCTNAME} — Setup"` renders
+literally as `${PRODUCTNAME} — Setup` at runtime. Use the runtime `$(^Name)`
+token for `Caption` / `UninstallCaption` instead.
+
 ### Our fix
 
 1. **`bundle.resources`** — `desktop-toolkit-updater.exe` is added to
@@ -269,8 +275,10 @@ Error: command File not valid outside Section or Function
 
 3. **`scripts/sync-installer-assets-local.mjs`** — the `prebuild` script now
    calls this local wrapper instead of `desktop-toolkit-sync-installer-assets`.
-   The wrapper syncs only the BMP/SVG art assets and **skips `hooks.nsh`** so
-   the upstream package never overwrites our override.
+   The wrapper syncs only the SVG art masters, regenerates the BMPs locally
+   from those SVGs, and **skips `hooks.nsh`** so the upstream package never
+   overwrites our override. This avoids stale packaged BMPs leaking old
+   branding into the installer even when the SVGs are current.
 
 ### When to re-sync hooks.nsh
 
