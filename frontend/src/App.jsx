@@ -247,13 +247,6 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
   const[searching,setSearching]=useState(false);
   const[open,setOpen]=useState(false);
   const[selectedPath,setSelectedPath]=useState(null);
-  const[rootHint,setRootHint]=useState(false);
-  const[hintDismissed,setHintDismissed]=useState(false);
-  // Track whether the user has touched the root in this session — we only
-  // run the "looks like a single project folder" heuristic after a manual
-  // change, so the hint never pops up immediately on launch when the saved
-  // root is already the team's Active Projects directory.
-  const[rootTouched,setRootTouched]=useState(false);
   const debounceRef=useRef(null);
   const panelRef=useRef(null);
   // Tracks whether the search input is currently focused. We only auto-open
@@ -266,7 +259,6 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
 
   const saveRoot=v=>{
     setRoot(v);
-    setRootTouched(true);
     try{localStorage.setItem("tb_projects_root",v)}catch{}
   };
 
@@ -274,31 +266,6 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
     const picked=await pickFolder();
     if(picked)saveRoot(picked);
   };
-
-  // Check whether the chosen root looks like a single project folder.
-  // The heuristic requires ≥2 children that match the *known* dept-folder
-  // shape: two digits, a dash, then an uppercase word (e.g. "01-ENGINEERING",
-  // "06-TRANSMITTALS"). The looser `^\d{2}-` pattern used previously also
-  // matched real project names like "25-074 NANULAK …", which made the
-  // warning fire on correct roots.
-  useEffect(()=>{
-    setRootHint(false);
-    setHintDismissed(false);
-    if(!root||!isTauri||!rootTouched)return;
-    let cancelled=false;
-    const check=async()=>{
-      try{
-        const{invoke}=await import("@tauri-apps/api/core");
-        const children=await invoke("peek_subfolders",{path:root});
-        if(cancelled)return;
-        const deptFolderRe=/^\d{2}-[A-Z][A-Z0-9_-]+$/i;
-        const matches=children.filter(n=>deptFolderRe.test(n)).length;
-        setRootHint(matches>=2);
-      }catch{/* ignore — hint is advisory only */}
-    };
-    check();
-    return()=>{cancelled=true};
-  },[root,rootTouched]);
 
   const doSearch=useCallback(async(r,q)=>{
     if(!r)return;
@@ -376,13 +343,6 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
       </div>
       <Btn variant="secondary" icon={I.folder} onClick={handleBrowse} style={{padding:"5px 10px",fontSize:"12px",flexShrink:0}}>Browse</Btn>
     </div>
-
-    {/* Single-project hint */}
-    {rootHint&&!hintDismissed&&<div style={{display:"flex",alignItems:"flex-start",gap:"8px",marginBottom:"8px",padding:"7px 10px",background:T.warnBg,border:`1px solid rgba(196,162,77,0.3)`,borderRadius:T.rS,fontSize:"11px",color:T.warn,lineHeight:1.45}}>
-      <span style={{flexShrink:0,display:"flex",marginTop:"1px"}} aria-hidden="true">{I.warn}</span>
-      <span style={{flex:1}}>This folder looks like a single project. Did you mean to point at its parent directory (the one containing all your projects)?</span>
-      <button onClick={()=>setHintDismissed(true)} aria-label="Dismiss hint" style={{flexShrink:0,background:"none",border:"none",color:T.warn,cursor:"pointer",padding:"0 2px",lineHeight:1,fontSize:"13px",opacity:0.7}}>✕</button>
-    </div>}
 
     {/* Search input + dropdown */}
     {root&&<div style={{position:"relative"}}>
