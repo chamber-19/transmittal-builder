@@ -31,7 +31,7 @@ This repo is a **consumer of `desktop-toolkit`**. A toolkit release does not aut
 
 ### Architectural decisions that persist across sessions
 
-Use the `memory` MCP server to recall and update these as decisions evolve. Current state:
+Use GitHub Copilot Memory (visible at Repo Settings → Copilot → Memory) to recall and update these as decisions evolve. Current state:
 
 1. **`autocad-pipeline` is deliberately minimal.** v0.1.0 contains only `Directory.Build.props` and a parameterized `Plugin.csproj.template`. No shared C# code. No NuGet packages. No PowerShell scripts. These get added when plugin #2 exists and reveals concrete duplication, not before.
 2. **AutoCAD plugin commands use bare names, no prefix.** `TOTAL`, not `CH19TOTAL`. The Chamber 19 identity lives in package metadata, not in every command typed at the AutoCAD command line.
@@ -41,28 +41,29 @@ Use the `memory` MCP server to recall and update these as decisions evolve. Curr
 6. **The launcher repo was renamed from `shopvac` to `launcher`.** Old clones need `git remote set-url`. GitHub's redirect handles URLs automatically but don't rely on it in documentation.
 7. **GitHub Packages versions are immutable.** A bad `@chamber-19/desktop-toolkit` release cannot be yanked cleanly. When a toolkit release breaks this repo, fix forward with a new patch version upstream rather than trying to recall the bad one.
 
-When making a decision that affects another repo or that future sessions need to respect, persist it to memory. Explicit state beats re-derivation every time.
+When making a decision that affects another repo or that future sessions need to respect, persist it to Copilot Memory. Explicit state beats re-derivation every time.
 
-### Memory server scope — what to persist
+### Memory scope — what to persist
 
-Use `memory` for persistent cross-session context. What belongs there vs. what doesn't:
+GitHub Copilot Memory is enabled on this repo. Memories persist across sessions, are repo-scoped, tagged by agent and model, and auto-expire. The user can review and curate them at Repo Settings → Copilot → Memory.
 
-**Persist to memory:**
+**Persist to Copilot Memory:**
 
-- Architectural decisions and their rationale (e.g. "Publish-to-drive uses version-matching glob because `Select-Object -First 1` caused the v6.2.2 incident")
+- Repo-specific discoveries that aren't in this instructions file (e.g. "Publish-to-drive uses version-matching glob because `Select-Object -First 1` caused the v6.2.2 incident")
 - Version-pin contracts with `desktop-toolkit` (e.g. "transmittal-builder v6.3.x expects desktop-toolkit ^2.2.6+")
-- Repo role changes and renames
-- Naming conventions that have been deliberately chosen
-- Recurring traps documented in past PRs
+- Deviations from documented conventions
+- Recurring traps that cost time to discover
 
-**Do NOT persist:**
+**Do NOT persist to memory:**
 
+- Architectural decisions that belong in this instructions file (they're more durable there, and they load every session)
+- Cross-repo context that applies family-wide (belongs in this file's shared section)
 - Per-PR context (PR title, branch name, transient commit hashes)
 - Debugging state from a single session
 - File contents — re-read files when needed, don't cache them in memory
 - Anything you could infer by reading current files in the repo
 
-When in doubt, prefer to re-read the repo over trusting stale memory. Memory is for the shape of decisions, not the substance of code.
+When in doubt, prefer to re-read the repo over trusting stale memory. Memory is for repo-specific discoveries, not the shape of permanent decisions — those go in this file.
 
 ---
 
@@ -126,12 +127,6 @@ This repo has MCP servers configured via the GitHub coding agent settings. Use t
 
 - Use for any plan with 3+ dependent steps, especially cross-repo work (e.g. coordinating a `desktop-toolkit` bump with consumer testing here)
 - Use when debugging a multi-step failure where the root cause isn't obvious
-
-### `memory` — persist context across sessions
-
-- Write to memory when architectural decisions are made, naming conventions are set, or cross-repo relationships are established
-- Read from memory at the start of a session before asking the user to re-explain context
-- Follow the "Memory server scope" guidance above — don't pollute it with transient state
 
 ### `time`
 
@@ -247,13 +242,13 @@ When a task spans multiple Chamber 19 repos:
 2. Start with the lowest-level dependency. If a change touches `desktop-toolkit` and `transmittal-builder`, ship the toolkit change first, tag it, then bump `transmittal-builder`'s pin
 3. Make each repo's PR self-contained. A `transmittal-builder` PR shouldn't say "this works once you merge #42 in desktop-toolkit." It should either pin to a released version or be explicitly marked "blocked on X."
 4. If a `desktop-toolkit` bump reveals a problem, **fix forward** in the toolkit with a new patch version rather than yanking. GitHub Packages versions are immutable; a published bad release cannot be cleanly recalled, only superseded
-5. Update memory with the cross-repo relationship so future sessions know what depends on what.
+5. If the relationship or decision is repo-specific (e.g. a new version pin contract), persist it to Copilot Memory. If it's family-wide, the user will update the instructions file.
 
 ---
 
 ## When you don't know
 
-- Check `memory` first
+- Check Copilot Memory first (repo-specific discoveries and recurring traps live there)
 - Then check the repo's `MIGRATION.md`, `RELEASING.md`, `CHANGELOG.md`, and `README.md`
 - Then search across the five Chamber 19 repos via the `github` server
 - Only then ask the user — and when you ask, ask a specific question, not an open-ended one
