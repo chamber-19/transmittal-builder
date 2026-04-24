@@ -21,6 +21,8 @@ This repo is part of the **Chamber 19 tool family**, a coordinated set of engine
 | `chamber-19/launcher` | Tauri shell that installs, updates, and launches Chamber 19 tools | Rust + React, consumes `desktop-toolkit` |
 | `chamber-19/transmittal-builder` | Standalone Tauri app for generating engineering transmittals | Rust + React + Python, consumes `desktop-toolkit` |
 
+This repo is a **consumer of `desktop-toolkit`**. A toolkit release does not auto-propagate here — this repo pins an explicit version in `frontend/package.json` and `frontend/src-tauri/Cargo.toml`, and bumping those pins is a deliberate, reviewable action.
+
 ### Non-goals for this family
 
 - **No Suite-style infrastructure.** The `Koraji95-coder/Suite` repo is a reference implementation that over-built shared infrastructure before tools existed. Don't reconstruct it. Every abstraction in this family must be extracted from at least two working concrete implementations.
@@ -37,8 +39,30 @@ Use the `memory` MCP server to recall and update these as decisions evolve. Curr
 4. **GitHub Releases is the distribution channel, not a network share.** Even for internal use. This keeps engineers on VPN-optional workflows and is ready for external distribution if that ever happens.
 5. **Plugins and the launcher release on independent tags.** Plugin tags follow the form `v0.1.0` within their own repo. Launcher has its own version. A launcher update does not imply a plugin update and vice versa.
 6. **The launcher repo was renamed from `shopvac` to `launcher`.** Old clones need `git remote set-url`. GitHub's redirect handles URLs automatically but don't rely on it in documentation.
+7. **GitHub Packages versions are immutable.** A bad `@chamber-19/desktop-toolkit` release cannot be yanked cleanly. When a toolkit release breaks this repo, fix forward with a new patch version upstream rather than trying to recall the bad one.
 
 When making a decision that affects another repo or that future sessions need to respect, persist it to memory. Explicit state beats re-derivation every time.
+
+### Memory server scope — what to persist
+
+Use `memory` for persistent cross-session context. What belongs there vs. what doesn't:
+
+**Persist to memory:**
+
+- Architectural decisions and their rationale (e.g. "Publish-to-drive uses version-matching glob because `Select-Object -First 1` caused the v6.2.2 incident")
+- Version-pin contracts with `desktop-toolkit` (e.g. "transmittal-builder v6.3.x expects desktop-toolkit ^2.2.6+")
+- Repo role changes and renames
+- Naming conventions that have been deliberately chosen
+- Recurring traps documented in past PRs
+
+**Do NOT persist:**
+
+- Per-PR context (PR title, branch name, transient commit hashes)
+- Debugging state from a single session
+- File contents — re-read files when needed, don't cache them in memory
+- Anything you could infer by reading current files in the repo
+
+When in doubt, prefer to re-read the repo over trusting stale memory. Memory is for the shape of decisions, not the substance of code.
 
 ---
 
@@ -65,6 +89,7 @@ Actively push back when the user:
 - Proposes reconstructing Suite-style infrastructure (e.g. a shared controller exe, a named-pipe RPC layer, a multi-layer toolkit with 4+ components) before there's concrete duplication justifying it
 - Suggests building an abstraction "because we'll probably need it" — ask whether the need is experience-based or prediction-based
 - Wants to combine scoped work (e.g. "while we're renaming the repo, let's also add the installer logic") — keep unrelated changes in separate PRs
+- Wants to combine a `desktop-toolkit` pin bump with feature work in the same PR — separate them, because pin-bump PRs need to be reviewable as pin-bump PRs
 
 ---
 
@@ -75,14 +100,16 @@ This repo has MCP servers configured via the GitHub coding agent settings. Use t
 ### `github` — preferred for anything on github.com
 
 - Use `get_file_contents`, `search_code`, `list_commits`, `get_pull_request_diff`, etc. over `fetch` when the target is a GitHub URL
+- Use `create_or_update_file`, `push_files`, and `delete_file` for direct commits instead of going through the `git` server when the change is narrow and well-scoped
 - Use `create_issue`, `create_pull_request`, `create_branch` rather than asking the user to do these manually
-- Use `list_workflow_runs` + `get_workflow_run` to diagnose CI failures instead of asking the user to paste logs
-- Use `list_releases` and `get_release` when checking version state across repos
+- Use `list_workflow_runs` + `get_workflow_run` + `list_workflow_jobs` + `download_workflow_run_logs` to diagnose CI failures instead of asking the user to paste logs
+- Use `list_releases` and `get_release` when checking version state across repos (especially `desktop-toolkit` when planning pin bumps)
+- Use `list_secret_scanning_alerts` and `list_code_scanning_alerts` when reviewing security posture or assessing dependency-bump PRs
 
 ### `git` — local repo operations
 
 - Use `git_status`, `git_diff`, `git_log`, `git_blame` freely to orient yourself
-- Use `git_add`, `git_commit`, `git_branch`, `git_checkout`, `git_create_branch` for safe local operations
+- Use `git_add`, `git_commit`, `git_branch`, `git_checkout`, `git_create_branch` for safe local operations. Use `git` for multi-file changes that need careful staging.
 - **Never use destructive operations** (`git_reset`, `git_clean`, force-push equivalents) without explicit confirmation in chat first
 
 ### `filesystem` — scoped to `/workspaces`
@@ -97,19 +124,19 @@ This repo has MCP servers configured via the GitHub coding agent settings. Use t
 
 ### `sequential-thinking`
 
-- Use for any plan with 3+ dependent steps, especially cross-repo work
+- Use for any plan with 3+ dependent steps, especially cross-repo work (e.g. coordinating a `desktop-toolkit` bump with consumer testing here)
 - Use when debugging a multi-step failure where the root cause isn't obvious
 
 ### `memory` — persist context across sessions
 
 - Write to memory when architectural decisions are made, naming conventions are set, or cross-repo relationships are established
 - Read from memory at the start of a session before asking the user to re-explain context
-- Organize memory by topic (e.g. "chamber19/naming", "chamber19/transmittal-builder/release-conventions")
+- Follow the "Memory server scope" guidance above — don't pollute it with transient state
 
 ### `time`
 
-- Use when generating timestamps for CHANGELOG entries, release notes, or ISO-formatted dates
-- Don't guess the current date — fetch it
+- Use for CHANGELOG entry dates, release tags, and any ISO-formatted timestamp
+- Do not guess the current date from memory — always fetch it via this server
 
 ### `svgmaker`
 
@@ -170,7 +197,7 @@ Shared visual language across all Chamber 19 tools:
 
 ### CHANGELOG
 
-Every repo has a `CHANGELOG.md` following Keep a Changelog conventions. Every release tag must have a corresponding CHANGELOG entry. Unreleased changes accumulate under an `## Unreleased` heading and get promoted to a versioned heading at release time.
+Every repo has a `CHANGELOG.md` following Keep a Changelog conventions. Every release tag must have a corresponding CHANGELOG entry. Unreleased changes accumulate under an `## [Unreleased]` heading and get promoted to a versioned heading at release time.
 
 ---
 
@@ -189,6 +216,16 @@ Every repo has a `CHANGELOG.md` following Keep a Changelog conventions. Every re
 - PR titles follow the same style as commit messages
 - PR description includes: what changed, why, and any follow-up needed
 
+### Draft PRs
+
+Open a PR as draft when:
+
+- The PR bumps the `desktop-toolkit` pin and is waiting on CI verification before going live
+- CI feedback is wanted on a partial change before final commits
+- A release is staged but should not be merged until downstream verification is complete
+
+Convert to ready-for-review only once the coordinated flow is complete.
+
 ---
 
 ## Security
@@ -198,6 +235,7 @@ Every repo has a `CHANGELOG.md` following Keep a Changelog conventions. Every re
 - MCP configs reference environment variable names, never literal tokens
 - When in doubt, assume a value might be sensitive and don't log it
 - Audit dependency-bump PRs for unexpected maintainer changes on popular packages (supply-chain attack vector)
+- Use `github.list_secret_scanning_alerts` and `github.list_code_scanning_alerts` to review open security alerts before major releases
 
 ---
 
@@ -208,7 +246,8 @@ When a task spans multiple Chamber 19 repos:
 1. Use `sequential-thinking` to plan the order of operations
 2. Start with the lowest-level dependency. If a change touches `desktop-toolkit` and `transmittal-builder`, ship the toolkit change first, tag it, then bump `transmittal-builder`'s pin
 3. Make each repo's PR self-contained. A `transmittal-builder` PR shouldn't say "this works once you merge #42 in desktop-toolkit." It should either pin to a released version or be explicitly marked "blocked on X."
-4. Update memory with the cross-repo relationship so future sessions know what depends on what.
+4. If a `desktop-toolkit` bump reveals a problem, **fix forward** in the toolkit with a new patch version rather than yanking. GitHub Packages versions are immutable; a published bad release cannot be cleanly recalled, only superseded
+5. Update memory with the cross-repo relationship so future sessions know what depends on what.
 
 ---
 
@@ -261,10 +300,10 @@ If a doc is _not_ historical and contains a reference to an older state, update 
 
 All `*.md` files must pass `markdownlint-cli2 "**/*.md"` against the rules in `.markdownlint.jsonc`. In short:
 
-- Fenced code blocks: declare a language (`text` for ASCII, never bare).
-- Use `_emphasis_` and `**strong**` consistently.
-- Surround headings, lists, and fenced blocks with blank lines.
-- First line of every file is a `#` H1; archival callouts go below it.
+- Fenced code blocks: always declare a language. Use `text` for prose, ASCII art, or shell session output — never a bare block
+- Use `_emphasis_` and `**strong**` consistently
+- Surround headings, lists, and fenced blocks with blank lines
+- First line of every file is a `#` H1; archival callouts go below it
 
 ## 4. Release-bump checklist
 
@@ -277,6 +316,7 @@ When cutting a new TB release, follow `RELEASING.md` § 2 exactly:
 5. Verify the GitHub Release asset filename matches the tag.
 6. Run `scripts/publish-to-drive.ps1 -Tag vX.Y.Z`.
 7. Update any version examples in `TROUBLESHOOTING.md` and `MIGRATION.md` that were tied to the previous version.
+8. Use the `time` MCP server for the release date in `CHANGELOG.md` — do not guess it.
 
 ## 5. Reference docs
 
