@@ -9,6 +9,27 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [6.2.7] — 2026-04-24
+
+### Fixed
+
+- **Release workflow now builds `desktop-toolkit-updater.exe` from the
+  correct toolkit tag.** `.github/workflows/release.yml` "Build
+  desktop-toolkit-updater shim" step had a hardcoded
+  `$desktopToolkitTag = "v2.2.6"` that was not bumped when the rest of
+  the source pins moved to v2.2.7. The shipped shim binary was therefore
+  compiled from v2.2.6 source and used `/PASSIVE /NORESTART` (visible
+  NSIS window) instead of v2.2.7's `/S` (fully silent). See PR #103.
+- **Local `frontend/src-tauri/installer/hooks.nsh` no longer kills the
+  updater shim during preinstall.** The local override was a frozen copy
+  of the v2.2.6 upstream `hooks.nsh` and still ran
+  `taskkill /F /IM "desktop-toolkit-updater.exe"` in
+  `NSIS_HOOK_PREINSTALL`. During an in-app update the shim is the
+  process actively running the installer and blocking on
+  `child.wait()`; killing it mid-install orphaned the update flow and
+  prevented the post-install relaunch. Matches v2.2.7 upstream
+  `hooks.nsh`. See PR #103.
+
 ## [6.2.6] — 2026-04-24
 
 ### Fixed
@@ -18,9 +39,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   received a brief installer flash and then no update occurred. Root causes
   were upstream in desktop-toolkit (chamber-19/desktop-toolkit#31): NSIS
   silent-install flag was incorrect (`/PASSIVE` instead of `/S`), and
-  `hooks.nsh` was killing the updater shim mid-install. This release is the
-  first transmittal-builder release that incorporates the fix; the in-app
-  update will work correctly from v6.2.6 forward.
+  `hooks.nsh` was killing the updater shim mid-install. **Note:** the
+  source pins (`package.json`, `Cargo.toml`, both lockfiles) correctly
+  resolved to v2.2.7 in this release, but the build artifact did not
+  actually carry v2.2.7's code — the CI workflow had a hardcoded shim
+  tag at v2.2.6 and the local `hooks.nsh` override was never updated.
+  See v6.2.7 for the actual delivery of the v2.2.7 fix.
 
 ## [6.2.5] — 2026-04-24
 
