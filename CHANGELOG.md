@@ -9,6 +9,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [6.2.5] — 2026-04-24
+
 ### Fixed
 
 - **Document index and merged PDF now appear in natural drawing-number order.**

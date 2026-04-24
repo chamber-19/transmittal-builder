@@ -1,6 +1,6 @@
 [package]
 name = "transmittal-builder"
-version = "6.2.4"
+version = "6.2.5"
 description = "Transmittal Builder — Tauri desktop shell"
 authors = ["Koraji"]
 license = "MIT"
