@@ -9,6 +9,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **Document index and merged PDF now appear in natural drawing-number order.**
+  PDFs dropped onto the file zone (and the resulting document index rows)
+  are now sorted by drawing number using a numeric collator both at
+  drop-time and at submit-time, instead of inheriting the browser's
+  arbitrary file-delivery order. See PR #99.
+
+### Removed
+
+- **Removed unused `frontend/transmittal-builder.jsx`.** This was a
+  legacy single-file variant of the UI from before the `frontend/src/`
+  refactor. It was not referenced by `index.html`, `vite.config.js`,
+  or `main.jsx`, and not imported anywhere in the codebase.
+
 ## [6.2.4] — 2026-04-22
 
 ### Fixed

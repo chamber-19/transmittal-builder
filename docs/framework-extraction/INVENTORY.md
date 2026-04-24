@@ -128,7 +128,6 @@ The following files are **not** listed above and must remain here:
 
 | File | Reason |
 |---|---|
-| `frontend/transmittal-builder.jsx` | Top-level transmittal form UI — product logic, not framework. |
 | `frontend/src/App.jsx` | All transmittal data models, field state, readiness calculation, PDF routing. |
 | `frontend/index.html` | Tool-specific Vite HTML entry for the main window. |
 | `backend/app.py` | All FastAPI routes are transmittal-specific (`/api/render`, `/api/parse-index`, etc.). The PyInstaller `__main__` block is generic in pattern but tied to `TRANSMITTAL_BACKEND_PORT`. |

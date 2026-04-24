@@ -48,8 +48,12 @@ Transmittal-Builder/
 │
 └── frontend/                  React/Vite web + Tauri desktop shell
     ├── src/
-    │   ├── App.jsx            Main React application
-    │   └── main.jsx           React entry point
+    │   ├── App.jsx            Main React application (all transmittal UI + state)
+    │   ├── main.jsx           React entry point
+    │   ├── splash.jsx         Splash window mount (uses @chamber-19/desktop-toolkit)
+    │   ├── updater.jsx        Updater window mount
+    │   └── api/
+    │       └── backend.js     Tauri IPC helper for sidecar backend URL
     ├── src-tauri/             Tauri desktop shell
     │   ├── tauri.conf.json    Window / bundle configuration
     │   ├── Cargo.toml         Rust workspace manifest
@@ -59,6 +63,9 @@ Transmittal-Builder/
     │   │   └── lib.rs         Tauri app logic + backend auto-start
     │   ├── capabilities/      Tauri permission grants
     │   └── icons/             App icon assets
+    ├── index.html             Main window HTML entry (loaded by Vite)
+    ├── splash.html            Splash window HTML entry
+    ├── updater.html           Updater window HTML entry
     ├── package.json
     └── vite.config.js
 ```
