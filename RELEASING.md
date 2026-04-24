@@ -81,8 +81,8 @@ All three must match, e.g. `4.0.0`.
 ### Bumping `@chamber-19/desktop-toolkit`
 
 When bumping the framework version, update **both** the `[package.metadata.desktop-toolkit]`
-block **and** the `desktop-toolkit = { git = ..., tag = "..." }` line in
-`frontend/src-tauri/Cargo.toml` — they must stay in sync. Also bump the matching
+block **and** the `desktop-toolkit = { git = ..., tag = "..." }` line in the
+`[dependencies]` section of `frontend/src-tauri/Cargo.toml` — they must stay in sync. Also bump the matching
 `@chamber-19/desktop-toolkit` version in `frontend/package.json` (and run
 `npm install` + `cargo update -p desktop-toolkit` to refresh the lockfiles in
 the same commit). The CI release workflow reads `shim-tag` from the metadata block
