@@ -17,6 +17,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[package.metadata.desktop-toolkit]
+# Single source of truth for the desktop-toolkit pin.
+# CI workflow (.github/workflows/release.yml) reads `shim-tag` from this block
+# when building the desktop-toolkit-updater.exe shim. Keep `library-tag` and
+# `shim-tag` in sync unless intentionally pinning to a shim hotfix tag.
+# When bumping, update BOTH this block AND the [dependencies] line below.
+library-tag = "v2.2.7"
+shim-tag    = "v2.2.7"
+
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"

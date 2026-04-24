@@ -109,7 +109,26 @@ jobs:
       # the NSIS HOOK_POSTINSTALL can bundle it alongside the main exe.
       - name: Build desktop-toolkit-updater shim
         run: |
-          $desktopToolkitTag = "v2.2.7"
+          # Read shim tag from the [package.metadata.desktop-toolkit] block in Cargo.toml.
+          # This is the single source of truth — see the comment in Cargo.toml.
+          $cargoToml = Get-Content "frontend/src-tauri/Cargo.toml" -Raw
+          $metadataBlock = [regex]::Match(
+              $cargoToml,
+              '(?ms)^\[package\.metadata\.desktop-toolkit\]\s*$(.*?)^\['
+          ).Groups[1].Value
+          if (-not $metadataBlock) {
+              # Handle case where the metadata block is the last block in the file
+              $metadataBlock = [regex]::Match(
+                  $cargoToml,
+                  '(?ms)^\[package\.metadata\.desktop-toolkit\]\s*$(.*)'
+              ).Groups[1].Value
+          }
+          $shimTagMatch = [regex]::Match($metadataBlock, '(?m)^\s*shim-tag\s*=\s*"([^"]+)"')
+          if (-not $shimTagMatch.Success) {
+              throw "Could not parse shim-tag from [package.metadata.desktop-toolkit] in frontend/src-tauri/Cargo.toml"
+          }
+          $desktopToolkitTag = $shimTagMatch.Groups[1].Value
+          Write-Host "Resolved desktop-toolkit shim tag from Cargo.toml metadata: $desktopToolkitTag"
           git clone --depth 1 --branch $desktopToolkitTag `
             https://github.com/chamber-19/desktop-toolkit `
             "$env:RUNNER_TEMP\dtk"
