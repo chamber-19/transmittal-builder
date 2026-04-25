@@ -9,6 +9,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [6.2.9] — 2026-04-25
+
+### Changed
+
+- Trivial version bump to enable an end-to-end verification of the v6.2.8 → v6.2.9 in-app update flow. v6.2.8 was the first release with the fixed `desktop-toolkit-updater` shim (see [chamber-19/desktop-toolkit#31](https://github.com/chamber-19/desktop-toolkit/pull/31) + [#33](https://github.com/chamber-19/desktop-toolkit/pull/33)), but the only way to prove the fix works empirically is to actually perform an in-app update _from_ v6.2.8 _to_ a later version — this is that later version. No functional changes from v6.2.8.
+
+## [6.2.8] — 2026-04-24
+
 ### Added
 
 - **CI guard against `desktop-toolkit` pin drift.** New
@@ -22,8 +30,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   for the toolkit pin — the guard makes that drift impossible to merge
   without a loud CI failure. Closes the elimination plan from PR #103's
   diagnostic.
-
-## [6.2.8] — 2026-04-24
 
 ### Changed
 
