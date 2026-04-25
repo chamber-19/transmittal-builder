@@ -58,7 +58,7 @@ if (sectionStart === -1) {
 const fromSection = changelog.slice(sectionStart);
 const bodyStart = fromSection.indexOf("\n") + 1;
 const body = fromSection.slice(bodyStart);
-const nextHeading = body.match(/^## /m);
+const nextHeading = body.match(/^## \[/m);
 const sectionBody = nextHeading ? body.slice(0, nextHeading.index) : body;
 const notes = sectionBody.trim();
 
