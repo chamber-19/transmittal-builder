@@ -255,6 +255,40 @@ When a task spans multiple Chamber 19 repos:
 
 ---
 
+## Code change discipline
+
+When editing existing code:
+
+- Match existing style, even if you'd do it differently. Don't reformat
+  adjacent code or "improve" comments that weren't part of the request.
+- Don't refactor things that aren't broken. If you notice unrelated dead
+  code or smells, mention them in the PR description — don't delete or
+  fix them in this PR.
+- Every changed line should trace directly to the user's request. If you
+  can't justify a line, remove it.
+- Clean up only the orphans your own changes created (unused imports,
+  variables, helpers that became unreachable). Pre-existing dead code
+  stays unless explicitly asked.
+
+When implementing:
+
+- Minimum code that solves the problem. No speculative abstractions, no
+  flexibility that wasn't requested, no error handling for scenarios that
+  can't actually happen.
+- If you wrote 200 lines and 50 would suffice, rewrite it.
+- Senior-engineer test: Would a careful reviewer call this overcomplicated?
+  If yes, simplify before opening the PR.
+
+When uncertain:
+
+- State your assumptions explicitly. Don't guess silently.
+- If multiple interpretations of the request exist, present them. Don't
+  pick one and proceed.
+- If something is unclear, stop and ask. Naming what's confusing is more
+  helpful than producing a guess.
+
+---
+
 ---
 
 # Repo-specific rules — transmittal-builder
