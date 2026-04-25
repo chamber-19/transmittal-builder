@@ -9,6 +9,68 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [6.3.1] — 2026-04-25
+
+### Added
+
+- **Markdown rendering test release.** This release exists solely to
+  verify that the new update modal correctly renders formatted markdown
+  in release notes (a feature shipped in v6.3.0 but only visible when
+  updating _from_ v6.3.0 to a later version).
+
+### Renderer test cases
+
+The following markdown features should all render correctly in the
+update modal you're seeing right now:
+
+#### Headings
+
+- `### H3` should be a sub-heading, not literal text
+- `#### H4` should be a smaller sub-heading
+
+#### Inline formatting
+
+- **bold text** should be bold
+- _italic text_ should be italic
+- `inline code` should be monospaced
+
+#### Lists
+
+- Bullet point one
+- Bullet point two
+  - Nested bullet
+  - Another nested bullet
+- Bullet point three
+
+#### Numbered lists
+
+1. First item
+2. Second item
+3. Third item
+
+#### Links
+
+- [GitHub repo](https://github.com/chamber-19/transmittal-builder)
+- [v6.3.0 release notes](https://github.com/chamber-19/transmittal-builder/releases/tag/v6.3.0)
+
+#### Code blocks
+
+Should render as a fenced block:
+
+```text
+function hello() {
+  console.log("world");
+}
+```
+
+### Fixed
+
+- Nothing. This is a pure version bump.
+
+### Changed
+
+- Nothing. This is a pure version bump.
+
 ## [6.3.0] — 2026-04-25
 
 ### Changed
