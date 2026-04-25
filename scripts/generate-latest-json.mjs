@@ -17,7 +17,7 @@
  *   node scripts/generate-latest-json.mjs
  */
 
-import { writeFileSync, readFileSync, existsSync } from "fs";
+import { writeFileSync, readFileSync } from "fs";
 import { join } from "path";
 
 // ── Resolve inputs ──────────────────────────────────────────────────────
@@ -40,13 +40,27 @@ if (!installerName) {
 const version = tagName.replace(/^v/, "");
 
 // ── Release notes ────────────────────────────────────────────────────────
-// Use RELEASE_NOTES.md if present (written by git tag -m or a prior step),
-// otherwise use a generic message.
-let notes = `Transmittal Builder ${tagName}`;
-const notesPath = join(process.cwd(), "RELEASE_NOTES.md");
-if (existsSync(notesPath)) {
-  notes = readFileSync(notesPath, "utf8").trim();
+// Extract the matching ## [<version>] section from CHANGELOG.md.
+// Fails loudly if the section is not found — a missing entry for a tagged
+// release is a bug we want to catch in CI before publishing.
+const changelogPath = join(process.cwd(), "CHANGELOG.md");
+const changelog = readFileSync(changelogPath, "utf8");
+
+const escapedVersion = version.replace(/\./g, "\\.");
+const headingRe = new RegExp(`^## \\[${escapedVersion}\\]`, "m");
+const sectionStart = changelog.search(headingRe);
+if (sectionStart === -1) {
+  console.error(
+    `[generate-latest-json] CHANGELOG.md has no section for version ${version}`
+  );
+  process.exit(1);
 }
+const fromSection = changelog.slice(sectionStart);
+const bodyStart = fromSection.indexOf("\n") + 1;
+const body = fromSection.slice(bodyStart);
+const nextHeading = body.match(/^## /m);
+const sectionBody = nextHeading ? body.slice(0, nextHeading.index) : body;
+const notes = sectionBody.trim();
 
 // ── Build the manifest ───────────────────────────────────────────────────
 const manifest = {

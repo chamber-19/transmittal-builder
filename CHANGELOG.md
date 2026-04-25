@@ -9,6 +9,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- Release notes for the in-app updater are now extracted from the
+  matching `## [VERSION]` section of `CHANGELOG.md` instead of a
+  hand-maintained `RELEASE_NOTES.md` file. Eliminates duplicate state
+  and the v6.2.5-stale-notes bug that affected every release between
+  v6.2.6 and v6.3.1 inclusive. `RELEASE_NOTES.md` has been removed.
+
 ## [6.3.1] — 2026-04-25
 
 ### Added
