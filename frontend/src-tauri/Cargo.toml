@@ -1,6 +1,6 @@
 [package]
 name = "transmittal-builder"
-version = "6.2.7"
+version = "6.2.8"
 description = "Transmittal Builder — Tauri desktop shell"
 authors = ["Koraji"]
 license = "MIT"
@@ -23,7 +23,7 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-dialog = "2"
-desktop-toolkit = { git = "https://github.com/chamber-19/desktop-toolkit", tag = "v2.2.7" }
+desktop-toolkit = { git = "https://github.com/chamber-19/desktop-toolkit", tag = "v2.2.8" }
 
 [package.metadata.desktop-toolkit]
 # Single source of truth for the desktop-toolkit pin.
@@ -32,8 +32,8 @@ desktop-toolkit = { git = "https://github.com/chamber-19/desktop-toolkit", tag =
 # `shim-tag` in sync unless intentionally pinning to a shim hotfix tag.
 # When bumping, update ALL THREE: `library-tag`, `shim-tag`, and the `tag` in
 # the [dependencies] desktop-toolkit line above.
-library-tag = "v2.2.7"
-shim-tag    = "v2.2.7"
+library-tag = "v2.2.8"
+shim-tag    = "v2.2.8"
 
 [profile.release]
 # Shrink binary size for the distributed installer.

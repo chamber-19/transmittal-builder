@@ -342,9 +342,11 @@ into the binary we distribute.
 
 The installer and uninstaller wizard text (page titles, "Installation
 complete" / "Uninstall complete" headers, title-bar captions) is
-overridden via a thin NSIS hook file at
-`frontend/src-tauri/installer/hooks.nsh`, wired in through
-`bundle.windows.nsis.installerHooks` in `tauri.conf.json`.
+defined by the NSIS hook file shipped inside `@chamber-19/desktop-toolkit`
+and referenced via `bundle.windows.nsis.installerHooks` in `tauri.conf.json`.
+As of v6.2.8, `installerHooks` points directly at the upstream file in
+`node_modules/@chamber-19/desktop-toolkit/installer/nsis/hooks.nsh` — there
+is no longer a local override checked into this repo.
 
 The hook only `!define`s MUI text strings and sets `Caption` /
 `UninstallCaption`; it does **not** fork Tauri's `installer.nsi.tera`
@@ -359,6 +361,10 @@ For captions specifically, do **not** use `${PRODUCTNAME}` directly in the
 hook file. Tauri includes `hooks.nsh` before it later emits
 `!define PRODUCTNAME` / `Name "${PRODUCTNAME}"`, so immediate commands such as
 `Caption` will render the placeholder literally. Use `$(^Name)` instead.
+
+To **add a local customisation**: copy the upstream `hooks.nsh` into
+`frontend/src-tauri/installer/hooks.nsh`, then repoint `installerHooks` in
+`tauri.conf.json` to `"installer/hooks.nsh"`.
 
 Things you **cannot** change without forking the template (intentionally
 out-of-scope for now):

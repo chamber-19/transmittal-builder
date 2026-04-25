@@ -106,12 +106,11 @@ Active overrides are logged once to the console:
 
 ## Customising the NSIS installer / uninstaller UI
 
-We ship a small NSIS hook file at
-[`installer/hooks.nsh`](./installer/hooks.nsh), referenced by
-[`tauri.conf.json`](./tauri.conf.json) via
-`bundle.windows.nsis.installerHooks`. Tauri's installer template
-`!include`s the file very early — before any MUI page macros and before
-`Name` / `BrandingText` are emitted — so it can:
+As of v6.2.8, the NSIS hook file is sourced directly from the upstream
+`@chamber-19/desktop-toolkit` package. `tauri.conf.json` sets
+`bundle.windows.nsis.installerHooks` to the file inside `node_modules`.
+Tauri's installer template `!include`s the file very early — before any MUI
+page macros and before `Name` / `BrandingText` are emitted — so it can:
 
 - Override any `MUI_TEXT_*` / `MUI_UNTEXT_*` page string (Welcome, Finish,
   INSTFILES headers including the "Installation/Uninstallation complete"
@@ -133,6 +132,11 @@ that anything requiring custom NSIS dialog controls (hiding the
 "Show details" button, recolouring the progress bar, replacing the
 dialog chrome) is **not** doable from `hooks.nsh` — those would require
 a template fork. See `TROUBLESHOOTING.md §11` for the explicit scope.
+
+To add a **local override**: copy
+`node_modules/@chamber-19/desktop-toolkit/installer/nsis/hooks.nsh` to
+`installer/hooks.nsh`, then update `installerHooks` in `tauri.conf.json`
+to `"installer/hooks.nsh"`.
 
 The companion BMP / SVG branding lives next to the hook file:
 `nsis-header.{svg,bmp}` (150×57) and `nsis-sidebar.{svg,bmp}` (164×314).

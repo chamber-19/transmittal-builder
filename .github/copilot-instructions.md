@@ -273,7 +273,7 @@ Every PR you produce **must** keep the following docs in lockstep with the code:
 | The `@chamber-19/desktop-toolkit` pin in `frontend/package.json` | Also bump the matching `tag = "vX.Y.Z"` in `frontend/src-tauri/Cargo.toml`. Run `npm install` (in `frontend/`) and `cargo update -p desktop-toolkit --manifest-path frontend/src-tauri/Cargo.toml` to refresh both lockfiles in the same commit. |
 | `.github/workflows/release.yml` | `RELEASING.md` if any user-visible step changed; `TROUBLESHOOTING.md` if a failure mode changed. |
 | `scripts/publish-to-drive.ps1` | `RELEASING.md` § "Publish to shared drive" and `TROUBLESHOOTING.md` § "Stale cached installer" |
-| `frontend/src-tauri/installer/hooks.nsh` | `RELEASING.md` § "Why we override hooks.nsh locally" |
+| `frontend/src-tauri/installer/hooks.nsh` (if a local override is ever re-added) | `RELEASING.md` § "Local `hooks.nsh` — historical note" and `TROUBLESHOOTING.md` § "Customising the NSIS installer" |
 | `frontend/src-tauri/src/updater.rs` | `docs/AUTO_UPDATER.md` and `TROUBLESHOOTING.md` § "Update log" |
 | `backend/requirements*.txt` | `MIGRATION.md` and `RELEASING.md` prerequisites table |
 | Anything user-facing in behaviour | `CHANGELOG.md` (if present) or the next `RELEASE_NOTES.md` |

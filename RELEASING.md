@@ -234,81 +234,25 @@ If a release has a critical bug:
 
 ---
 
-## 5. Why we override hooks.nsh locally
+## 5. Local `hooks.nsh` — historical note
 
-`frontend/src-tauri/installer/hooks.nsh` is a **TB-local checked-in file** and
-is intentionally _not_ overwritten by the prebuild sync script.
-
-### The upstream bug (desktop-toolkit v2.2.4 – fixed in v2.2.6)
-
-The upstream `@chamber-19/desktop-toolkit` v2.2.4 `hooks.nsh` contains:
-
-```nsis
-!macro NSIS_HOOK_POSTINSTALL
-  File "${BUILD_DIR}\desktop-toolkit-updater.exe"
-!macroend
-```
-
-Tauri 2's NSIS template `!include`s the hooks file at the **top level** of
-`installer.nsi` (before any Section or Function definition).  NSIS's `File`
-directive embeds file data at compile time and requires Section/Function
-context when the surrounding macro is defined — using it in a top-level macro
-definition causes makensis to abort with:
-
-```text
-Error: command File not valid outside Section or Function
-```
-
-The same include ordering also matters for title-bar captions: immediate NSIS
-commands in `hooks.nsh` run before Tauri later emits `!define PRODUCTNAME` and
-`Name "${PRODUCTNAME}"`. That means `Caption "${PRODUCTNAME} — Setup"` renders
-literally as `${PRODUCTNAME} — Setup` at runtime. Use the runtime `$(^Name)`
-token for `Caption` / `UninstallCaption` instead.
-
-### Our fix
-
-1. **`bundle.resources`** — `desktop-toolkit-updater.exe` is added to
-   `tauri.conf.json → bundle.resources` so Tauri's own Section-level `File`
-   emits it into `$INSTDIR\resources\desktop-toolkit-updater.exe`.
-
-2. **`NSIS_HOOK_POSTINSTALL`** — uses `CopyFiles` (valid in all runtime
-   contexts) to promote the shim from `resources/` to `$INSTDIR\`:
-
-   ```nsis
-   !macro NSIS_HOOK_POSTINSTALL
-     CopyFiles /SILENT "$INSTDIR\resources\desktop-toolkit-updater.exe" \
-       "$INSTDIR\desktop-toolkit-updater.exe"
-   !macroend
-   ```
-
-   The Rust updater (`desktop-toolkit` crate) resolves the shim as
-   `current_exe().parent() / "desktop-toolkit-updater.exe"`, so placing it
-   directly in `$INSTDIR` keeps the existing Rust code working without
-   modification.
-
-3. **`scripts/sync-installer-assets-local.mjs`** — the `prebuild` script now
-   calls this local wrapper instead of `desktop-toolkit-sync-installer-assets`.
-   The wrapper syncs only the SVG art masters, regenerates the BMPs locally
-   from those SVGs, and **skips `hooks.nsh`** so the upstream package never
-   overwrites our override. This avoids stale packaged BMPs leaking old
-   branding into the installer even when the SVGs are current.
-
-### When to re-sync hooks.nsh
-
-If `@chamber-19/desktop-toolkit` is bumped to a version that fixes the
-upstream `hooks.nsh` bug, evaluate whether you want to:
-
-- Drop the local override and revert `prebuild` to `desktop-toolkit-sync-installer-assets`, OR
-- Keep the local override as belt-and-suspenders.
-
-Either way, run a full local build first (see §"Local smoke-test before tagging" below).
+> Previous releases (up to v6.2.7) carried a local
+> `frontend/src-tauri/installer/hooks.nsh` override to work around two upstream
+> bugs: `${PRODUCTNAME}` empty when Tauri `!include`d `hooks.nsh`, and a
+> now-obsolete `CopyFiles` POSTINSTALL workaround. Both have been absorbed
+> upstream as of `@chamber-19/desktop-toolkit@2.2.8`. The consumer no longer
+> needs a local `hooks.nsh` — `installerHooks` in `tauri.conf.json` now points
+> directly at the file inside `node_modules`. To customize installer behavior
+> (additional taskkill, extra registry keys, etc.), copy upstream's `hooks.nsh`
+> into `frontend/src-tauri/installer/hooks.nsh` and repoint `installerHooks`
+> back at the local copy.
 
 ---
 
 ## 6. Local smoke-test before tagging
 
 > **Always** run a full local Tauri build after any `@chamber-19/desktop-toolkit`
-> version bump (or other changes to `tauri.conf.json` / `installer/hooks.nsh`)
+> version bump (or other changes to `tauri.conf.json`)
 > to catch NSIS compile errors before pushing a release tag.  CI Windows runners
 > are expensive to retry.
 

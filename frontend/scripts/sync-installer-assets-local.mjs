@@ -6,28 +6,10 @@
 //
 // WHY NOT just call `desktop-toolkit-sync-installer-assets` directly?
 //
-// The upstream sync copies ALL five installer assets — including hooks.nsh.
-// But hooks.nsh must be a TB-local checked-in file because the upstream
-// v2.2.4 version contains:
-//
-//   !macro NSIS_HOOK_POSTINSTALL
-//     File "${BUILD_DIR}\desktop-toolkit-updater.exe"
-//   !macroend
-//
-// NSIS's `File` directive (compile-time file embedding) is only valid when
-// the macro is defined in a Section/Function context; Tauri's NSIS template
-// `!include`s the hooks file at the top level of installer.nsi, so makensis
-// aborts with "command File not valid outside Section or Function".
-//
-// This wrapper copies only the SVG art assets and leaves hooks.nsh untouched
-// so our local override survives every `npm run prebuild` / `npm ci` cycle.
-//
 // The packaged BMPs are intentionally NOT trusted here: we have seen upstream
 // releases where the SVG masters were current but the pre-rendered BMPs still
 // contained stale branding text. We regenerate the BMPs locally from the synced
 // SVGs on every run so the installer always reflects the current artwork.
-//
-// See RELEASING.md §"Why we override hooks.nsh locally" for full context.
 //
 // Usage (wired up in package.json as the "prebuild" script):
 //   node scripts/sync-installer-assets-local.mjs
@@ -52,8 +34,6 @@ const srcDir = resolve(
 const destDir = resolve(__dirname, "../src-tauri/installer");
 
 // ── Assets to sync ────────────────────────────────────────────────────────
-// Explicitly excludes hooks.nsh — that file is a TB-local checked-in
-// override and must not be overwritten by the upstream package version.
 const SVG_ASSETS = [
   "nsis-header.svg",
   "nsis-sidebar.svg",
@@ -126,7 +106,7 @@ async function renderBmpFromSvg(svgName, bmpName, width, height) {
 
 // ── Run ───────────────────────────────────────────────────────────────────
 
-console.log("[sync-installer-assets] Syncing NSIS SVG art assets (hooks.nsh excluded)");
+console.log("[sync-installer-assets] Syncing NSIS SVG art assets");
 console.log(`  from: ${srcDir}`);
 console.log(`  to:   ${destDir}`);
 
@@ -178,4 +158,3 @@ await renderBmpFromSvg("nsis-sidebar.svg", "nsis-sidebar.bmp", 164, 314);
 console.log(
   `[sync-installer-assets] Done — ${copied} SVG copied, ${skipped} SVG up-to-date/skipped, 2 BMP regenerated`
 );
-console.log("  hooks.nsh: preserved (TB-local override, not overwritten)");

@@ -9,6 +9,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [6.2.8] — 2026-04-24
+
+### Changed
+
+- Bumped `@chamber-19/desktop-toolkit` from v2.2.7 to v2.2.8 (absorbs the
+  `$(^Name)` caption fix and clarifies POSTINSTALL behavior —
+  see [chamber-19/desktop-toolkit#33](https://github.com/chamber-19/desktop-toolkit/pull/33)).
+- **Retired the local `frontend/src-tauri/installer/hooks.nsh` override.** All
+  customizations the local file carried have been absorbed upstream as of
+  v2.2.8. `tauri.conf.json` now points `installerHooks` directly at the file
+  in `node_modules`. This eliminates the entire bug class from PR #103's Bug #2
+  (local override silently drifting from upstream is now impossible — there is
+  no local override). See [chamber-19/desktop-toolkit#33](https://github.com/chamber-19/desktop-toolkit/pull/33).
+
 ## [6.2.6] — 2026-04-24
 
 ### Fixed
