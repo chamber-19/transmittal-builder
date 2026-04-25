@@ -9,6 +9,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **CI guard against `desktop-toolkit` pin drift.** New
+  `.github/workflows/toolkit-pin-check.yml` runs `scripts/check-toolkit-pins.ps1`
+  on every PR and on push to `main`. The script asserts that the
+  `@chamber-19/desktop-toolkit` version in `frontend/package.json`
+  matches the `library-tag`, `shim-tag`, and `[dependencies]` tag in
+  `frontend/src-tauri/Cargo.toml`. After PR #105 (B2: single source of
+  truth via `[package.metadata.desktop-toolkit]`) and PR #106 (B3:
+  retired local `hooks.nsh`), this is the last possible drift surface
+  for the toolkit pin — the guard makes that drift impossible to merge
+  without a loud CI failure. Closes the elimination plan from PR #103's
+  diagnostic.
+
 ## [6.2.8] — 2026-04-24
 
 ### Changed

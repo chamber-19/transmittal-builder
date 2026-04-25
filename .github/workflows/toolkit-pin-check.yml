@@ -1,0 +1,26 @@
+name: Toolkit pin parity
+
+# Fails loudly if any of the four desktop-toolkit pin locations diverge:
+#   - frontend/package.json  @chamber-19/desktop-toolkit  (npm)
+#   - frontend/src-tauri/Cargo.toml  [package.metadata.desktop-toolkit]  library-tag
+#   - frontend/src-tauri/Cargo.toml  [package.metadata.desktop-toolkit]  shim-tag
+#   - frontend/src-tauri/Cargo.toml  [dependencies]  desktop-toolkit ... tag
+#
+# Completes in <10 seconds. Safe to add as a required check on the main
+# branch protection rule.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  toolkit-pin-parity:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check desktop-toolkit pin parity
+        run: pwsh ./scripts/check-toolkit-pins.ps1

@@ -89,7 +89,9 @@ section — all three must stay in sync. Also bump the matching
 `npm install` + `cargo update -p desktop-toolkit --manifest-path frontend/src-tauri/Cargo.toml` to refresh the lockfiles in
 the same commit). The CI release workflow reads `shim-tag` from the metadata block
 automatically when building `desktop-toolkit-updater.exe` — **no workflow edit
-needed** when bumping the toolkit version.
+needed** when bumping the toolkit version. CI workflow `toolkit-pin-check.yml`
+will fail the PR if any of the four pin locations are out of sync — bump them
+all together.
 
 ### Step 2 — (Optional) Add release notes
 
