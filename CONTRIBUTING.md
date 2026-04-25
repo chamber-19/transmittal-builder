@@ -1,184 +1,169 @@
 # Contributing to Transmittal Builder
 
-Thank you for contributing to **R3P Transmittal Builder** — the transmittal
-generation tool for ROOT3POWER ENGINEERING.
+Transmittal Builder is a small, internal tool. External contributions are
+unlikely, but if you are reading this — welcome. This document covers the
+basics: how the repo fits into the Chamber 19 family, how to set up a dev
+environment, branching, and how to cut a release.
 
-This document covers the multi-repo architecture we are moving toward, the
-branching model, versioning rules, and the release workflow.  For the
-step-by-step mechanics of cutting a release, see [RELEASING.md](./RELEASING.md).
-
----
-
-## 1. Introduction
-
-`Transmittal-Builder` contains the tool-specific Python backend (FastAPI) and
-the Tauri/Vite frontend for generating engineering transmittal packages.
-
-**Current state:** the repository is self-contained — shared UI components,
-installer templates, logging helpers, and common Python utilities are inlined
-here.
-
-**Near-term direction:** those shared pieces will be extracted into a new
-`kc-framework` repository and consumed here as a versioned dependency.
-`Transmittal-Builder` will then be one of several tools in the `kc-suite`
-product lineup.
+For the full step-by-step release mechanics, see [RELEASING.md](./RELEASING.md).
+For diagnosing user-facing issues, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
 
 ---
 
-## 2. Repository map
+## 1. What this repo is
 
-| Repo | Role | Consumes |
-| --- | --- | --- |
-| [`kc-framework`](https://github.com/Koraji95-coder/kc-framework) | Shared UI kit, installer templates, common Python utilities, auth/license, logging, updater hooks, IPC helpers | — |
-| [`transmittal-builder`](https://github.com/chamber-19/transmittal-builder) | Transmittal generation tool | `kc-framework` |
-| [`Drawing-List-Manager`](https://github.com/Koraji95-coder/Drawing-List-Manager) | Drawing list tool | `kc-framework` |
-| `kc-suite` _*(future)*_ | Meta-installer that bundles selected tools | `kc-framework`, tool repos |
+`transmittal-builder` is a standalone Tauri desktop app (Rust shell + React
+frontend + Python FastAPI sidecar) for generating engineering transmittal
+packages. It is one of several tools in the Chamber 19 family:
 
-Each tool repo is independent; `kc-suite` pins exact versions of each tool and
-assembles them into a single distributable.
+| Repo | Role |
+|---|---|
+| [`chamber-19/desktop-toolkit`](https://github.com/chamber-19/desktop-toolkit) | Shared framework for Tauri desktop apps (splash, updater, NSIS installer, Python sidecar plumbing) |
+| [`chamber-19/launcher`](https://github.com/chamber-19/launcher) | Tauri shell that installs, updates, and launches Chamber 19 tools |
+| [`chamber-19/transmittal-builder`](https://github.com/chamber-19/transmittal-builder) | This repo |
+| [`chamber-19/object-totaler`](https://github.com/chamber-19/object-totaler) | AutoCAD plugin (independent of this repo) |
+| [`chamber-19/autocad-pipeline`](https://github.com/chamber-19/autocad-pipeline) | Shared MSBuild props for AutoCAD plugins (independent of this repo) |
+
+This repo **consumes** `@chamber-19/desktop-toolkit` as a versioned dependency
+in three places (kept in lockstep):
+
+- `frontend/package.json` — JS toolkit (npm, GitHub Packages)
+- `frontend/src-tauri/Cargo.toml` `[dependencies]` — Rust toolkit (git tag)
+- `frontend/src-tauri/Cargo.toml` `[package.metadata.desktop-toolkit]` —
+  `library-tag` and `shim-tag` (CI reads `shim-tag` to build the updater shim)
+
+The Python backend depends on `chamber19-desktop-toolkit` from the same
+upstream repo (public, no auth needed for `pip install`).
 
 ---
 
-## 3. Branching model
+## 2. Local development
+
+Full setup steps (prerequisites, `NODE_AUTH_TOKEN`, dev-server commands) live
+in **[README.md — Quick Start](./README.md#quick-start--tauri-desktop)**. This
+document does not duplicate them.
+
+The short version:
+
+```bash
+cd backend
+pip install -r requirements.txt
+
+cd ../frontend
+export NODE_AUTH_TOKEN=ghp_yourTokenHere   # PAT with read:packages
+npm install
+npm run desktop                              # = tauri dev
+```
+
+---
+
+## 3. Branching
 
 | Branch | Purpose |
-| --- | --- |
-| `main` | Always releasable. Protected — no direct pushes. |
-| `legacy/standalone-v1` | Frozen snapshot of the pre-framework standalone build. Protected — never delete or force-push. |
-| `feat/<short-name>` | New features |
-| `fix/<short-name>` | Bug fixes |
-| `refactor/<short-name>` | Refactors (no behaviour change) |
-| `docs/<short-name>` | Documentation-only changes |
+|---|---|
+| `main` | Always releasable. Tags are cut from here. |
+| `feat/<name>` | New features |
+| `fix/<name>` | Bug fixes |
+| `chore/<name>` | Tooling, dependency bumps |
+| `docs/<name>` | Documentation only |
+| `copilot/<name>` | Branches authored by the Copilot coding agent |
 
-**All changes go through pull requests to `main`.** No direct pushes to
-`main` or `legacy/standalone-v1`.
+All changes go through pull requests to `main`. CI (`toolkit-pin-check.yml`,
+`release.yml`, markdownlint) must be green before merge.
 
 ---
 
-## 4. Versioning & dependency pinning
+## 4. Versioning
 
 This repo follows **[SemVer](https://semver.org/)** (`MAJOR.MINOR.PATCH`).
+Tags are of the form `vX.Y.Z` (no decoration). Pushing a tag triggers
+`.github/workflows/release.yml`, which builds the PyInstaller sidecar, the
+Vite frontend, and the Tauri NSIS installer, then attaches both the installer
+and `latest.json` to a GitHub Release.
 
-### Pinning kc-framework (post-extraction)
+The version number lives in three files that **must match**:
 
-Once `kc-framework` is extracted, this repo pins to **exact framework tags**
-— never to `main` or a floating branch.  Pinning to a tag is the regression
-firewall that prevents an upstream change from silently breaking a tool.
+- `frontend/package.json`
+- `frontend/src-tauri/tauri.conf.json`
+- `frontend/src-tauri/Cargo.toml`
 
-**Python** (`backend/requirements.txt`):
+Use `node scripts/bump-version.mjs <new-version>` to update all three at once,
+then run `cargo check --manifest-path frontend/src-tauri/Cargo.toml` to refresh
+`Cargo.lock` in the same commit.
 
-```txt
-kc-framework @ git+https://github.com/Koraji95-coder/kc-framework@vX.Y.Z
+### Bumping `@chamber-19/desktop-toolkit`
+
+When the toolkit ships a new tag, bump **all four** locations together:
+
+- `frontend/package.json` — `"@chamber-19/desktop-toolkit"`
+- `frontend/src-tauri/Cargo.toml` — `[package.metadata.desktop-toolkit] library-tag`
+- `frontend/src-tauri/Cargo.toml` — `[package.metadata.desktop-toolkit] shim-tag`
+- `frontend/src-tauri/Cargo.toml` — `[dependencies] desktop-toolkit { tag = ... }`
+
+Then refresh both lockfiles in the same commit:
+
+```bash
+cd frontend && npm install
+cargo update -p desktop-toolkit --manifest-path src-tauri/Cargo.toml
 ```
 
-**JavaScript** (`frontend/package.json`):
-
-```json
-"kc-framework": "github:Koraji95-coder/kc-framework#vX.Y.Z"
-```
-
-### Bumping the framework version
-
-1. Open a PR that changes only the pin (both `requirements.txt` and
-   `package.json` if applicable).
-2. Wait for CI to go green.
-3. Merge, then follow the release workflow below.
-
-> **Never pin to `main`.  Tags only.**
+`.github/workflows/toolkit-pin-check.yml` will fail the PR if any of the four
+pin locations are out of sync.
 
 ---
 
-## 5. Release workflow
+## 5. Release workflow (summary)
 
-> This is a high-level summary.  See [RELEASING.md](./RELEASING.md) for the
-> full step-by-step mechanics, rollback instructions, and troubleshooting.
+See [RELEASING.md](./RELEASING.md) for the full procedure. The summary:
 
 1. Open a PR → CI green → merge to `main`.
-2. Bump the version in `frontend/package.json`, `frontend/src-tauri/tauri.conf.json`,
-   and `frontend/src-tauri/Cargo.toml` (all three must match).
-3. Tag `vX.Y.Z` and push the tag:
-
-   ```powershell
-   git tag vX.Y.Z
-   git push && git push --tags
-   ```
-
-4. CI builds the PyInstaller sidecar, the Vite frontend, and the Tauri
-   installer; a GitHub Release is created with the installer attached.
-5. Smoke-test the built installer locally before publishing to the shared drive
-   (see [RELEASING.md §2](./RELEASING.md#2-cutting-a-release)).
-6. If this release should be picked up by `kc-suite`, open a PR in that repo
-   bumping the `Transmittal-Builder` pin to the new tag.
+2. Bump the version (see §4).
+3. Add a `## [X.Y.Z] — YYYY-MM-DD` section to `CHANGELOG.md` describing
+   the change. `scripts/generate-latest-json.mjs` reads this section
+   verbatim and ships it as the in-app release notes — a missing section
+   fails the release build.
+4. Tag `vX.Y.Z` and push the tag.
+5. CI builds the installer and creates a GitHub Release.
+6. Run `scripts/publish-to-drive.ps1 -Tag vX.Y.Z` to copy the installer
+   and `latest.json` to the shared Google Drive folder. From that point,
+   every running instance of the app will detect and install the update
+   on next launch.
 
 ---
 
-## 6. Regression protection
+## 6. Documentation policy
 
-- **CI must be green before tagging.** No exceptions.
-- **Smoke-test the installer locally** before running `publish-to-drive.ps1`.
-- The `legacy/standalone-v1` branch is the rollback safety net — it preserves
-  the last known-good standalone build.  Never delete or force-push it.
-- Use **Renovate** or **Dependabot** (to be enabled) to receive automated PRs
-  when `kc-framework` releases a new tag.  CI will immediately tell you whether
-  the bump is safe to merge.
+This repo enforces a "no stale docs" rule. The full mapping of code-paths
+to docs that must be kept in sync lives in
+[`.github/copilot-instructions.md`](./.github/copilot-instructions.md). Human
+contributors are bound by the same rule as the Copilot coding agent — if
+your PR changes code that has documented behaviour, the docs change in the
+same PR.
 
----
-
-## 7. Local development
-
-See **[README.md — Quick Start](./README.md#quick-start--web-browser)** for
-full environment setup, prerequisite installation, and the dev-server commands.
-This document does not duplicate those steps.
-
-### Note on the framework extraction (pre- vs post-extraction)
-
-**Before extraction** (current state): develop normally.  All shared code is
-inlined in this repo.
-
-**After extraction**: to develop against a local unreleased framework build,
-use the standard package-manager link workflows:
-
-- Python: `pip install -e ../kc-framework` (editable install)
-- JavaScript: `cd ../kc-framework && npm link`, then `cd frontend && npm link kc-framework`
-
-Remember to revert to a pinned tag before opening a PR.
+All `*.md` files must pass `markdownlint-cli2 "**/*.md"` (config in
+`.markdownlint.jsonc` and `.markdownlint-cli2.jsonc`).
 
 ---
 
-## 8. Commit & PR conventions
+## 7. Commit & PR conventions
 
 This project encourages **[Conventional Commits](https://www.conventionalcommits.org/)**:
 
 | Prefix | Use for |
-| --- | --- |
+|---|---|
 | `feat:` | New user-facing feature |
 | `fix:` | Bug fix |
 | `docs:` | Documentation only |
 | `refactor:` | Code change with no behaviour change |
 | `chore:` | Build, tooling, dependency updates |
 
-**PR title** should match the leading commit type (e.g. `feat: add email CC field`).
-
-**PRs that bump the `kc-framework` pin** must include a link to the framework
-changelog or the relevant GitHub Release in the PR description so reviewers can
-assess the impact at a glance.
+PR titles should match the leading commit type. PRs that bump the
+`@chamber-19/desktop-toolkit` pin must link to the upstream changelog or
+release notes in the PR description so reviewers can assess impact.
 
 ---
 
-## 9. Code of conduct & contact
+## 8. Contact
 
-Be respectful and constructive in all interactions.
-
-For questions, bug reports, or feature requests, open an
+For bug reports or feature requests, open an
 [issue on GitHub](https://github.com/chamber-19/transmittal-builder/issues).
-The maintainer will respond as time allows.
-
----
-
-## Documentation policy
-
-This repo enforces a "no stale docs" rule. See
-[`.github/copilot-instructions.md`](./.github/copilot-instructions.md) for
-the full mapping of code-paths-to-docs that must be kept in sync. Human
-contributors are bound by the same rule as the coding agent — if your PR
-changes code that has documented behaviour, the docs change in the same PR.

@@ -173,7 +173,7 @@ Shared visual language across all Chamber 19 tools:
 ### Versioning
 
 - All repos use **SemVer** (`vMAJOR.MINOR.PATCH`)
-- Breaking changes require a major version bump and a MIGRATION.md entry
+- Breaking changes require a major version bump and a clearly-marked `### Changed` / `### Removed` section in `CHANGELOG.md`
 - Libraries (`desktop-toolkit`, `autocad-pipeline`) publish immutable version tags — downstream consumers pin exact versions
 - Consumer apps (`launcher`, `object-totaler`, `transmittal-builder`) can use `^x.y.z` ranges when depending on libraries
 
@@ -249,7 +249,7 @@ When a task spans multiple Chamber 19 repos:
 ## When you don't know
 
 - Check Copilot Memory first (repo-specific discoveries and recurring traps live there)
-- Then check the repo's `MIGRATION.md`, `RELEASING.md`, `CHANGELOG.md`, and `README.md`
+- Then check the repo's `RELEASING.md`, `CHANGELOG.md`, and `README.md`
 - Then search across the five Chamber 19 repos via the `github` server
 - Only then ask the user — and when you ask, ask a specific question, not an open-ended one
 
@@ -309,14 +309,14 @@ Every PR you produce **must** keep the following docs in lockstep with the code:
 | `scripts/publish-to-drive.ps1` | `RELEASING.md` § "Publish to shared drive" and `TROUBLESHOOTING.md` § "Stale cached installer" |
 | `frontend/src-tauri/installer/hooks.nsh` (if a local override is ever re-added) | `RELEASING.md` § "Local `hooks.nsh` — historical note" and `TROUBLESHOOTING.md` § "Customising the NSIS installer" |
 | `frontend/src-tauri/src/updater.rs` | `docs/AUTO_UPDATER.md` and `TROUBLESHOOTING.md` § "Update log" |
-| `backend/requirements*.txt` | `MIGRATION.md` and `RELEASING.md` prerequisites table |
-| Anything user-facing in behaviour | `CHANGELOG.md` (if present) or the next `RELEASE_NOTES.md` |
+| `backend/requirements*.txt` | `RELEASING.md` prerequisites table |
+| Anything user-facing in behaviour | `CHANGELOG.md` `## [Unreleased]` section |
 
 If a PR changes code but leaves a doc inconsistent, the PR is incomplete. Either fix the doc in the same PR, or open a tracking issue **before** merging and link it from the PR description.
 
 ## 2. Never leave historical references unmarked
 
-The `docs/framework-extraction/` tree intentionally preserves the original `kc-framework` / `Koraji95-coder` naming because it documents how the extraction was originally executed. Every file in that tree starts with a `> **Historical archive:** …` blockquote callout. Apply the same pattern to any other doc that references a previous state of the world (an older repo name, a deprecated dependency, a superseded version):
+If a doc references a previous state of the world (an older repo name, a deprecated dependency, a superseded version) and is preserved for historical reasons, mark it with a `> **Historical archive:** …` blockquote callout immediately under the H1:
 
 ```markdown
 > **Historical archive:** this document predates X. Use [Y](./Y.md) for
@@ -344,14 +344,14 @@ When cutting a new TB release, follow `RELEASING.md` § 2 exactly:
 4. Tag, push, monitor CI.
 5. Verify the GitHub Release asset filename matches the tag.
 6. Run `scripts/publish-to-drive.ps1 -Tag vX.Y.Z`.
-7. Update any version examples in `TROUBLESHOOTING.md` and `MIGRATION.md` that were tied to the previous version.
+7. Update any version examples in `TROUBLESHOOTING.md` and `RELEASING.md` that were tied to the previous version.
 8. Use the `time` MCP server for the release date in `CHANGELOG.md` — do not guess it.
 
 ## 5. Reference docs
 
 - [`RELEASING.md`](../RELEASING.md) — release lifecycle (must always reflect the latest released version)
 - [`TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) — diagnostic playbook
-- [`MIGRATION.md`](../MIGRATION.md) — version-to-version upgrade notes
+- [`CHANGELOG.md`](../CHANGELOG.md) — version-to-version history (also the source of in-app release notes)
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md) — local dev workflow
 - [`docs/AUTO_UPDATER.md`](../docs/AUTO_UPDATER.md) — auto-updater contract
 

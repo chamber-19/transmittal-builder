@@ -1,4 +1,4 @@
-# Releasing R3P Transmittal Builder
+# Releasing Transmittal Builder
 
 This document covers the full release lifecycle: one-time setup, cutting a
 release, rolling back, and troubleshooting.
@@ -93,16 +93,26 @@ needed** when bumping the toolkit version. CI workflow `toolkit-pin-check.yml`
 will fail the PR if any of the four pin locations are out of sync — bump them
 all together.
 
-### Step 2 — (Optional) Add release notes
+### Step 2 — Add a CHANGELOG entry
 
-Create `RELEASE_NOTES.md` at the repository root with a brief description.
-This content ends up in the GitHub Release body and in `latest.json` > `notes`.
+Promote the `## [Unreleased]` section in `CHANGELOG.md` to a versioned heading:
 
 ```markdown
-## What's new in v4.0.0
-- Initial release of Transmittal Builder v4
-- PDF merge and transmittal letter generation
+## [Unreleased]
+
+## [6.3.3] — 2026-04-25
+
+### Changed
+
+- Brief description of what changed in this release.
 ```
+
+`scripts/generate-latest-json.mjs` reads the matching `## [<version>]` section
+verbatim and writes it into `latest.json.notes` (which the in-app updater renders
+as markdown). The script exits with a non-zero status if the section is missing,
+so a tagged release without a CHANGELOG entry will fail CI.
+
+Use the `time` MCP server for the date — do not guess it.
 
 ### Step 3 — Tag and push
 
@@ -122,16 +132,16 @@ It will:
 
 1. Build the PyInstaller sidecar on Windows.
 2. Build the Vite frontend.
-3. Run `tauri build` → produces `R3P.Transmittal.Builder_4.0.0_x64-setup.exe`.
+3. Run `tauri build` → produces `Transmittal.Builder_<version>_x64-setup.exe`.
 4. Generate `latest.json`.
 5. Create a GitHub Release and upload both files.
 
 > **Filename note:** `softprops/action-gh-release` sanitises spaces to dots on
-> upload, so the GitHub Release asset is named `R3P.Transmittal.Builder_<version>_x64-setup.exe`
+> upload, so the GitHub Release asset is named `Transmittal.Builder_<version>_x64-setup.exe`
 > (dots) rather than the space-separated product name.  The filename on the
 > shared drive after `publish-to-drive.ps1` will match this dotted convention.
-> `publish-to-drive.ps1` uses a glob pattern to locate the installer, so it is
-> filename-agnostic and unaffected by this sanitisation.
+> `publish-to-drive.ps1` reads `latest.json.installer` to locate the file, so
+> it is unaffected by this sanitisation.
 
 ### Step 5 — Publish to shared drive
 
@@ -180,9 +190,9 @@ If a release has a critical bug:
    ```powershell
    $drive = "G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder"
    # Move bad installer to archive
-   Move-Item "$drive\R3P.Transmittal.Builder_4.1.0_x64-setup.exe" "$drive\archive\"
+   Move-Item "$drive\Transmittal.Builder_6.3.2_x64-setup.exe" "$drive\archive\"
    # Restore the previous good installer
-   Copy-Item "$drive\archive\R3P.Transmittal.Builder_4.0.0_x64-setup.exe" "$drive\"
+   Copy-Item "$drive\archive\Transmittal.Builder_6.3.1_x64-setup.exe" "$drive\"
    ```
 
 2. Edit `latest.json` on the shared drive and set `"version"` back to the

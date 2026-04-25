@@ -40,10 +40,7 @@ Transmittal-Builder/
 │   ├── app.py                 All API routes
 │   ├── core/
 │   │   ├── render.py          .docx template rendering
-│   │   ├── excel_parser.py    Drawing index Excel parsing
-│   │   └── pdf_merge.py       Combined PDF generation
-│   ├── emails/
-│   │   └── sender.py          SMTP email delivery
+│   │   └── excel_parser.py    Drawing index Excel parsing
 │   └── requirements.txt
 │
 └── frontend/                  React/Vite web + Tauri desktop shell
@@ -257,9 +254,6 @@ npm run desktop:build   # = tauri build
 
 The installer is placed in `frontend/src-tauri/target/release/bundle/`.
 
-> **Note:** `desktop:build` does **not** bundle the Python backend yet.
-> See Phase 3 in the migration roadmap below.
-
 ---
 
 ## Render Flow
@@ -303,46 +297,7 @@ Without either converter, `/api/render` still works for `output_format=docx`.
 
 ## Version History
 
-| Version | Description |
-|---------|-------------|
-| **4.0** | Project folder integration, folder output mode, collapsible PDF sources, granular readiness indicator, overwrite protection, copy-intent filename convention, single-intent enforcement, context-aware toasts, purple PDF chips, clear all documents, simplified contacts |
-| **3.0** | Tauri desktop shell (Phase 1 & 2), backend auto-start, health check UI, drag & drop, drawing index Excel parsing |
-| **2.0** | ZIP package output, combined PDF merge, frontend/backend split |
-| **1.0** | Initial web-only transmittal builder |
-
----
-
-## Migration Phases
-
-This project is being incrementally migrated from a web-only app to a
-Windows-first Tauri desktop application.
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| **1** | ✅ Done | Tauri shell around existing frontend; Python backend runs separately; backend health-check banner in UI |
-| **2** | ✅ Done | Tauri auto-starts the Python backend in dev mode — single `npm run desktop` command |
-| 3 | 🔜 Planned | Bundle Python backend as a Tauri [sidecar](https://tauri.app/develop/sidecar/) — fully self-contained installer |
-| 4 | 🔜 Planned | Remote version manifest on Google Drive; forced-update flow with `tauri-plugin-updater` |
-
-### Phase 2 — known limitations
-
-- **Dev-only:** The backend auto-start is designed for local development.
-  Production/installer builds do not yet bundle the Python backend (see Phase 3).
-- **Miniconda assumed:** The dev workflow assumes the developer has Miniconda
-  (or Anaconda) installed. Activating a conda environment before launching
-  `npm run desktop` is the recommended approach. A plain `python` on PATH
-  works as a fallback, but future dependencies may require conda.
-- **No auto-install:** Python and the backend's pip dependencies must be
-  installed before running the desktop app.
-- **Process cleanup:** The backend child process is killed when the Tauri
-  window closes normally. If the Tauri process is force-killed (e.g.
-  `taskkill /F`), the backend may remain running as an orphan; it will be
-  detected and reused on next launch.
-- **Single instance:** If port 8000 is already in use by another application,
-  Tauri assumes the backend is running and skips spawning. This avoids
-  duplicate launches but means a port conflict won't be reported by Tauri
-  itself — the frontend health check will fail if the occupant isn't the
-  correct backend.
+See [CHANGELOG.md](./CHANGELOG.md) for the full version history.
 
 ---
 
@@ -380,7 +335,6 @@ resulting binary files along with any SVG master changes.
 Shared scaffolding (UI primitives, installer templates, logging, updater)
 is consumed from [`@chamber-19/desktop-toolkit`](https://github.com/chamber-19/desktop-toolkit)
 as a versioned dependency.
-See [docs/framework-extraction/](./docs/framework-extraction/README.md) for the inventory and migration plan.
 
 ---
 
