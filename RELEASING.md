@@ -12,7 +12,7 @@ release, rolling back, and troubleshooting.
 | Tool | Version | Notes |
 |---|---|---|
 | Node.js | 20 LTS | `node --version` |
-| Python | 3.13 | CI uses 3.13. Fall back to 3.12 only if PyInstaller fails — see `TROUBLESHOOTING.md §4`. |
+| Python | ≥ 3.11 (3.13 recommended) | `pandas>=3.0.2` requires Python 3.11+. CI uses 3.13. Fall back to 3.12 only if PyInstaller fails — see `TROUBLESHOOTING.md §4`. Tauri and Rust are unaffected by Python version. |
 | Rust | stable | `rustup update stable` |
 | PyInstaller | ≥ 6.10 | Required for Python 3.13 support. `pip install "pyinstaller>=6.10"` |
 | GitHub CLI | latest | `gh auth login` |
