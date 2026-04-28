@@ -8,7 +8,7 @@ it silently on startup and kills it on exit.
 
 | Tool | Version |
 |---|---|
-| Python | 3.13 (match the CI environment; 3.12 acceptable if 3.13 PyInstaller fails) |
+| Python | ≥ 3.11 (3.13 recommended; must match the CI environment) |
 | pip | latest |
 | PyInstaller | ≥ 6.10 (required for Python 3.13 support) |
 

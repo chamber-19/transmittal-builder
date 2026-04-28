@@ -2,7 +2,7 @@ fastapi>=0.136.1
 uvicorn[standard]>=0.46.0
 python-multipart>=0.0.27
 python-docx>=1.2.0
-pandas>=2.1.0
+pandas>=3.0.2  # pandas 3.x requires Python >=3.11
 openpyxl>=3.1.5
 pypdf>=6.10.2,<7
 docx2pdf>=0.1.8  # Windows: uses Microsoft Word COM automation for .docx→PDF
