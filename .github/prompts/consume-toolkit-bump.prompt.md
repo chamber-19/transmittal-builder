@@ -1,5 +1,5 @@
 ---
-agent: agent
+mode: agent
 description: Bump the pinned desktop-toolkit version in this consumer repo across all five pin locations in lockstep.
 ---
 
