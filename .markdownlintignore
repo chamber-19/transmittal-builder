@@ -1,3 +1,5 @@
+# Markdown Lint Ignore
+
 **/node_modules/**
 frontend/src-tauri/target/**
 backend/dist-sidecar/**
