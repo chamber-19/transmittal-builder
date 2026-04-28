@@ -39,8 +39,8 @@ updates:
       # Linux-only proc-macro transitive dep — see header comment.
       - dependency-name: "rand"
         versions: ["0.7.x"]
-        
-       - dependency-name: "desktop-toolkit"
+
+      - dependency-name: "desktop-toolkit"
         # Pinned by hand alongside @chamber-19/desktop-toolkit npm bumps.
         # See repo-specific instruction rule #6.
 
@@ -50,7 +50,7 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
-     ignore:
+    ignore:
       - dependency-name: "@chamber-19/desktop-toolkit"
         # Same — pinned by hand, paired with cargo dep above.
   # pip (Python sidecar)
