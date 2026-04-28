@@ -1,68 +1,52 @@
 # Dependabot configuration
-# ---------------------------------------------------------------------------
-# Transmittal Builder ships a Windows-only NSIS installer (see
-# frontend/src-tauri/tauri.conf.json -> bundle.targets = ["nsis"] and the
-# Release workflow which only runs on windows-latest). The Tauri/gtk-rs
-# crate graph still pulls a handful of Linux-only GUI crates as transitive
-# deps when `cargo metadata` is run on any host, which is what the GitHub
-# Advisory Database scans. Two of those transitive deps currently trigger
-# RUSTSEC alerts that do NOT affect our shipped binary:
 #
-#   * glib 0.18.x   — RUSTSEC-2024-0429 (VariantStrIter unsoundness).
-#                     Pulled in by gtk-rs 0.18 → tao → tauri-runtime-wry,
-#                     compiled only for the Linux GTK target which we
-#                     never build/ship.
-#   * rand 0.7.x    — RUSTSEC-2024-0421-style soundness issue.
-#                     Pulled in by old gtk-rs proc-macro deps; same story.
-#
-# Upgrading either requires Tauri itself to move past gtk-rs 0.18, which
-# is a major Tauri rev. Until then we explicitly ignore both packages so
-# Dependabot stops opening PRs/alerts the maintainers cannot action.
-#
-# NOTE: ignores below stop *future* PRs and security update PRs from
-# Dependabot. Existing alerts in the Security tab still need to be
-# dismissed once via the GitHub UI ("Tolerable risk — transitive
-# Linux-only dep, Windows-only product"). See TROUBLESHOOTING.md §10.
-# ---------------------------------------------------------------------------
+# Transmittal Builder is a Windows-only Tauri/NSIS app. The glib/rand ignores
+# cover Linux-only GTK transitive dependencies in the Tauri graph that are not
+# compiled into the shipped Windows installer.
 version: 2
 updates:
-  # Cargo (Tauri / Rust backend)
   - package-ecosystem: "cargo"
     directory: "/frontend/src-tauri"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
     ignore:
-      # Linux-only GTK transitive dep — see header comment.
       - dependency-name: "glib"
         versions: ["0.x"]
-      # Linux-only proc-macro transitive dep — see header comment.
       - dependency-name: "rand"
         versions: ["0.7.x"]
-
       - dependency-name: "desktop-toolkit"
-        # Pinned by hand alongside @chamber-19/desktop-toolkit npm bumps.
-        # See repo-specific instruction rule #6.
+        # Toolkit pins are bumped manually alongside npm/Python pins.
 
-  # npm (frontend)
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "javascript"
     ignore:
       - dependency-name: "@chamber-19/desktop-toolkit"
-        # Same — pinned by hand, paired with cargo dep above.
-  # pip (Python sidecar)
+        # Toolkit pins are paired review PRs.
+
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
 
-  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"

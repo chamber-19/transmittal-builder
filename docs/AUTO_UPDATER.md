@@ -1,11 +1,19 @@
 # Auto-Updater
 
-Transmittal Builder ships a lightweight, G:\-based auto-updater that
-reads a manifest from the shared drive on every launch and prompts the
-user to install a newer version when one is available.
+**Distribution model.** GitHub Releases is the canonical distribution channel
+for Transmittal Builder, per Chamber 19 architectural decision #4. The in-app
+updater reads from a Google Drive mirror that a maintainer populates from each
+GitHub Release as part of the post-release procedure. The G:\ path is a
+delivery convenience for users on the corporate network, not a replacement
+for the GitHub Release.
 
-There is no public hosting, no Tauri updater plugin, and no signing
-requirement. Distribution is internal-only over Google Drive.
+The updater itself is intentionally lightweight: it reads a manifest from the
+shared drive on every launch and prompts the user to install a newer version
+when one is available. There is no Tauri updater plugin and no signing
+requirement. Internal-network distribution is what makes the G:\ design
+acceptable; if external distribution is ever needed, the path forward is
+publishing the manifest from the GitHub Release CDN, not changing the
+update mechanism itself.
 
 ---
 
