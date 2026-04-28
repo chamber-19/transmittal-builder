@@ -1,5 +1,5 @@
 ---
-applyTo: "backend/**,frontend/src-tauri/**,frontend/src/api/**"
+applyTo: "backend/**,frontend/**"
 ---
 
 # Transmittal Builder Sidecar Instructions
