@@ -21,6 +21,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check desktop-toolkit pin parity
         run: pwsh ./scripts/check-toolkit-pins.ps1
