@@ -9,7 +9,7 @@ This repo ships two MCP configurations with parity surfaces:
 
 | File | Used by | Notes |
 |------|---------|-------|
-| `.vscode/mcp.json` | VS Code + Copilot Chat (agent mode) | Prompts for secrets via VS Code inputs; stored in OS keychain. |
+| `.vscode/mcp.json` | VS Code + Copilot Chat (agent mode) | Prompts for secrets via VS Code inputs (`${input:id}`); stored in OS keychain. Includes local-only `memory` server. |
 | `.github/copilot/mcp-config.json` | Copilot cloud coding agent | Reads `COPILOT_MCP_GITHUB_TOKEN` and `COPILOT_MCP_SVGMAKER_API_KEY` from repo Copilot secrets. |
 
 Both configs ship the same servers and tool surface so the cloud agent can

@@ -1,0 +1,118 @@
+{
+  "inputs": [
+    {
+      "id": "github-token",
+      "type": "promptString",
+      "description": "GitHub Personal Access Token (scopes: repo, read:org)",
+      "password": true
+    },
+    {
+      "id": "svgmaker-key",
+      "type": "promptString",
+      "description": "SVGMaker API Key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "tools": [
+        "get_file_contents",
+        "search_code",
+        "search_repositories",
+        "search_issues",
+        "list_issues",
+        "get_issue",
+        "create_issue",
+        "update_issue",
+        "add_issue_comment",
+        "list_pull_requests",
+        "get_pull_request",
+        "get_pull_request_diff",
+        "get_pull_request_files",
+        "create_pull_request",
+        "update_pull_request",
+        "add_pull_request_review_comment",
+        "list_commits",
+        "get_commit",
+        "list_branches",
+        "list_tags",
+        "create_branch",
+        "list_releases",
+        "get_release",
+        "create_release",
+        "upload_release_asset",
+        "list_workflow_runs",
+        "get_workflow_run",
+        "rerun_workflow_run",
+        "list_repository_dependabot_alerts"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github-token}"
+      }
+    },
+    "git": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git"],
+      "tools": [
+        "git_status",
+        "git_diff",
+        "git_diff_staged",
+        "git_diff_unstaged",
+        "git_log",
+        "git_show",
+        "git_blame",
+        "git_add",
+        "git_commit",
+        "git_branch",
+        "git_checkout",
+        "git_create_branch"
+      ]
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"],
+      "tools": ["*"]
+    },
+    "fetch": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "tools": ["fetch"]
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "tools": ["sequentialthinking"]
+    },
+    "time": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-time"],
+      "tools": ["*"]
+    },
+    "svgmaker": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@genwave/svgmaker-mcp"],
+      "tools": ["*"],
+      "env": {
+        "SVGMAKER_API_KEY": "${input:svgmaker-key}"
+      }
+    },
+    "memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "tools": ["*"],
+      "env": {
+        "MEMORY_FILE_PATH": "${workspaceFolder}/.mcp/memory.json"
+      }
+    }
+  }
+}
