@@ -1,11 +1,12 @@
 # scripts/check-toolkit-pins.ps1
 #
-# Asserts that all four desktop-toolkit pin locations are in sync:
+# Asserts that all five desktop-toolkit pin locations are in sync:
 #
 #   1. frontend/package.json   dependencies["@chamber-19/desktop-toolkit"]   (e.g. "^2.2.8")
 #   2. frontend/src-tauri/Cargo.toml  [package.metadata.desktop-toolkit]  library-tag  (e.g. "v2.2.8")
 #   3. frontend/src-tauri/Cargo.toml  [package.metadata.desktop-toolkit]  shim-tag     (e.g. "v2.2.8")
 #   4. frontend/src-tauri/Cargo.toml  [dependencies]  desktop-toolkit ... tag           (e.g. "v2.2.8")
+#   5. backend/requirements.txt  chamber19-desktop-toolkit @ git+...@vX.Y.Z              (e.g. "v2.2.8")
 #
 # Runnable locally:
 #   pwsh ./scripts/check-toolkit-pins.ps1     (from repo root)
@@ -16,9 +17,10 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$RepoRoot  = Split-Path -Parent $PSScriptRoot
-$PkgJson   = Join-Path $RepoRoot "frontend" "package.json"
-$CargoToml = Join-Path $RepoRoot "frontend" "src-tauri" "Cargo.toml"
+$RepoRoot     = Split-Path -Parent $PSScriptRoot
+$PkgJson      = Join-Path $RepoRoot "frontend" "package.json"
+$CargoToml    = Join-Path $RepoRoot "frontend" "src-tauri" "Cargo.toml"
+$Requirements = Join-Path $RepoRoot "backend" "requirements.txt"
 
 # ── 1. Read frontend/package.json ────────────────────────────────────────────
 $pkg = Get-Content -Raw $PkgJson | ConvertFrom-Json
@@ -65,15 +67,28 @@ if (-not $depsTagRaw) {
     exit 1
 }
 
-# ── 3. Strip prefixes to get bare semvers ─────────────────────────────────────
+# ── 3. Read backend/requirements.txt ─────────────────────────────────────────
+$reqContent = Get-Content -Raw $Requirements
+$pythonTagRaw = [regex]::Match(
+    $reqContent,
+    '(?m)^\s*chamber19-desktop-toolkit\s*@\s*git\+https://github\.com/chamber-19/desktop-toolkit@(v[\d.]+)#subdirectory=python\s*$'
+).Groups[1].Value
+if (-not $pythonTagRaw) {
+    Write-Error "Could not parse chamber19-desktop-toolkit git+ pin from $Requirements"
+    exit 1
+}
+
+# ── 4. Strip prefixes to get bare semvers ─────────────────────────────────────
 $libraryVersion = $libraryTagRaw -replace '^v', ''
 $shimVersion    = $shimTagRaw    -replace '^v', ''
 $depsVersion    = $depsTagRaw    -replace '^v', ''
+$pythonVersion  = $pythonTagRaw  -replace '^v', ''
 
-# ── 4. Assert all four match ──────────────────────────────────────────────────
+# ── 5. Assert all five match ──────────────────────────────────────────────────
 $allMatch = ($npmVersion -eq $libraryVersion) -and
             ($npmVersion -eq $shimVersion)    -and
-            ($npmVersion -eq $depsVersion)
+            ($npmVersion -eq $depsVersion)    -and
+            ($npmVersion -eq $pythonVersion)
 
 if (-not $allMatch) {
     Write-Host ""
@@ -101,12 +116,18 @@ if (-not $allMatch) {
         "tag                          = $depsTagRaw", `
         $depsVersion, $mismatch4)
 
+    $mismatch5 = if ($pythonVersion -ne $npmVersion) { "  <-- MISMATCH" } else { "" }
+    Write-Host ("  {0,-52}  {1,-28}  (parsed: {2}){3}" -f `
+        "backend/requirements.txt chamber19-desktop-toolkit", `
+        "git+...@$pythonTagRaw", `
+        $pythonVersion, $mismatch5)
+
     Write-Host ""
-    Write-Host "All four values must match. Bump them together."
+    Write-Host "All five values must match. Bump them together."
     exit 1
 }
 
-# ── 5. Success ────────────────────────────────────────────────────────────────
-Write-Host ("desktop-toolkit pin parity OK: {0} (package.json {1} == Cargo.toml library-tag {2} == shim-tag {3} == [dependencies] tag {4})" -f `
-    $npmVersion, $npmRaw, $libraryTagRaw, $shimTagRaw, $depsTagRaw)
+# ── 6. Success ────────────────────────────────────────────────────────────────
+Write-Host ("desktop-toolkit pin parity OK: {0} (package.json {1} == Cargo.toml library-tag {2} == shim-tag {3} == [dependencies] tag {4} == requirements.txt {5})" -f `
+    $npmVersion, $npmRaw, $libraryTagRaw, $shimTagRaw, $depsTagRaw, $pythonTagRaw)
 exit 0

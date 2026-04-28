@@ -1,10 +1,11 @@
 name: Toolkit pin parity
 
-# Fails loudly if any of the four desktop-toolkit pin locations diverge:
+# Fails loudly if any of the five desktop-toolkit pin locations diverge:
 #   - frontend/package.json  @chamber-19/desktop-toolkit  (npm)
 #   - frontend/src-tauri/Cargo.toml  [package.metadata.desktop-toolkit]  library-tag
 #   - frontend/src-tauri/Cargo.toml  [package.metadata.desktop-toolkit]  shim-tag
 #   - frontend/src-tauri/Cargo.toml  [dependencies]  desktop-toolkit ... tag
+#   - backend/requirements.txt  chamber19-desktop-toolkit @ git+...@vX.Y.Z
 #
 # Completes in <10 seconds. Safe to add as a required check on the main
 # branch protection rule.
