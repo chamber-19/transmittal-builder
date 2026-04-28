@@ -8,18 +8,61 @@
         "get_file_contents",
         "search_code",
         "search_repositories",
+        "search_issues",
         "list_issues",
         "get_issue",
+        "create_issue",
+        "update_issue",
+        "add_issue_comment",
         "list_pull_requests",
         "get_pull_request",
         "get_pull_request_diff",
         "get_pull_request_files",
+        "create_pull_request",
+        "update_pull_request",
+        "add_pull_request_review_comment",
         "list_commits",
-        "get_commit"
+        "get_commit",
+        "list_branches",
+        "list_tags",
+        "create_branch",
+        "list_releases",
+        "get_release",
+        "create_release",
+        "upload_release_asset",
+        "list_workflow_runs",
+        "get_workflow_run",
+        "rerun_workflow_run",
+        "list_repository_dependabot_alerts"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "$COPILOT_MCP_GITHUB_TOKEN"
       }
+    },
+    "git": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git"],
+      "tools": [
+        "git_status",
+        "git_diff",
+        "git_diff_staged",
+        "git_diff_unstaged",
+        "git_log",
+        "git_show",
+        "git_blame",
+        "git_add",
+        "git_commit",
+        "git_branch",
+        "git_checkout",
+        "git_create_branch"
+      ]
+    },
+    "filesystem": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspaces"],
+      "tools": ["*"]
     },
     "fetch": {
       "type": "local",
@@ -32,6 +75,21 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
       "tools": ["sequentialthinking"]
+    },
+    "time": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-time"],
+      "tools": ["*"]
+    },
+    "svgmaker": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@genwave/svgmaker-mcp"],
+      "tools": ["*"],
+      "env": {
+        "SVGMAKER_API_KEY": "$COPILOT_MCP_SVGMAKER_API_KEY"
+      }
     }
   }
 }
