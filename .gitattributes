@@ -1,0 +1,10 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Windows files
+*.cs text eol=crlf
+*.csproj text eol=crlf
+
+# Unix/cross-platform files
+*.toml text eol=lf
+*.md text eol=lf
