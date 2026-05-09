@@ -23,13 +23,14 @@ import tempfile
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from core.render import render_transmittal, _normalize_xmtl_num
 from core.excel_parser import parse_drawing_index
+from core.auth import verify_activation_token
 from chamber19_desktop_toolkit.utils.pdf_merge import docx_to_pdf, merge_source_pdfs
 
 
@@ -92,7 +93,7 @@ def _build_combined_pdf_name(job_label: str, project_desc: str, checks: dict,
 
 app = FastAPI(
     title="Transmittal Builder",
-    version="4.0.0",
+    version="4.0.1",
     description="Backend API for the Transmittal Builder desktop app",
 )
 
@@ -126,16 +127,21 @@ def _save_upload(upload: UploadFile, dest_dir: str, filename: str = None) -> str
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "service": "transmittal-builder-backend", "version": "4.0.0"}
+    return {"status": "healthy", "service": "transmittal-builder-backend", "version": "4.0.1"}
 
 
 # ─── POST /api/parse-index ────────────────────────────────────
 
 @app.post("/api/parse-index")
-async def api_parse_index(file: UploadFile = File(...)):
+async def api_parse_index(
+    file: UploadFile = File(...),
+    token: dict = Depends(verify_activation_token)
+):
     """
     Upload an Excel drawing index file.
     Returns parsed document rows: [{doc_no, desc, rev}, ...]
+    
+    Requires activation token (Bearer token in Authorization header).
     """
     if not file.filename:
         raise HTTPException(400, "No file provided.")
@@ -389,12 +395,18 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
 # ─── GET /api/scan-projects ───────────────────────────────────
 
 @app.get("/api/scan-projects")
-def api_scan_projects(root: str, query: str = ""):
+def api_scan_projects(
+    root: str,
+    query: str = "",
+    token: dict = Depends(verify_activation_token)
+):
     """
     Scan immediate subdirectories of *root* and return project metadata.
 
     Optional *query* performs fuzzy text filtering (all words in query must
     appear in the folder name, case-insensitive).
+    
+    Requires activation token (Bearer token in Authorization header).
     """
     root = os.path.normpath(root)
     if not os.path.isdir(root):
@@ -438,7 +450,10 @@ class ScanFolderRequest(BaseModel):
 
 
 @app.post("/api/scan-folder")
-def api_scan_folder(req: ScanFolderRequest):
+def api_scan_folder(
+    req: ScanFolderRequest,
+    token: dict = Depends(verify_activation_token)
+):
     """
     Deep-scan a specific project folder.
 
@@ -463,6 +478,8 @@ def api_scan_folder(req: ScanFolderRequest):
     **Flat structure** (original behavior fallback):
       - Scans for PDFs, index, template, XMTL folders at the top level
       - Returns output_dir = the selected folder
+      
+    Requires activation token (Bearer token in Authorization header).
     """
     folder_path = os.path.normpath(req.folder_path)
     if not os.path.isdir(folder_path):
@@ -644,6 +661,7 @@ async def api_render_to_folder(
     output_dir: str = Form(..., description="Absolute path to the transmittals / project folder"),
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
     local_pdf_paths: str = Form(default="[]", description="JSON: list of absolute paths to local PDFs on disk"),
+    token: dict = Depends(verify_activation_token)
 ):
     """
     Render a transmittal package and write the output files directly to disk.
@@ -659,6 +677,8 @@ async def api_render_to_folder(
 
     Returns JSON with the path to the created folder and the list of files
     written.
+    
+    Requires activation token (Bearer token in Authorization header).
     """
     work_dir = _make_work_dir()
 
@@ -833,6 +853,7 @@ async def api_render(
     contacts: str = Form(..., description="JSON: [{name, company, email, phone}]"),
     documents: str = Form(..., description="JSON: [{doc_no, desc, rev}]"),
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
+    token: dict = Depends(verify_activation_token)
 ):
     """
     Render a transmittal package.
@@ -841,6 +862,8 @@ async def api_render(
         - the rendered transmittal .docx
         - the rendered transmittal .pdf
         - a merged PDF of the submitted drawing PDFs only
+        
+    Requires activation token (Bearer token in Authorization header).
     """
     work_dir = _make_work_dir()
 
@@ -943,10 +966,15 @@ class EmailRequest(BaseModel):
 
 
 @app.post("/api/email")
-async def api_email(req: EmailRequest):
+async def api_email(
+    req: EmailRequest,
+    token: dict = Depends(verify_activation_token)
+):
     """
     Send a transmittal email.
     Note: SMTP credentials must be provided per-request or via env vars.
+    
+    Requires activation token (Bearer token in Authorization header).
     """
     from chamber19_desktop_toolkit.utils.email_sender import send_email
 

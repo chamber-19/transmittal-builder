@@ -11,6 +11,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- Launcher frontend now attaches `Authorization: Bearer <activation_token>`
+  to backend API calls (`/api/health`, `/api/scan-projects`,
+  `/api/scan-folder`, `/api/parse-index`, `/api/render`,
+  `/api/render-to-folder`) when an activation token exists in local storage.
+  This aligns launcher request behavior with backend auth middleware.
+- Launcher frontend now fails fast in activation-enforced builds when no
+  activation token is present, showing an explicit re-activation message
+  instead of repeatedly retrying backend startup.
+
+---
+
+## [4.0.1] — 2026-05-08
+
+### Changed
+
 - **BREAKING: Architecture refactor (May 2026)**
   - Tauri desktop shell (`frontend/`) moved to `chamber-19/launcher` (shared by all tools)
   - This repo is now **backend-only**: Python FastAPI service for document rendering
@@ -34,12 +49,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - New end-user install/update/PIN guide in `USER_MANUAL.md`.
 - Expanded agent/copilot guidance in `.github/copilot-instructions.md`,
   `AGENTS.md`, and `.github/instructions/desktop-sidecar.instructions.md`.
-- Architecture refactor summary in `ARCHITECTURE_REFACTOR.md`.
 
 ### Ops
 
-- Release workflow now wires activation build-time secrets into packaged
-  Tauri builds so PIN validation can be tested in produced installers.
+- Release workflow replaced with backend-only CI: tests + health check + GitHub release
+  (no NSIS installer build, no Tauri packaging)
+- New E2E documentation cleanup across org repos with markdown formatting standards
 
 ## [6.3.2] — 2026-04-25
 

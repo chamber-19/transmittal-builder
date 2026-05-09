@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useId } from "react";
 import { initBackendUrl, refreshBackendUrl, getBackendUrl } from "./api/backend.js";
 import { UpdateModal } from "@chamber-19/desktop-toolkit/components/UpdateModal";
 
-/* global __APP_VERSION__ */
+/* global __APP_VERSION__, __ENFORCE_PIN_ACTIVATION__ */
 // Sourced from Vite's define block (vite.config.js), which reads package.json.
 // Falls back to "0.0.0" when running outside Vite (e.g. plain browser preview).
 const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
@@ -20,6 +20,38 @@ let API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 // Detect Tauri desktop environment
 const isTauri = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
+
+const ACTIVATION_TOKEN_KEYS = ["activation_token", "tb_activation_token"];
+
+function isPinActivationEnforced() {
+  return (
+    typeof __ENFORCE_PIN_ACTIVATION__ !== "undefined" &&
+    __ENFORCE_PIN_ACTIVATION__
+  );
+}
+
+function getActivationToken() {
+  try {
+    for (const key of ACTIVATION_TOKEN_KEYS) {
+      const value = localStorage.getItem(key);
+      if (value) return value;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function withActivationHeaders(init = {}, options = {}) {
+  const { requireToken = false } = options;
+  const headers = new Headers(init.headers || {});
+  const token = getActivationToken();
+  if (!token && requireToken && isPinActivationEnforced()) {
+    throw new Error("Activation token missing. Please reactivate from launcher.");
+  }
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return { ...init, headers };
+}
 
 // Open a native folder-picker dialog (desktop only).
 // Returns the selected path string or null.
@@ -290,7 +322,7 @@ function ProjectSearchPanel({onProjectSelect,showToast}){
       const url=new URL(`${API}/api/scan-projects`);
       url.searchParams.set("root",r);
       if(q)url.searchParams.set("query",q);
-      const res=await fetch(url);
+      const res=await fetch(url,withActivationHeaders({}, {requireToken:true}));
       const data=await res.json();
       if(!res.ok)throw new Error(data.detail||"Search failed");
       setResults(data.projects||[]);
@@ -639,6 +671,7 @@ export default function App(){
   const[generating,setGenerating]=useState(false);
   const[toast,setToast]=useState(null); // {message,type}
   const[backendStatus,setBackendStatus]=useState("checking"); // checking | ready | failed
+  const[startupError,setStartupError]=useState(null); // null | missing-activation-token
 
   // ─── Project folder mode state ───────────────────────────
   const[projectFolderPath,setProjectFolderPath]=useState(null); // absolute path (transmittals folder)
@@ -702,11 +735,11 @@ export default function App(){
     };
 
     try{
-      const res=await fetch(`${API}/api/scan-folder`,{
+      const res=await fetch(`${API}/api/scan-folder`,withActivationHeaders({
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({folder_path:selectedProject.path}),
-      });
+      }, {requireToken:true}));
       const data=await res.json();
       if(!res.ok)throw new Error(data.detail||"Scan failed");
 
@@ -743,7 +776,7 @@ export default function App(){
     try{
       const form=new FormData();
       form.append("file",file);
-      const res=await fetch(`${API}/api/parse-index`,{method:"POST",body:form});
+      const res=await fetch(`${API}/api/parse-index`,withActivationHeaders({method:"POST",body:form},{requireToken:true}));
       const data=await res.json();
       if(!res.ok)throw new Error(data.detail||"Parse failed");
       if(data.warnings?.length)setIndexWarnings(data.warnings);
@@ -867,7 +900,7 @@ export default function App(){
         form.append("output_dir",projectFolderPath);
         for(const pdf of sortedPdfs){form.append("pdfs",pdf)}
 
-        const res=await fetch(`${API}/api/render-to-folder`,{method:"POST",body:form});
+        const res=await fetch(`${API}/api/render-to-folder`,withActivationHeaders({method:"POST",body:form},{requireToken:true}));
         if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
 
         const data=await res.json();
@@ -892,7 +925,7 @@ export default function App(){
       form.append("documents",JSON.stringify(sortedDocs.map(d=>({doc_no:d.docNo,desc:d.desc,rev:d.rev}))));
       for(const pdf of sortedPdfs){form.append("pdfs",pdf)}
 
-      const res=await fetch(`${API}/api/render`,{method:"POST",body:form});
+      const res=await fetch(`${API}/api/render`,withActivationHeaders({method:"POST",body:form},{requireToken:true}));
       if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||`Server error ${res.status}`);}
 
       const blob=await res.blob();
@@ -974,14 +1007,23 @@ export default function App(){
       const maxAttempts=40;
       const delayMs=500;
 
+      if(isPinActivationEnforced()&&!getActivationToken()){
+        if(!cancelled){
+          setStartupError("missing-activation-token");
+          setBackendStatus("failed");
+        }
+        return;
+      }
+
       for(let attempt=1;attempt<=maxAttempts;attempt++){
         try {
           API = await refreshBackendUrl();
         } catch {}
 
         try{
-          const res=await fetch(`${API}/api/health`);
+          const res=await fetch(`${API}/api/health`,withActivationHeaders({}, {requireToken:true}));
           if(!res.ok)throw new Error(`Health check failed with ${res.status}`);
+          if(!cancelled)setStartupError(null);
           if(!cancelled)setBackendStatus("ready");
           return;
         }catch(error){
@@ -1015,8 +1057,12 @@ export default function App(){
     return <>
       <style>{CSS}</style>
       <div style={statusScreenStyle}>
-        <div style={{fontSize:"16px",fontWeight:600,color:T.err}}>Backend Unavailable</div>
-        <div style={{fontSize:"12px",color:T.t3,maxWidth:"480px",lineHeight:1.7}}>
+        <div style={{fontSize:"16px",fontWeight:600,color:T.err}}>{startupError==="missing-activation-token"?"Activation Required":"Backend Unavailable"}</div>
+        {startupError==="missing-activation-token"?<div style={{fontSize:"12px",color:T.t3,maxWidth:"480px",lineHeight:1.7}}>
+          No activation token was found while PIN activation is enforced for this build.
+          <br/><br/>
+          Close this app and re-run the launcher activation flow so a valid token is issued.
+        </div>:<div style={{fontSize:"12px",color:T.t3,maxWidth:"480px",lineHeight:1.7}}>
           The Python backend at <span style={{fontFamily:T.fM,color:T.t2}}>{new URL(API).host}</span> could not be reached.
           <br/><br/>
           <strong style={{color:T.t2}}>Desktop mode:</strong> Check the terminal for backend startup errors.
@@ -1024,7 +1070,7 @@ export default function App(){
           <br/><br/>
           <strong style={{color:T.t2}}>Web mode:</strong> Start the backend manually:<br/>
           <code style={{fontFamily:T.fM,fontSize:"11px",color:T.acc}}>cd backend && uvicorn app:app --port 8000</code>
-        </div>
+        </div>}
         <Btn variant="secondary" onClick={()=>window.location.reload()} style={{marginTop:"6px"}}>
           Retry
         </Btn>
