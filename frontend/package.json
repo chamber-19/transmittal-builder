@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@chamber-19/desktop-toolkit": "^2.3.2",
-    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
