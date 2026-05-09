@@ -31,6 +31,27 @@ exactly where `signtool` slots in. See `RELEASING.md §1 — Code signing`.
 
 ---
 
+## 1b. Python environment clashes across tools
+
+**Symptom:** Backend commands work in one terminal and fail in another, or
+dependencies appear to "disappear" between projects.
+
+**Cause:** Mixed Python environments (`.venv`, system Python, Conda base) are
+being used interchangeably.
+
+**Fix (recommended):** use the repo Conda environment exclusively:
+
+```powershell
+conda env create -f environment.yml
+conda activate transmittal-builder
+```
+
+Then run backend commands from that active environment.
+
+See `docs/CONDA.md` for the full policy.
+
+---
+
 ## 2. App refuses to open — "Cannot reach shared drive"
 
 **Symptom:** The splash screen appears, then the app shows an error dialog:

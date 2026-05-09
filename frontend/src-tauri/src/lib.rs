@@ -16,6 +16,7 @@
 
 mod sidecar;
 
+use desktop_toolkit::activation;
 use desktop_toolkit::{splash, updater};
 use desktop_toolkit::updater::UpdateState;
 
@@ -248,6 +249,33 @@ fn start_update(
     updater::start_update(app, state, TB_SIDECAR_NAME, TB_LOG_DIR)
 }
 
+/// Returns `true` when the local machine activation token is valid.
+#[tauri::command]
+fn toolkit_check_activation(app: tauri::AppHandle) -> bool {
+    activation::check_activation(&app)
+}
+
+/// Returns activation metadata (licensee name, expiry, warning flags).
+#[tauri::command]
+fn toolkit_activation_status(app: tauri::AppHandle) -> Result<activation::ActivationResult, String> {
+    activation::activation_status(&app)
+}
+
+/// Validates a PIN against the activation source and stores a signed local token.
+#[tauri::command]
+async fn toolkit_activate_with_pin(
+    app: tauri::AppHandle,
+    pin: String,
+) -> Result<activation::ActivationResult, String> {
+    activation::activate_with_pin(&app, &pin).await
+}
+
+/// Removes the local activation token.
+#[tauri::command]
+fn toolkit_deactivate(app: tauri::AppHandle) -> Result<(), String> {
+    activation::deactivate(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let child: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
@@ -277,6 +305,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_backend_url,
             peek_subfolders,
+            toolkit_check_activation,
+            toolkit_activation_status,
+            toolkit_activate_with_pin,
+            toolkit_deactivate,
             check_for_update,
             start_update,
             splash::splash_is_first_run,

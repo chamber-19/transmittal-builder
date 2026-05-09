@@ -18,17 +18,36 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $DestPath = Join-Path $RepoRoot "frontend\src-tauri\desktop-toolkit-updater.exe"
 $TmpCloneDir = Join-Path $env:TEMP "dtk-updater-shim-src"
-$DesktopToolkitTag = "v2.2.6"
+$DesktopToolkitTag = "v2.3.2"
 
 Write-Host "[fetch-updater-shim] Building desktop-toolkit-updater.exe from source..."
 
 # ── Clone or update the framework repo ────────────────────────────────────
 if (Test-Path $TmpCloneDir) {
-    Write-Host "[fetch-updater-shim] Reusing existing clone at $TmpCloneDir"
-    Push-Location $TmpCloneDir
-    git fetch --tags --quiet
-    git checkout "tags/$DesktopToolkitTag" --quiet 2>$null
-    Pop-Location
+    $isGitRepo = $false
+    try {
+        $null = git -C $TmpCloneDir rev-parse --is-inside-work-tree 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $isGitRepo = $true
+        }
+    } catch {
+        $isGitRepo = $false
+    }
+
+    if ($isGitRepo) {
+        Write-Host "[fetch-updater-shim] Reusing existing clone at $TmpCloneDir"
+        Push-Location $TmpCloneDir
+        git fetch --tags --quiet
+        git checkout "tags/$DesktopToolkitTag" --quiet 2>$null
+        Pop-Location
+    } else {
+        Write-Host "[fetch-updater-shim] Temp path exists but is not a git repo; deleting and recloning"
+        Remove-Item -Recurse -Force $TmpCloneDir
+        Write-Host "[fetch-updater-shim] Cloning desktop-toolkit at $DesktopToolkitTag..."
+        git clone --depth 1 --branch $DesktopToolkitTag `
+            https://github.com/chamber-19/desktop-toolkit.git `
+            $TmpCloneDir
+    }
 } else {
     Write-Host "[fetch-updater-shim] Cloning desktop-toolkit at $DesktopToolkitTag..."
     git clone --depth 1 --branch $DesktopToolkitTag `

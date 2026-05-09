@@ -147,6 +147,8 @@ jobs:
         run: npm ci
 
       - name: Build Vite frontend
+        env:
+          TB_ENFORCE_PIN: "1"
         run: |
           cd frontend
           npm run build
@@ -172,6 +174,12 @@ jobs:
           cd frontend
           npx tauri build
         env:
+          TB_ENFORCE_PIN: "1"
+          # Activation secrets are compiled into the desktop-toolkit activation
+          # backend at build time. Required for production PIN validation.
+          ACTIVATION_DRIVE_FILE_ID: ${{ secrets.ACTIVATION_DRIVE_FILE_ID }}
+          ACTIVATION_DRIVE_API_KEY: ${{ secrets.ACTIVATION_DRIVE_API_KEY }}
+          ACTIVATION_HMAC_SECRET: ${{ secrets.ACTIVATION_HMAC_SECRET }}
           # TODO: add signing when cert is available
           #   signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256
           #     /f cert.pfx /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" *.exe

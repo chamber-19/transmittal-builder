@@ -1,11 +1,26 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { showOnReady } from "@chamber-19/desktop-toolkit/window/showOnReady"
+import { ActivationGate } from "@chamber-19/desktop-toolkit/activation"
 import App from './App.jsx'
+
+// PIN enforcement is intentionally opt-in at build time so local dev and
+// coding-agent sessions are never blocked by activation flows.
+const enforcePinActivation =
+  typeof __ENFORCE_PIN_ACTIVATION__ !== 'undefined' &&
+  __ENFORCE_PIN_ACTIVATION__;
+
+const rootApp = enforcePinActivation ? (
+  <ActivationGate>
+    <App />
+  </ActivationGate>
+) : (
+  <App />
+);
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    {rootApp}
   </StrictMode>,
 )
 

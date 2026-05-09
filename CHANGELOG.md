@@ -9,6 +9,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: Architecture refactor (May 2026)**
+  - Tauri desktop shell (`frontend/`) moved to `chamber-19/launcher` (shared by all tools)
+  - This repo is now **backend-only**: Python FastAPI service for document rendering
+  - Activation logic moved to `chamber-19/desktop-toolkit`
+  - No UI code in this repo; launcher provides the desktop interface
+  - All API endpoints remain unchanged; backends are stateless HTTP services
+
+- Bumped desktop-toolkit dependency pins from v2.3.0 to v2.3.2 across npm,
+  Cargo (`desktop-toolkit`, `library-tag`, `shim-tag`), and Python
+  (`chamber19-desktop-toolkit`).
+- PIN activation enforcement is now build-gated and enabled only for packaged
+  builds (`TB_ENFORCE_PIN=1` in release workflow). Local dev/agent runs remain
+  unblocked by default.
+
+### Added
+
+- Conda-first project environment definition via `environment.yml`.
+- New `docs/CONDA.md` with setup/update commands and agent usage policy.
+- New `docs/OPERATOR_RUNBOOK.md` for release/PIN operational procedures and
+  upstream desktop-toolkit documentation contract.
+- New end-user install/update/PIN guide in `USER_MANUAL.md`.
+- Expanded agent/copilot guidance in `.github/copilot-instructions.md`,
+  `AGENTS.md`, and `.github/instructions/desktop-sidecar.instructions.md`.
+- Architecture refactor summary in `ARCHITECTURE_REFACTOR.md`.
+
+### Ops
+
+- Release workflow now wires activation build-time secrets into packaged
+  Tauri builds so PIN validation can be tested in produced installers.
+
 ## [6.3.2] — 2026-04-25
 
 ### Changed

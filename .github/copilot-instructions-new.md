@@ -3,7 +3,7 @@
 > **Repo:** `chamber-19/transmittal-builder`
 > **Role:** Backend service for generating engineering transmittal packages.
 >
-> **Architecture Change (May 2026):** Tauri desktop shell moved to `chamber-19/launcher`.
+> **Note:** As of May 2026, the Tauri desktop shell has been moved to `chamber-19/launcher`.
 > This repo is now **backend-only**: Python FastAPI service for document parsing/rendering.
 
 Use Chamber 19 shared conventions as reference guidance, but this file is the
@@ -13,9 +13,9 @@ repo-specific source of truth.
 
 - `backend/` is a Python FastAPI service for document parsing/rendering.
 - **No frontend**: All UI logic moved to `chamber-19/launcher`.
-- **No Tauri**: Desktop shell now lives in `launcher` (shared by all apps).
+- **No Tauri**: Desktop shell now lives in `launcher` (used by all apps).
 - Activation logic moved to `chamber-19/desktop-toolkit`.
-- Consumes `desktop-toolkit` Python package only.
+- Consumes `desktop-toolkit` Python package for PDF utilities.
 
 ## Build And Test
 
@@ -26,26 +26,29 @@ conda activate transmittal-builder
 cd backend
 python -m pytest
 python -m uvicorn app:app --port 8000
+
+# Verify API
+curl http://127.0.0.1:8000/api/health
 ```
 
 ## Python Environment Policy
 
 - Use Conda as the default local Python environment manager for this repo.
 - Prefer `environment.yml` over ad-hoc `.venv` setup.
-- Backend/package commands should assume the active environment is
+- Backend commands should assume the active environment is
   `transmittal-builder` unless explicitly overridden.
-- Do not hard-code Conda requirements into `desktop-toolkit`; keep toolkit
-  consumption environment-manager agnostic.
 
 ## Architecture Note: Backend Service Model
 
 This repo provides a **stateless HTTP API** that is:
-- Callable from `launcher` (Tauri shell via HTTP)
-- Deployable as Docker container, managed service, or standalone process
-- Independent of the desktop shell
 
-**The launcher (in `chamber-19/launcher`) handles:**
-- Desktop UI, ActivationGate, app routing
+- ✅ Callable from `launcher` (Tauri shell)
+- ✅ Deployable as a Docker container
+- ✅ Deployable as a managed service (serverless, managed cloud runtime, etc.)
+- ✅ Consumable by other tools via HTTP
+
+**The launcher handles:**
+- Desktop UI, activation gate, app routing
 - Sidecar startup and subprocess management
 - Updates, platform integration (Windows registry, shortcuts, etc.)
 
@@ -57,15 +60,11 @@ This repo provides a **stateless HTTP API** that is:
 
 No desktop orchestration logic belongs here.
 
-## Dependency Contract
-
-- Python package pins are in `backend/requirements.txt`.
-- Desktop-toolkit is consumed for PDF merge utilities only (not for activation).
-- No npm or Cargo dependencies in this repo.
-
 ## Review-Critical Rules
 
 - Do not add UI code, Tauri commands, or React components.
 - Do not add activation/PIN logic (lives in `desktop-toolkit` now).
 - User-facing behavior changes require `CHANGELOG.md` under `## [Unreleased]`.
 - Changes that affect the HTTP API contract must be documented in README.
+
+Path-specific rules live under `.github/instructions/`.

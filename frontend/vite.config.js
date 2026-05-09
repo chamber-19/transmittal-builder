@@ -39,6 +39,12 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(
       process.env.npm_package_version || PKG_VERSION
     ),
+    // Keep activation/PIN enforcement off by default for local dev and
+    // coding-agent environments. Release/build workflows opt in by setting
+    // TB_ENFORCE_PIN=1.
+    __ENFORCE_PIN_ACTIVATION__: JSON.stringify(
+      process.env.TB_ENFORCE_PIN === "1"
+    ),
   },
 
   build: {

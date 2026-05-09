@@ -12,7 +12,7 @@ release, rolling back, and troubleshooting.
 | Tool | Version | Notes |
 |---|---|---|
 | Node.js | 20 LTS | `node --version` |
-| Python | ≥ 3.11 (3.13 recommended) | `pandas>=3.0.2` requires Python 3.11+. CI uses 3.13. Fall back to 3.12 only if PyInstaller fails — see `TROUBLESHOOTING.md §4`. Tauri and Rust are unaffected by Python version. |
+| Python | ≥ 3.11 (3.13 recommended) | `pandas>=3.0.2` requires Python 3.11+. CI uses 3.13. Fall back to 3.12 only if PyInstaller fails — see `TROUBLESHOOTING.md §4`. Tauri and Rust are unaffected by Python version. Use the repo Conda env (`environment.yml`) for local ops. |
 | Rust | stable | `rustup update stable` |
 | PyInstaller | ≥ 6.10 | Required for Python 3.13 support. `pip install "pyinstaller>=6.10"` |
 | GitHub CLI | latest | `gh auth login` |
@@ -34,6 +34,15 @@ The NSIS installer supports custom header and sidebar images. To add them:
 4. Commit the images and config change.
 
 Without these files the NSIS installer uses its built-in default images.
+
+### Conda environment (recommended for local release ops)
+
+```powershell
+conda env create -f environment.yml
+conda activate transmittal-builder
+```
+
+Use this environment for backend install, tests, and PyInstaller commands.
 
 ### Shared drive path
 
@@ -135,6 +144,10 @@ It will:
 3. Run `tauri build` → produces `Transmittal.Builder_<version>_x64-setup.exe`.
 4. Generate `latest.json`.
 5. Create a GitHub Release and upload both files.
+
+PIN enforcement is enabled only for packaged artifacts. The release workflow
+sets `TB_ENFORCE_PIN=1` for build steps so local dev/coding-agent runs are not
+blocked by activation gating.
 
 > **Filename note:** `softprops/action-gh-release` sanitises spaces to dots on
 > upload, so the GitHub Release asset is named `Transmittal.Builder_<version>_x64-setup.exe`
@@ -301,6 +314,13 @@ unless you want to verify the upgrade flow end-to-end.
 **Fix:** The sidecar picks a free OS port dynamically — conflicts are extremely
 unlikely. If they occur, restart the app. If the problem persists, check for
 rogue processes with `netstat -an | findstr 127.0.0.1`.
+
+---
+
+## 8. Related operation docs
+
+- Conda usage policy and daily commands: `docs/CONDA.md`
+- Operator release/PIN runbook: `docs/OPERATOR_RUNBOOK.md`
 
 ---
 

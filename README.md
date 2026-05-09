@@ -1,134 +1,146 @@
-# Transmittal Builder
+# Transmittal Builder — Backend Service
 
-A desktop-first application for generating engineering transmittal packages. Build professional transmittals by dropping files, auto-populating from project folders, and generating combined PDF packages — all from a single interface.
+A Python FastAPI service for generating engineering transmittal packages.
 
-**Key capabilities:**
+**Core functions:**
 
-- **Project folder integration** — Scan a root directory for project folders, auto-detect job numbers, contacts, existing transmittals, and source PDFs
-- **Smart file routing** — Drag & drop `.docx` templates, `.xlsx` drawing indexes, and `.pdf` source drawings; each is automatically routed to the right slot
-- **Transmittal rendering** — Fill a Word template with project fields, checkboxes, contacts, and a document table, then convert to PDF
-- **Combined PDF output** — Merge the transmittal cover letter with all source drawings into a single combined PDF
-- **Folder or ZIP output** — Save directly to a project's transmittals folder (desktop mode) or download as a ZIP (web mode)
-- **Address book** — Auto-load contacts from `contacts.json` in the project folder; import from saved lists
+- **Project folder scanning** — Detect job numbers, existing transmittals, and source PDFs from folder structure
+- **Excel index parsing** — Extract document rows from `.xlsx` drawing index files
+- **Document rendering** — Fill `.docx` templates with project data and render to PDF
+- **PDF merging** — Combine transmittal cover with source drawings into single PDF
+- **Email transmission** — Send completed transmittals via SMTP
+
+**UI & Desktop Shell:**
+
+The desktop UI is in `chamber-19/launcher` (shared Tauri shell for all Chamber 19 tools).
+Users install/run the launcher, which calls this backend service via HTTP.
 
 ---
 
-## Installation (non-developers)
+## Installation (End Users)
 
-> **Users:** The installer lives on the shared Google Drive at:
->
-> ```text
-> G:\Shared drives\R3P RESOURCES\APPS\Transmittal Builder\
-> ```
->
-> Double-click the latest `.exe` file, follow the prompts, and the app installs
-> to your local profile (no administrator rights needed).
->
-> The app checks for updates every time it opens.  If a newer version is
-> available it downloads and installs automatically — no action required.
->
-> **Note:** You must be connected to the office network (VPN or on-site) with
-> Google Drive for Desktop running.  The app will not open while offline.
+Users should install via **`chamber-19/launcher`**, not this repo directly.
+
+For installation/update/PIN instructions, see the launcher's user documentation.
+
+---
+
+## For Developers: Environment Setup
+
+### Conda-first Python setup (recommended)
+
+```powershell
+conda env create -f environment.yml
+conda activate transmittal-builder
+```
+
+### Backend (Python FastAPI)
+
+```bash
+cd backend
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+python -m pytest
+
+# Start server (dev mode)
+python -m uvicorn app:app --reload --port 8000
+
+# Verify health check
+curl http://127.0.0.1:8000/api/health
+```
+
+---
+
+## Documentation
+
+- Conda environment policy and setup: [`docs/CONDA.md`](docs/CONDA.md)
+- Release/operator procedures: [`docs/OPERATOR_RUNBOOK.md`](docs/OPERATOR_RUNBOOK.md)
+- Publishing and updater flow: [`RELEASING.md`](RELEASING.md), [`docs/AUTO_UPDATER.md`](docs/AUTO_UPDATER.md)
+- Copilot/agent guidance: [`.github/copilot-instructions.md`](.github/copilot-instructions.md)
 
 ---
 
 ## Architecture
 
+**This repo is a stateless HTTP backend service.**
+
 ```text
 Transmittal-Builder/
 ├── backend/                   Python FastAPI service
-│   ├── app.py                 All API routes
+│   ├── app.py                 HTTP API routes
 │   ├── core/
-│   │   ├── render.py          .docx template rendering
-│   │   └── excel_parser.py    Drawing index Excel parsing
-│   └── requirements.txt
-│
-└── frontend/                  React/Vite web + Tauri desktop shell
-    ├── src/
-    │   ├── App.jsx            Main React application (all transmittal UI + state)
-    │   ├── main.jsx           React entry point
-    │   ├── splash.jsx         Splash window mount (uses @chamber-19/desktop-toolkit)
-    │   ├── updater.jsx        Updater window mount
-    │   └── api/
-    │       └── backend.js     Tauri IPC helper for sidecar backend URL
-    ├── src-tauri/             Tauri desktop shell
-    │   ├── tauri.conf.json    Window / bundle configuration
-    │   ├── Cargo.toml         Rust workspace manifest
-    │   ├── build.rs           Tauri build script
-    │   ├── src/
-    │   │   ├── main.rs        Binary entry point
-    │   │   └── lib.rs         Tauri app logic + backend auto-start
-    │   ├── capabilities/      Tauri permission grants
-    │   └── icons/             App icon assets
-    ├── index.html             Main window HTML entry (loaded by Vite)
-    ├── splash.html            Splash window HTML entry
-    ├── updater.html           Updater window HTML entry
-    ├── package.json
-    └── vite.config.js
+│   │   ├── render.py          .docx template → PDF rendering
+│   │   └── excel_parser.py    .xlsx drawing index parsing
+│   ├── requirements.txt
+│   └── __pycache__/
+├── environment.yml            Conda environment spec
+├── docs/
+├── CHANGELOG.md
+└── README.md
 ```
 
-### Data flow
-
-```text
-┌─────────────────────────────┐     HTTP/REST      ┌───────────────────┐
-│  Tauri WebView               │ ─────────────────► │  Python FastAPI   │
-│  React UI (port 1420 dev)   │ ◄───────────────── │  (port 8000)      │
-└─────────────────────────────┘                     └───────────────────┘
-        Tauri shell (Rust)            ▲
-        wraps the WebView             │
-                │                     │
-                └── spawns backend ───┘
-                    on startup (dev)
-```
-
-In dev mode, Tauri automatically spawns the Python backend when the desktop
-app starts. The React frontend polls `/api/health` and shows the main UI
-once the backend is reachable.
+**No frontend code in this repo.** Desktop shell lives in `chamber-19/launcher`.
 
 ---
 
-## API Endpoints
+## API Reference
 
-| Method | Path                 | Description                                                   |
-|--------|----------------------|---------------------------------------------------------------|
-| GET    | /api/health          | Health check (returns version)                                |
-| GET    | /api/scan-projects   | Scan a root directory for project folders                     |
-| POST   | /api/scan-folder     | Deep-scan a specific project folder for PDFs, contacts, index |
-| POST   | /api/parse-index     | Upload Excel drawing index → parsed document rows             |
-| POST   | /api/render          | Render transmittal → ZIP package (docx + pdf + drawings)      |
-| POST   | /api/render-to-folder| Render transmittal directly to a project folder on disk       |
-| POST   | /api/email           | Send transmittal via SMTP                                     |
+| Method | Endpoint             | Description                                          |
+|--------|----------------------|------------------------------------------------------|
+| GET    | /api/health          | Health check (returns version)                       |
+| GET    | /api/scan-projects   | Scan root directory → project folders                |
+| POST   | /api/scan-folder     | Deep-scan folder → PDFs, contacts, indexes           |
+| POST   | /api/parse-index     | Upload Excel index → parsed document rows            |
+| POST   | /api/render          | Render transmittal → ZIP (docx + pdf + drawings)    |
+| POST   | /api/render-to-folder| Render transmittal directly to project folder        |
+| POST   | /api/email           | Send transmittal via SMTP                            |
 
 ---
 
 ## Output Filenames
 
-The app produces files using the standard naming convention:
+Standard naming conventions:
 
 - **Transmittal letter:** `{JobNum}-XMTL-{NNN} - DOCUMENT INDEX.docx` / `.pdf`
-- **Combined PDF:** `{JobNum} - {PROJECT DESC} - {IFP}_{YYYYMMDD}.pdf`
+- **Combined PDF:** `{JobNum} - {PROJECT DESC} - {IFP}_{YYYYMMDD}.pdf`  
+  (IFP/IFC/IFA/IFB/etc. based on copy-intent checkbox)
 - **ZIP package:** `{JobNum}-XMTL-{NNN}-Package.zip`
-
-The copy-intent abbreviation (IFP, IFC, IFA, etc.) is derived from the single selected checkbox.
 
 ---
 
-## Quick Start — Web (browser)
+## Development: Running in Isolation
+
+To test this backend independently (without the launcher):
 
 ```bash
-# Terminal 1 — Python backend
+# Terminal 1 — Start backend
 cd backend
-# Requires Git auth to https://github.com/chamber-19/desktop-toolkit
-# (for example: `gh auth login` with repo access, or another Git credential helper)
-pip install -r requirements.txt
-uvicorn app:app --reload --port 8000
+python -m uvicorn app:app --reload --port 8000
 
-# Terminal 2 — Vite dev server
-cd frontend
-# Requires NODE_AUTH_TOKEN env var (a GitHub PAT with `read:packages`) for GitHub Packages auth.
-# The .npmrc is committed to the repo and will pick up the token automatically.
-export NODE_AUTH_TOKEN=ghp_yourTokenHere
-npm install
+# Terminal 2 — Call the API
+curl -X POST http://127.0.0.1:8000/api/parse-index \
+  -F file=@drawing_index.xlsx
+
+# Or use a REST client like Postman/Insomnia
+# POST http://127.0.0.1:8000/api/render
+# with body: { "template": "...", "index": [...], ... }
+```
+
+---
+
+## Deployment
+
+This service can be deployed as:
+
+1. **Local sidecar** (launched by `launcher` on user's machine)
+2. **Docker container** (via Dockerfile, not in this repo yet)
+3. **Managed service** (AWS Lambda, Azure Functions, etc.)
+4. **Traditional server** (systemd, supervisor, etc.)
+
+The launcher connects via HTTP; it doesn't care where the backend runs.
 npm run dev          # http://localhost:1420
 ```
 
