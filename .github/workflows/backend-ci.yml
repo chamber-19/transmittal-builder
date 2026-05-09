@@ -50,6 +50,7 @@ jobs:
         run: |
           python - <<'EOF'
           import sys
+          import re
           import importlib
 
           required = [
@@ -75,8 +76,8 @@ jobs:
               sys.exit(1)
 
           import pandas as pd
-          from packaging.version import Version
-          assert Version(pd.__version__) >= Version("3.0.2"), (
+          pd_ver = tuple(int(re.match(r'\d+', x).group()) for x in pd.__version__.split('.')[:3])
+          assert pd_ver >= (3, 0, 2), (
               f"Expected pandas >=3.0.2, got {pd.__version__}"
           )
 
