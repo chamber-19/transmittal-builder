@@ -70,76 +70,41 @@ production artifacts.
 
 ## 4. Release Checklist (Ops)
 
-- Ensure toolkit pins are in sync (`scripts/check-toolkit-pins.ps1`).
-- Ensure updater shim exists at `frontend/src-tauri/desktop-toolkit-updater.exe`.
-- Build and test:
+- Activate the project environment and run backend verification:
 
 ```powershell
+conda activate transmittal-builder
 cd backend
 python -m pytest
-
-cd ../frontend
-npm ci
-npm run build
-
-cd src-tauri
-cargo check
 ```
 
-- Push release tag and let `.github/workflows/release.yml` publish assets.
-- Mirror release artifacts to shared drive per `RELEASING.md` and
-   `docs/AUTO_UPDATER.md`.
+- Confirm `CHANGELOG.md` has a new release section.
+- Merge to `main`; `.github/workflows/auto-tag.yml` creates the tag from
+  `CHANGELOG.md`, then `.github/workflows/release.yml` builds and publishes the
+  backend artifact release.
 
 ---
 
-## 5. Production Auth Smoke Test
+## 5. Production Activation Sanity Check
 
-Before production rollout, validate enforced activation behavior locally.
+Before production rollout, validate the release build in launcher-integrated
+mode (activation token present, backend starts, health endpoint responds).
 
 From repo root:
 
 ```powershell
-# One-time setup if env is missing:
-# conda env create -f environment.yml
-
-# Preferred env:
 conda activate transmittal-builder
-
-# Fallback: if `transmittal-builder` is not present, stay in the currently
-# active env (for example `base`) as long as backend dependencies are installed.
-pwsh ./scripts/smoke-auth-enforced.ps1 -Port 8010
+cd backend
+python -m uvicorn app:app --host 127.0.0.1 --port 8000
 ```
 
-Quick env check:
+Then verify in a second terminal:
 
 ```powershell
-conda info --envs
+Invoke-WebRequest http://127.0.0.1:8000/api/health
 ```
 
-Expected output:
-
-- `[smoke] Health check passed`
-- `[smoke] Unauthenticated request returned 401 as expected`
-- `[smoke] Authenticated request returned 200 as expected`
-- `[smoke] PASS`
-
-Optional overrides:
-
-```powershell
-pwsh ./scripts/smoke-auth-enforced.ps1 -Port 8020 -PublicKey "my-prod-key"
-```
-
-This script starts the backend with:
-
-- `ENVIRONMENT=production`
-- `REQUIRE_ACTIVATION=true`
-- `DESKTOP_TOOLKIT_PUBLIC_KEY=<PublicKey>`
-
-It then validates:
-
-1. Health endpoint is reachable.
-2. Protected endpoint fails with `401` when no token is provided.
-3. Protected endpoint succeeds with `200` for a correctly signed Bearer token.
+Expected result: HTTP 200 with health payload.
 
 ---
 
@@ -153,8 +118,8 @@ ensure upstream docs are updated in `chamber-19/desktop-toolkit` as needed:
 
 Reference URLs:
 
-- https://github.com/chamber-19/desktop-toolkit/blob/main/docs/CONSUMING.md
-- https://github.com/chamber-19/desktop-toolkit/blob/main/docs/activation.md
+- [desktop-toolkit consuming guide](https://github.com/chamber-19/desktop-toolkit/blob/main/docs/CONSUMING.md)
+- [desktop-toolkit activation guide](https://github.com/chamber-19/desktop-toolkit/blob/main/docs/activation.md)
 
 For this repo, keep links current in:
 

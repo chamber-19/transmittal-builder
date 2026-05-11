@@ -15,28 +15,6 @@ backend/dist-sidecar/
 backend/build-sidecar/
 backend/__pycache__/
 
-# Tauri sidecar binaries (populated by CI before tauri build)
-# Keep the directory structure but not the built executables
-frontend/src-tauri/binaries/transmittal-backend/*.exe
-frontend/src-tauri/binaries/transmittal-backend/_internal/
-
-# Tauri NSIS installer art assets — synced at build time from
-# node_modules/@chamber-19/desktop-toolkit/installer/nsis/ via
-# the `prebuild` npm script (scripts/sync-installer-assets-local.mjs).
-# Never commit these; they are build artifacts.
-# NOTE: hooks.nsh is intentionally NOT listed here — it is a TB-local
-# checked-in override.  See RELEASING.md §"Why we override hooks.nsh locally".
-frontend/src-tauri/installer/nsis-header.bmp
-frontend/src-tauri/installer/nsis-header.svg
-frontend/src-tauri/installer/nsis-sidebar.bmp
-frontend/src-tauri/installer/nsis-sidebar.svg
-
-# desktop-toolkit-updater shim — built by CI (cargo build -p desktop-toolkit-updater)
-# and placed here for NSIS to bundle.  Local devs can run scripts/fetch-updater-shim.ps1.
-frontend/src-tauri/desktop-toolkit-updater.exe
-
-# Tauri build output
-frontend/src-tauri/target/
 
 # Generated update manifest (created by generate-latest-json.mjs)
 latest.json
