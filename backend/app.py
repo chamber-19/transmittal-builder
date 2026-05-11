@@ -23,15 +23,15 @@ import tempfile
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Depends
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from core.render import render_transmittal, _normalize_xmtl_num
 from core.excel_parser import parse_drawing_index
-from core.auth import verify_activation_token
-from chamber19_desktop_toolkit.utils.pdf_merge import docx_to_pdf, merge_source_pdfs
+
+from chamber19_desktop_toolkit.utils.pdf_merge import docx_to_pdf, merge_source_pdfs  # type: ignore
 
 
 # ─── Copy-intent checkbox key → abbreviation mapping ─────────
@@ -93,7 +93,7 @@ def _build_combined_pdf_name(job_label: str, project_desc: str, checks: dict,
 
 app = FastAPI(
     title="Transmittal Builder",
-    version="4.0.1",
+    version=os.getenv("APP_VERSION", "dev"),
     description="Backend API for the Transmittal Builder desktop app",
 )
 
@@ -127,7 +127,7 @@ def _save_upload(upload: UploadFile, dest_dir: str, filename: str = None) -> str
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "service": "transmittal-builder-backend", "version": "4.0.1"}
+    return {"status": "healthy", "service": "transmittal-builder-backend", "version": os.getenv("APP_VERSION", "dev")}
 
 
 # ─── POST /api/parse-index ────────────────────────────────────
@@ -135,7 +135,6 @@ def health():
 @app.post("/api/parse-index")
 async def api_parse_index(
     file: UploadFile = File(...),
-    token: dict = Depends(verify_activation_token)
 ):
     """
     Upload an Excel drawing index file.
@@ -398,7 +397,6 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
 def api_scan_projects(
     root: str,
     query: str = "",
-    token: dict = Depends(verify_activation_token)
 ):
     """
     Scan immediate subdirectories of *root* and return project metadata.
@@ -452,7 +450,6 @@ class ScanFolderRequest(BaseModel):
 @app.post("/api/scan-folder")
 def api_scan_folder(
     req: ScanFolderRequest,
-    token: dict = Depends(verify_activation_token)
 ):
     """
     Deep-scan a specific project folder.
@@ -661,7 +658,6 @@ async def api_render_to_folder(
     output_dir: str = Form(..., description="Absolute path to the transmittals / project folder"),
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
     local_pdf_paths: str = Form(default="[]", description="JSON: list of absolute paths to local PDFs on disk"),
-    token: dict = Depends(verify_activation_token)
 ):
     """
     Render a transmittal package and write the output files directly to disk.
@@ -853,7 +849,6 @@ async def api_render(
     contacts: str = Form(..., description="JSON: [{name, company, email, phone}]"),
     documents: str = Form(..., description="JSON: [{doc_no, desc, rev}]"),
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
-    token: dict = Depends(verify_activation_token)
 ):
     """
     Render a transmittal package.
@@ -968,7 +963,6 @@ class EmailRequest(BaseModel):
 @app.post("/api/email")
 async def api_email(
     req: EmailRequest,
-    token: dict = Depends(verify_activation_token)
 ):
     """
     Send a transmittal email.
@@ -976,7 +970,7 @@ async def api_email(
     
     Requires activation token (Bearer token in Authorization header).
     """
-    from chamber19_desktop_toolkit.utils.email_sender import send_email
+    from chamber19_desktop_toolkit.utils.email_sender import send_email  # type: ignore
 
     sender = req.sender or os.environ.get("SMTP_SENDER", "")
     password = req.password or os.environ.get("SMTP_PASSWORD", "")

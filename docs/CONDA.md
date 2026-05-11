@@ -32,14 +32,8 @@ From repo root:
 cd backend
 python -m pytest
 
-# Frontend build
-cd ../frontend
-npm ci
-npm run build
-
-# Tauri compile check
-cd src-tauri
-cargo check
+# Backend local run
+python -m uvicorn app:app --reload --port 8000
 ```
 
 ---

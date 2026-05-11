@@ -1,10 +1,9 @@
-# Set default behavior to automatically normalize line endings
+# Normalize line endings automatically
 * text=auto
 
-# Windows files
-*.cs text eol=crlf
-*.csproj text eol=crlf
-
-# Unix/cross-platform files
+# Unix line endings for cross-platform text files
 *.toml text eol=lf
 *.md text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

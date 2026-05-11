@@ -1,19 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# PyInstaller spec for the Transmittal Builder backend sidecar.
+# PyInstaller spec for the Transmittal Builder backend service.
 # Requires PyInstaller >= 6.10 (Python 3.13 support).
 #
 # Build (from the backend/ directory):
 #   pip install -r requirements.txt -r requirements-build.txt
-#   pyinstaller transmittal_backend.spec --distpath dist-sidecar --workpath build-sidecar
+#   pyinstaller transmittal_backend.spec --distpath ../dist --workpath build
 #
-# Output: dist-sidecar/transmittal-backend/  (one-dir build)
-# Copy the entire dist-sidecar/transmittal-backend/ folder to:
-#   frontend/src-tauri/binaries/transmittal-backend/
+# Output: ../dist/transmittal-backend/  (one-dir build)
+# The launcher fetches this exe from GitHub Releases and spawns it via HTTP.
 #
-# NOTE: Use console=True (console subsystem) so that Rust can read the
-# port number from stdout.  The Rust launcher sets CREATE_NO_WINDOW so
-# the console window never appears to the end user.
+# NOTE: console=True keeps the console subsystem so stdout/stderr are
+# available for debugging. The launcher hides the window at spawn time.
 
 a = Analysis(
     ['app.py'],
