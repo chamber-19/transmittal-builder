@@ -1,0 +1,188 @@
+
+=== DIRECTORY TREE (max depth 3, source files only) ===
+.gitattributes
+.github
+.github\copilot-instructions.md
+.github\dependabot.yml
+.github\instructions
+.github\prompts
+.github\prompts\consume-toolkit-bump.prompt.md
+.github\workflows
+.github\workflows\auto-tag.yml
+.github\workflows\backend-ci.yml
+.github\workflows\release.yml
+.gitignore
+.vscode
+.vscode\mcp.json
+.vscode\settings.json
+AGENTS.md
+backend
+backend\.env
+backend\.gitignore
+backend\.pytest_cache
+backend\.pytest_cache\.gitignore
+backend\.pytest_cache\CACHEDIR.TAG
+backend\.pytest_cache\README.md
+backend\.pytest_cache\v
+backend\.pytest_cache\v\cache
+backend\access.log
+backend\app.py
+backend\auth.py
+backend\core
+backend\core\__init__.py
+backend\core\excel_parser.py
+backend\core\render.py
+backend\data
+backend\data\project_registry.json
+backend\data\transmittal_builder.db
+backend\data\user_profiles.json
+backend\database.py
+backend\requirements-build.txt
+backend\requirements.txt
+backend\templates
+backend\templates\transmittal_template.docx
+backend\transmittal_backend.spec
+CHANGELOG.md
+docs
+docs\codebase
+docs\codebase\.codebase-scan.txt
+docs\codebase\ARCHITECTURE.md
+docs\codebase\CONCERNS.md
+docs\codebase\CONVENTIONS.md
+docs\codebase\INTEGRATIONS.md
+docs\codebase\STACK.md
+docs\codebase\STRUCTURE.md
+docs\codebase\TESTING.md
+docs\CONDA.md
+docs\OPERATOR_RUNBOOK.md
+environment.yml
+frontend
+frontend\.env
+frontend\.env.example
+frontend\.gitignore
+frontend\index.html
+frontend\package-lock.json
+frontend\package.json
+frontend\src
+frontend\src\api.js
+frontend\src\App.jsx
+frontend\src\components
+frontend\src\components\CoverSheetPreview.jsx
+frontend\src\components\HelpDrawer.jsx
+frontend\src\components\LoginPage.jsx
+frontend\src\components\ProfileSetupModal.jsx
+frontend\src\components\ProjectPicker.jsx
+frontend\src\components\SplashScreen.jsx
+frontend\src\components\TransmittalForm.jsx
+frontend\src\main.jsx
+frontend\src\styles.css
+frontend\vite.config.js
+package-lock.json
+README.md
+RELEASING.md
+
+=== STACK DETECTION (manifest files) ===
+
+--- package-lock.json ---
+{
+  "name": "Transmittal-Builder",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {}
+}
+
+
+=== ENTRY POINTS ===
+No common entry points found. Check 'main' or 'scripts.start' in manifest files above.
+
+=== LINTING AND FORMATTING CONFIG ===
+No linting or formatting config files found in project root.
+
+=== ENVIRONMENT VARIABLE TEMPLATES ===
+No .env.example or .env.template found. Identify required environment variables by searching the code and config for environment variable reads.
+
+=== TODO / FIXME / HACK (production code only, test dirs excluded) ===
+None found.
+
+=== GIT RECENT COMMITS (last 20) ===
+5622070 Add Vite configuration for React application
+cc96fd7 chore: prepare v6.3.3 release notes
+6ab44ce chore: dispatch backend-released event to launcher on release
+0fc85c6 Merge pull request #158 from chamber-19/auto/sync-copilot-instructions-5f9ff9f
+7924650 Merge branch 'main' into auto/sync-copilot-instructions-5f9ff9f
+bff755f Merge pull request #160 from chamber-19/copilot/fix-python-versions-package-error
+d58734b fix: replace packaging import with stdlib re.match in backend-ci smoke test
+eeabb17 Initial plan
+d60b9e4 chore(instructions): sync Copilot instructions with org skill updates
+cabd934 feat: phase-3-complete - launcher activation token integration with production auth
+312360e docs: Reference .github repo as source of truth for SKILLS and shared knowledge
+44229eb docs: Add markdown formatting standards to copilot-instructions
+ed633fb refactor: Architecture refactor â€” backend-only, activation moved to toolkit ## Summary
+4dac40c Merge pull request #148 from chamber-19/copilot/remove-vercel-link-transmittal-builder
+45bbae4 Merge pull request #146 from chamber-19/copilot/add-gitattributes-file
+b6e0add Remove Vercel reference from frontend/.env.example
+f06e340 Add .gitattributes with explicit line-ending rules per file type
+21609d5 Initial plan
+eb9a918 Initial plan
+eff6754 Merge pull request #144 from chamber-19/copilot/check-tauri-rust-support
+
+=== HIGH-CHURN FILES (last 90 days, top 20) ===
+  48 frontend/src/App.jsx
+  46 frontend/package.json
+  40 frontend/package-lock.json
+  38 frontend/src-tauri/tauri.conf.json
+  36 frontend/src-tauri/Cargo.toml
+  35 frontend/src-tauri/src/lib.rs
+  32 frontend/src-tauri/Cargo.lock
+  30 frontend/src/splash.jsx
+  23 frontend/src/splash.css
+  22 RELEASING.md
+  21 .github/workflows/release.yml
+  19 backend/app.py
+  19 README.md
+  17 backend/requirements.txt
+  16 CHANGELOG.md
+  15 .github/copilot-instructions.md
+  14 frontend/src-tauri/src/splash.rs
+  13 frontend/vite.config.js
+  11 .gitignore
+  11 frontend/src-tauri/src/updater.rs
+
+=== MONOREPO SIGNALS ===
+No monorepo signals detected.
+
+=== CODE METRICS ===
+Total files scanned: 56
+Total lines of code: 6546
+
+Files by language:
+  Other: 39
+  JavaScript/React: 9
+  Python: 6
+  JavaScript: 2
+
+Top 10 largest files:
+backend\templates\transmittal_template.docx: 234.3KB
+frontend\package-lock.json: 58.6KB
+frontend\src\styles.css: 49.9KB
+frontend\src\components\TransmittalForm.jsx: 44.9KB
+backend\app.py: 42.6KB
+backend\data\transmittal_builder.db: 36.0KB
+backend\access.log: 20.1KB
+backend\core\render.py: 14.5KB
+frontend\src\components\HelpDrawer.jsx: 12.6KB
+backend\database.py: 12.2KB
+
+=== CI/CD PIPELINES ===
+CI/CD: GitHub Actions
+
+=== CONTAINERS & ORCHESTRATION ===
+No containerization configs detected.
+
+=== SECURITY & COMPLIANCE ===
+No security configs detected.
+
+=== PERFORMANCE & TESTING ===
+No performance testing configs detected.
+
+=== SCAN COMPLETE ===
