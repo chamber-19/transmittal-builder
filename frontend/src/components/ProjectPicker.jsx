@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { scanProjects, scanFolder, getRecentProjects, touchProject, removeRecentProject } from '../api.js'
 
-const DEFAULT_PROJECTS_ROOT = 'G:\\Shared drives\\Root 3 Power\\02-ACTIVE PROJECTS'
+const DEFAULT_PROJECTS_ROOT = import.meta.env.VITE_DEFAULT_PROJECTS_ROOT || ''
 
 // ── Project loading overlay ──────────────────────────────────────
 const LOAD_STAGES = [
@@ -94,10 +94,14 @@ export default function ProjectPicker({ onSelect, isDeveloper }) {
       .then(data => setRecent(data.projects || []))
       .catch(() => {})
 
-    scanProjects(DEFAULT_PROJECTS_ROOT, '')
-      .then(data => setAllProjects(data.projects || []))
-      .catch(e => setIndexError(e.message))
-      .finally(() => setIndexLoading(false))
+    if (DEFAULT_PROJECTS_ROOT) {
+      scanProjects(DEFAULT_PROJECTS_ROOT, '')
+        .then(data => setAllProjects(data.projects || []))
+        .catch(e => setIndexError(e.message))
+        .finally(() => setIndexLoading(false))
+    } else {
+      setIndexLoading(false)
+    }
   }, [])
 
   const filtered = useMemo(() => {

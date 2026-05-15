@@ -159,7 +159,7 @@ _PROFILE_PATH = os.getenv(
     "USER_PROFILE_PATH",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "user_profiles.json"),
 )
-_DEVELOPER_EMAIL = os.getenv("DEVELOPER_EMAIL", "hyphaeos@gmail.com")
+_DEVELOPER_EMAIL = os.getenv("DEVELOPER_EMAIL", "")
 
 
 def _read_profiles() -> dict:
