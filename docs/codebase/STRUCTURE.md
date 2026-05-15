@@ -1,55 +1,97 @@
-# Codebase Structure
+# Project Structure
 
 ## Core Sections (Required)
 
-### 1) Top-Level Map
+### 1) Directory Layout
 
-List only meaningful top-level directories and files.
-
-| Path | Purpose | Evidence |
-|------|---------|----------|
-| [path/] | [purpose] | [source] |
+```
+Transmittal-Builder/
+├── backend/                         Python FastAPI service
+│   ├── app.py                       All HTTP routes (entry point)
+│   ├── auth.py                      Google ID-token verification + access log
+│   ├── database.py                  SQLite persistence (projects, transmittals, contacts)
+│   ├── core/
+│   │   ├── render.py                .docx template filling + PDF rendering logic
+│   │   └── excel_parser.py          .xlsx drawing index parsing
+│   ├── templates/
+│   │   └── transmittal_template.docx  Embedded transmittal letter template
+│   ├── data/                        Runtime data (NOT committed to git — see CONCERNS)
+│   │   ├── transmittal_builder.db   SQLite database (currently tracked — P0)
+│   │   ├── user_profiles.json       User display names (currently tracked — P0)
+│   │   └── project_registry.json    Legacy JSON (migrated to DB on startup)
+│   ├── access.log                   CSV access log (currently tracked — P0)
+│   ├── requirements.txt             Production Python deps
+│   ├── requirements-build.txt       Build-only: PyInstaller
+│   ├── transmittal_backend.spec     PyInstaller build spec
+│   └── .env                        Local secrets (gitignored)
+│
+├── frontend/                        React web UI (Vite)
+│   ├── index.html                   HTML entry point
+│   ├── src/
+│   │   ├── main.jsx                 React root, GoogleOAuthProvider wrapper
+│   │   ├── App.jsx                  Top-level state machine (login→projects→form)
+│   │   ├── api.js                   All fetch calls to backend
+│   │   ├── styles.css               Global CSS design system
+│   │   └── components/
+│   │       ├── LoginPage.jsx        Google Sign-In page
+│   │       ├── ProjectPicker.jsx    Project browser + recent projects list
+│   │       ├── TransmittalForm.jsx  Main form (44.9 KB — largest component)
+│   │       ├── CoverSheetPreview.jsx  Live transmittal letter preview
+│   │       ├── HelpDrawer.jsx       Help/documentation sidebar
+│   │       ├── ProfileSetupModal.jsx  First-login display name setup
+│   │       └── SplashScreen.jsx     App startup splash
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── .env                        Local frontend secrets (gitignored)
+│   └── .env.example                Documents required frontend env vars
+│
+├── docs/
+│   ├── CONDA.md                    Conda environment policy and commands
+│   ├── OPERATOR_RUNBOOK.md         Release/PIN lifecycle runbook
+│   └── codebase/                   These documents
+│
+├── .github/
+│   ├── workflows/
+│   │   ├── auto-tag.yml            Reads CHANGELOG, tags on version bump
+│   │   ├── release.yml             Builds PyInstaller .exe, publishes GitHub Release
+│   │   └── backend-ci.yml         Smoke-tests Python imports on 3.11 + 3.13
+│   ├── copilot-instructions.md     Agent/Copilot guidance
+│   ├── prompts/                    Agent prompt templates
+│   └── instructions/               Agent instruction files
+│
+├── environment.yml                 Conda environment spec (Python 3.13 + pip deps)
+├── README.md                       Developer setup guide (partially stale — see CONCERNS)
+├── CHANGELOG.md                    Version history (KaC format)
+├── RELEASING.md                    Release process documentation
+└── AGENTS.md                       Agent/Copilot guidance pointer
+```
 
 ### 2) Entry Points
 
-- Main runtime entry: [FILE]
-- Secondary entry points (worker/cli/jobs): [FILES or NONE]
-- How entry is selected (script/config): [NOTE]
+| Entry point | Purpose |
+| --- | --- |
+| `backend/app.py` | FastAPI `app` object; `uvicorn app:app` for dev, `python app.py` for PyInstaller sidecar |
+| `frontend/src/main.jsx` | React root, mounts `<GoogleOAuthProvider>` + `<App>` |
+| `frontend/index.html` | Vite HTML entry |
 
-### 3) Module Boundaries
+### 3) Key Files
 
-| Boundary | What belongs here | What must not be here |
-|----------|-------------------|------------------------|
-| [module/layer] | [responsibility] | [forbidden logic] |
+| File | Why it matters |
+| --- | --- |
+| `backend/app.py` | All 14 HTTP routes; auth enforcement; temp-dir lifecycle |
+| `backend/auth.py` | Google token verification; allow-list enforcement; access logging |
+| `backend/database.py` | SQLite schema, migrations, project/transmittal/contact queries |
+| `backend/core/render.py` | `.docx` template fill → PDF via Word COM |
+| `backend/core/excel_parser.py` | `.xlsx` drawing index extraction |
+| `frontend/src/api.js` | Single API client module used by all components |
+| `frontend/src/components/TransmittalForm.jsx` | Largest component (44.9 KB); file drops, contacts, form submit |
+| `.github/workflows/auto-tag.yml` | Version source of truth (reads CHANGELOG) |
+| `.github/workflows/release.yml` | Full release pipeline (Windows PyInstaller build) |
 
-### 4) Naming and Organization Rules
+### 4) Evidence
 
-- File naming pattern: [kebab/camel/Pascal + examples]
-- Directory organization pattern: [feature/layer/domain]
-- Import aliasing or path conventions: [RULE]
-
-### 5) Evidence
-
-- [path/to/root-tree-source]
-- [path/to/entry-config]
-- [path/to/key-module]
-
-## Extended Sections (Optional)
-
-Add only when repository complexity requires it:
-
-- Subdirectory deep maps by feature/layer
-- Middleware/boot order details
-- Generated-vs-source layout boundaries
-- Monorepo workspace-level structure maps
-
-
-## Auto-generated Evidence Seeds
-- README.md
-- AGENTS.md
-- .github/copilot-instructions.md
-- frontend/package.json
-- backend/requirements.txt
-- environment.yml
-- docs/codebase/.codebase-scan.txt
-
+- `docs/codebase/.codebase-scan.txt` (directory tree)
+- `backend/app.py` (route inventory)
+- `frontend/package.json`
+- `frontend/src/main.jsx`
+- `git ls-files` output

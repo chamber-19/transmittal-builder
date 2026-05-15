@@ -4,65 +4,51 @@
 
 ### 1) Test Stack and Commands
 
-- Primary test framework: [NAME + VERSION]
-- Assertion/mocking tools: [TOOLS]
-- Commands:
+| Tool | Scope | Evidence |
+| --- | --- | --- |
+| pytest | Python backend unit/integration tests | `environment.yml`, `backend/.pytest_cache/` |
+| CI smoke test | Import verification only (not pytest) | `.github/workflows/backend-ci.yml` |
 
 ```bash
-[run all tests]
-[run unit tests]
-[run integration/e2e tests]
-[run coverage]
+# Run backend tests
+conda activate transmittal-builder
+cd backend
+python -m pytest
 ```
 
-### 2) Test Layout
+No frontend test framework is configured (no Vitest, Jest, Playwright, or Cypress).
 
-- Test file placement pattern: [co-located/tests folder/etc]
-- Naming convention: [pattern]
-- Setup files and where they run: [paths]
+### 2) What Is Tested
 
-### 3) Test Scope Matrix
+**Backend CI (`.github/workflows/backend-ci.yml`):**
+- Runs on Python 3.11 and 3.13.
+- Verifies all production package imports succeed.
+- Checks `pandas >= 3.0.2`.
+- Does **not** run pytest or test any business logic.
 
-| Scope | Covered? | Typical target | Notes |
-| ------- | ---------- | ---------------- | ------- |
-| Unit | [yes/no] | [modules/services] | [notes] |
-| Integration | [yes/no] | [API/data boundaries] | [notes] |
-| E2E | [yes/no] | [user flows] | [notes] |
+**pytest (`backend/.pytest_cache/` exists):**
+- Test files not found in the current repo tree (no `tests/` or `test_*.py` files visible).
+- The pytest cache exists from prior runs, but no test source is committed. [TODO — confirm if test files were deleted or never existed]
 
-### 4) Mocking and Isolation Strategy
+**No tests for:**
+- Transmittal rendering logic (`core/render.py`)
+- Excel parsing (`core/excel_parser.py`)
+- Database operations (`database.py`)
+- Auth enforcement (`auth.py`)
+- Any React component behaviour
 
-- Main mocking approach: [module/class/network]
-- Isolation guarantees: [what is reset and when]
-- Common failure mode in tests: [short note]
+### 3) Test Gaps (Production Risk)
 
-### 5) Coverage and Quality Signals
+| Gap | Risk |
+| --- | --- |
+| No pytest tests in repo | Core rendering and parsing logic is untested |
+| No frontend tests | UI behaviour and API contract unverified |
+| CI only tests imports | Regressions in business logic pass CI silently |
+| No integration test for render flow | Template+PDF pipeline failures only caught in production |
 
-- Coverage tool + threshold: [value or TODO]
-- Current reported coverage: [value or TODO]
-- Known gaps/flaky areas: [list]
+### 4) Evidence
 
-### 6) Evidence
-
-- [path/to/test-config]
-- [path/to/representative-test-file]
-- [path/to/ci-or-coverage-config]
-
-## Extended Sections (Optional)
-
-Add only when needed:
-
-- Framework-specific suite patterns
-- Detailed mock recipes per dependency type
-- Historical flaky test catalog
-- Test performance bottlenecks and optimization ideas
-
-
-## Auto-generated Evidence Seeds
-- README.md
-- AGENTS.md
-- .github/copilot-instructions.md
-- frontend/package.json
-- backend/requirements.txt
-- environment.yml
-- docs/codebase/.codebase-scan.txt
-
+- `.github/workflows/backend-ci.yml`
+- `backend/.pytest_cache/` (directory exists — pytest has been run locally)
+- `environment.yml` (pytest listed as dep)
+- `docs/codebase/.codebase-scan.txt` (no `tests/` directory in tree)

@@ -4,56 +4,43 @@
 
 ### 1) Integration Inventory
 
-| System | Type (API/DB/Queue/etc) | Purpose | Auth model | Criticality | Evidence |
-| --- | --- | --- | --- | --- | --- |
-| [name] | [type] | [purpose] | [auth] | [high/med/low] | [file] |
-
-### 2) Data Stores
-
-| Store | Role | Access layer | Key risk | Evidence |
+| Integration | Type | Direction | Auth method | Evidence |
 | --- | --- | --- | --- | --- |
-| [db/cache/etc] | [role] | [module] | [risk] | [file] |
+| Google OAuth 2.0 | Identity provider | Inbound (user login) | Google ID token (JWT) in `Authorization: Bearer` header | `backend/auth.py`, `frontend/src/main.jsx` |
+| Microsoft Word (COM) | Local process | Backend → Word | None (OS-level COM on Windows) | `backend/requirements.txt` (`docx2pdf`), `README.md` |
+| SMTP (Gmail or other) | Email transport | Backend → external | Username + password/app key from env | `backend/app.py` (`/api/email`), `chamber19_desktop_toolkit` |
+| GitHub (release dispatch) | CI notification | CI → GitHub API | `LAUNCHER_DISPATCH_TOKEN` secret (PAT with `repo` scope) | `.github/workflows/release.yml` |
+| `chamber-19/launcher` | Sibling repo | Post-release event dispatch | `LAUNCHER_DISPATCH_TOKEN` | `.github/workflows/release.yml` |
+| `chamber-19/desktop-toolkit` | Python library (git dep) | Backend import | None (git+https install) | `backend/requirements.txt` |
+| SQLite | Local database | Backend read/write | None (file on disk) | `backend/database.py` |
 
-### 3) Secrets and Credentials Handling
+### 2) Google OAuth Details
 
-- Credential sources: [env/secrets manager/config]
-- Hardcoding checks: [result]
-- Rotation or lifecycle notes: [known/unknown]
+- Client ID set via `GOOGLE_CLIENT_ID` env var on backend and `VITE_GOOGLE_CLIENT_ID` on frontend.
+- Backend verifies tokens with `google.oauth2.id_token.verify_oauth2_token()` (online verification against Google's public keys).
+- Allow-list enforcement via `ALLOWED_EMAILS` env var (comma-separated) or `backend/allowed_emails.json` file.
+- `DISABLE_AUTH=1` bypasses all auth for local development.
 
-### 4) Reliability and Failure Behavior
+### 3) Microsoft Word Dependency
 
-- Retry/backoff behavior: [implemented/none/partial]
-- Timeout policy: [where configured]
-- Circuit-breaker or fallback behavior: [if any]
+- `docx2pdf` converts rendered `.docx` files to PDF via Word COM automation.
+- **Hard requirement**: Microsoft Word must be installed on the machine running the backend.
+- Without Word, `/api/render` and `/api/render-to-folder` fail for PDF/ZIP output.
+- `output_format=docx` (not currently exposed as a route param) would work without Word.
+- This makes the backend **Windows-only in production** for full functionality.
 
-### 5) Observability for Integrations
+### 4) chamber19-desktop-toolkit
 
-- Logging around external calls: [yes/no + where]
-- Metrics/tracing coverage: [yes/no + where]
-- Missing visibility gaps: [list]
+- Installed via `git+https://github.com/chamber-19/desktop-toolkit@v2.3.2#subdirectory=python`.
+- Provides: `docx_to_pdf()`, `merge_source_pdfs()`, `send_email()`.
+- **Not on PyPI** — requires git access to `chamber-19/desktop-toolkit` at install time.
+- Pinned to tag `v2.3.2`. Bumps require manual `requirements.txt` update.
 
-### 6) Evidence
+### 5) Evidence
 
-- [path/to/integration-wrapper]
-- [path/to/config-or-env-template]
-- [path/to/monitoring-or-logging-config]
-
-## Extended Sections (Optional)
-
-Add only when needed:
-
-- Endpoint-by-endpoint catalog
-- Auth flow sequence diagrams
-- SLA/SLO per integration
-- Region/failover topology notes
-
-
-## Auto-generated Evidence Seeds
-- README.md
-- AGENTS.md
-- .github/copilot-instructions.md
-- frontend/package.json
-- backend/requirements.txt
-- environment.yml
-- docs/codebase/.codebase-scan.txt
-
+- `backend/auth.py`
+- `backend/requirements.txt`
+- `backend/app.py` (email route)
+- `.github/workflows/release.yml`
+- `frontend/src/main.jsx`
+- `README.md` (PDF Conversion section)

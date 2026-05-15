@@ -105,6 +105,7 @@ No .env.example or .env.template found. Identify required environment variables 
 None found.
 
 === GIT RECENT COMMITS (last 20) ===
+f25c397 chore: add documentation files for codebase architecture, concerns, conventions, integrations, stack, structure, and testing patterns
 5622070 Add Vite configuration for React application
 cc96fd7 chore: prepare v6.3.3 release notes
 6ab44ce chore: dispatch backend-released event to launcher on release
@@ -124,7 +125,6 @@ b6e0add Remove Vercel reference from frontend/.env.example
 f06e340 Add .gitattributes with explicit line-ending rules per file type
 21609d5 Initial plan
 eb9a918 Initial plan
-eff6754 Merge pull request #144 from chamber-19/copilot/check-tauri-rust-support
 
 === HIGH-CHURN FILES (last 90 days, top 20) ===
   48 frontend/src/App.jsx
