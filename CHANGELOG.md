@@ -21,6 +21,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [6.3.3] — 2026-05-10
+
+### Changed
+
+- `.github/workflows/release.yml` now dispatches `backend-released` to `chamber-19/launcher` after publishing a GitHub release, with payload `{ "backend_id": "transmittal-builder", "version": APP_VERSION }`.
+- Dispatch step is guarded with `if: ${{ secrets.LAUNCHER_DISPATCH_TOKEN != '' }}` so releases skip cleanly until the secret is configured.
+- Documented release secret requirement: `LAUNCHER_DISPATCH_TOKEN` must be a PAT with `repo` scope that can dispatch to `chamber-19/launcher`.
+
+---
+
 ## [4.0.2] — 2026-05-10
 
 ### Changed

@@ -1,4 +1,6 @@
 
+.env
+
 # PyInstaller build output
 build-sidecar/
 dist-sidecar/

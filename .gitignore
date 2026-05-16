@@ -28,3 +28,11 @@ latest.json
 
 # Auth token files
 /.npmrc
+
+# Runtime-generated data (never commit)
+backend/access.log
+backend/data/*.db
+backend/data/user_profiles.json
+backend/data/project_registry.json
+.pytest_cache/
+backend/.pytest_cache/

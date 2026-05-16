@@ -2,18 +2,28 @@
 Transmittal Builder — Backend API
 
 Routes:
-    POST /api/parse-index       Parse an Excel drawing index → document rows
-    POST /api/render            Render transmittal → ZIP package (docx + pdf + drawings)
-    POST /api/email             Send transmittal via SMTP
-    GET  /api/scan-projects     Scan a root directory for project folders
-    POST /api/scan-folder       Deep-scan a specific project folder
-    POST /api/render-to-folder  Render transmittal and write output directly to disk
+    GET  /api/health              Health check (unauthenticated)
+    GET  /api/auth/me             Returns authenticated user info
+    POST /api/parse-index         Parse an Excel drawing index → document rows
+    POST /api/render              Render transmittal → ZIP package (docx + pdf + drawings)
+    POST /api/email               Send transmittal via SMTP
+    GET  /api/scan-projects       Scan a root directory for project folders
+    POST /api/scan-folder         Deep-scan a specific project folder
+    POST /api/render-to-folder    Render transmittal and write output directly to disk
 
 Run:
     uvicorn app:app --reload --port 8000
+
+Auth:
+    All endpoints except /api/health require a Google ID token in the
+    Authorization: Bearer <token> header.
+    Set DISABLE_AUTH=1 to bypass for local dev.
 """
 
 from __future__ import annotations
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import json
 import os
@@ -21,9 +31,10 @@ import re
 import shutil
 import tempfile
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -32,6 +43,8 @@ from core.render import render_transmittal, _normalize_xmtl_num
 from core.excel_parser import parse_drawing_index
 
 from chamber19_desktop_toolkit.utils.pdf_merge import docx_to_pdf, merge_source_pdfs  # type: ignore
+from auth import require_auth, log_access
+import database
 
 
 # ─── Copy-intent checkbox key → abbreviation mapping ─────────
@@ -67,14 +80,13 @@ def _parse_date_to_yyyymmdd(date_str: str) -> str:
             return datetime.strptime(date_str, fmt).strftime("%Y%m%d")
         except ValueError:
             continue
-    # Fallback: today's date
     return datetime.now().strftime("%Y%m%d")
 
 
 def _build_combined_pdf_name(job_label: str, project_desc: str, checks: dict,
                               date_str: str) -> str:
     """
-    Build the combined PDF filename in the format:
+    Build the combined PDF filename:
     JOB-25074 - NANULAK 180MW BESS SUBSTATION - IFP_20251017.pdf
     """
     intent = _get_copy_intent_abbrev(checks)
@@ -94,15 +106,33 @@ def _build_combined_pdf_name(job_label: str, project_desc: str, checks: dict,
 app = FastAPI(
     title="Transmittal Builder",
     version=os.getenv("APP_VERSION", "dev"),
-    description="Backend API for the Transmittal Builder desktop app",
+    description="Backend API for the Transmittal Builder web app",
 )
+
+_origins = [
+    o.strip()
+    for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    if o.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Lock this down in production
+    allow_origins=_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _access_log(request: Request, call_next):
+    response = await call_next(request)
+    user = getattr(request.state, "user", None)
+    if user:
+        ip = request.client.host if request.client else ""
+        log_access(user["email"], request.method, str(request.url.path), response.status_code, ip)
+    return response
+
 
 # Track temp dirs for cleanup
 _temp_dirs: list[str] = []
@@ -123,11 +153,251 @@ def _save_upload(upload: UploadFile, dest_dir: str, filename: str = None) -> str
     return path
 
 
-# ─── Health Check ─────────────────────────────────────────────
+# ─── User profiles ────────────────────────────────────────────
+
+_PROFILE_PATH = os.getenv(
+    "USER_PROFILE_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "user_profiles.json"),
+)
+_DEVELOPER_EMAIL = os.getenv("DEVELOPER_EMAIL", "")
+
+
+def _read_profiles() -> dict:
+    try:
+        with open(_PROFILE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _write_profiles(profiles: dict) -> None:
+    os.makedirs(os.path.dirname(_PROFILE_PATH), exist_ok=True)
+    with open(_PROFILE_PATH, "w", encoding="utf-8") as f:
+        json.dump(profiles, f, indent=2, ensure_ascii=False)
+
+
+class ProfileRequest(BaseModel):
+    display_name: str
+
+
+# ─── Health Check (unauthenticated) ───────────────────────────
 
 @app.get("/api/health")
 def health():
     return {"status": "healthy", "service": "transmittal-builder-backend", "version": os.getenv("APP_VERSION", "dev")}
+
+
+# ─── Auth: current user ───────────────────────────────────────
+
+@app.get("/api/auth/me")
+def auth_me(user: dict = Depends(require_auth)):
+    """Returns the authenticated user's Google profile info including display name."""
+    profiles = _read_profiles()
+    email = user.get("email", "")
+    profile = profiles.get(email, {})
+    return {
+        **user,
+        "display_name": profile.get("display_name") or None,
+        "is_developer": email == _DEVELOPER_EMAIL,
+    }
+
+
+@app.post("/api/auth/profile")
+def update_profile(req: ProfileRequest, user: dict = Depends(require_auth)):
+    """Save or update the authenticated user's display name."""
+    profiles = _read_profiles()
+    email = user.get("email", "")
+    profiles[email] = {
+        **profiles.get(email, {}),
+        "display_name": req.display_name.strip(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    _write_profiles(profiles)
+    return {"success": True, "display_name": req.display_name.strip()}
+
+
+# ─── GET /api/browse ─────────────────────────────────────────
+
+@app.get("/api/browse")
+def api_browse(path: str = "", user: dict = Depends(require_auth)):
+    """
+    Return the immediate child directories of *path*.
+    If *path* is empty, return available drive letters on Windows (or / on Unix).
+    """
+    import string, sys
+
+    if not path:
+        if sys.platform == "win32":
+            drives = [f"{d}:\\" for d in string.ascii_uppercase if os.path.exists(f"{d}:\\")]
+            return {"path": "", "parent": None, "entries": [{"name": d, "path": d} for d in drives]}
+        return {"path": "/", "parent": None, "entries": [{"name": "/", "path": "/"}]}
+
+    path = os.path.normpath(path)
+    if not os.path.isdir(path):
+        raise HTTPException(404, f"Path not found: {path}")
+
+    try:
+        entries = sorted(
+            ({"name": e.name, "path": e.path} for e in os.scandir(path) if e.is_dir()),
+            key=lambda x: x["name"].lower(),
+        )
+    except PermissionError as exc:
+        raise HTTPException(403, f"Access denied: {exc}") from exc
+
+    parent_path = str(Path(path).parent)
+    parent = None if os.path.normpath(parent_path) == os.path.normpath(path) else parent_path
+
+    return {"path": path, "parent": parent, "entries": entries}
+
+
+# ─── POST /api/zip-folder ─────────────────────────────────────
+
+class ZipFolderRequest(BaseModel):
+    folder_path: str
+
+
+@app.post("/api/zip-folder")
+def api_zip_folder(req: ZipFolderRequest, user: dict = Depends(require_auth)):
+    """Zip the contents of an XMTL folder and return it for download."""
+    import zipfile as _zipfile
+    folder_path = os.path.normpath(req.folder_path)
+    if not os.path.isdir(folder_path):
+        raise HTTPException(400, f"Folder does not exist: {folder_path}")
+    folder_name = os.path.basename(folder_path)
+    work_dir = _make_work_dir()
+    zip_path = os.path.join(work_dir, f"{folder_name}.zip")
+    try:
+        with _zipfile.ZipFile(zip_path, "w", _zipfile.ZIP_DEFLATED) as zf:
+            for entry in sorted(os.scandir(folder_path), key=lambda e: e.name):
+                if entry.is_file():
+                    zf.write(entry.path, arcname=entry.name)
+        return FileResponse(zip_path, media_type="application/zip", filename=f"{folder_name}.zip")
+    except Exception as e:
+        raise HTTPException(500, f"Failed to zip folder: {e}")
+
+
+# ─── Project registry ─────────────────────────────────────────
+
+_REGISTRY_PATH = os.getenv(
+    "PROJECT_REGISTRY_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "project_registry.json"),
+)
+
+
+# ─── Database startup ─────────────────────────────────────────
+
+@app.on_event("startup")
+def _startup():
+    database.init_db()
+    database.migrate_from_registry(_REGISTRY_PATH)
+
+
+class TouchProjectRequest(BaseModel):
+    path: str
+    job_num: str = ""
+    client_site: str = ""
+    next_xmtl_num: str = ""
+
+
+class DeleteProjectRequest(BaseModel):
+    path: str
+
+
+@app.get("/api/projects/recent")
+def api_projects_recent(user: dict = Depends(require_auth)):
+    """Return up to 20 recently opened projects from the database."""
+    rows = database.get_recent_projects(limit=20)
+    # Normalise field names to match what the frontend already expects
+    projects = [
+        {
+            "path":          r["path"],
+            "job_num":       r.get("job_num") or "",
+            "client_site":   r.get("client_site") or "",
+            "next_xmtl_num": r.get("next_xmtl") or "",
+            "opened_by":     r.get("opened_by") or "",
+            "opened_at":     r.get("last_opened") or "",
+        }
+        for r in rows
+    ]
+    return {"projects": projects}
+
+
+@app.post("/api/projects/touch")
+def api_projects_touch(req: TouchProjectRequest, user: dict = Depends(require_auth)):
+    """Record that a project was opened (upsert into DB)."""
+    folder_name = os.path.basename(req.path)
+    email = user.get("email", "")
+    display_name = _read_profiles().get(email, {}).get("display_name") or email
+    database.touch_project(
+        path=req.path,
+        job_num=req.job_num or _parse_project_name(folder_name)[0],
+        client_site=req.client_site or _parse_project_name(folder_name)[1],
+        opened_by=display_name,
+        next_xmtl_num=req.next_xmtl_num,
+    )
+    return {"success": True}
+
+
+@app.delete("/api/projects/recent")
+def api_projects_recent_delete(req: DeleteProjectRequest, user: dict = Depends(require_auth)):
+    """Remove a project from the DB. Developer only."""
+    if user.get("email", "") != _DEVELOPER_EMAIL:
+        raise HTTPException(403, "Developer access required")
+    database.remove_project(req.path)
+    return {"success": True}
+
+
+# ─── Transmittal history ──────────────────────────────────────
+
+class ProjectPathRequest(BaseModel):
+    project_path: str
+
+
+@app.post("/api/projects/transmittals")
+def api_transmittal_history(req: ProjectPathRequest, user: dict = Depends(require_auth)):
+    """Return logged transmittal history for a project path."""
+    return {"transmittals": database.get_transmittal_history(req.project_path)}
+
+
+class CheckDuplicatesRequest(BaseModel):
+    project_path: str
+    doc_nos: list[str]
+
+
+@app.post("/api/drawings/check-duplicates")
+def api_check_duplicates(req: CheckDuplicatesRequest, user: dict = Depends(require_auth)):
+    """Check whether any of the supplied doc_nos were previously transmitted."""
+    return {"duplicates": database.check_duplicate_drawings(req.project_path, req.doc_nos)}
+
+
+# ─── Contact groups (address book) ───────────────────────────
+
+@app.get("/api/contacts/groups")
+def api_get_contact_groups(user: dict = Depends(require_auth)):
+    return {"groups": database.get_contact_groups()}
+
+
+class SaveGroupRequest(BaseModel):
+    company_name: str
+    contacts: list[dict]
+
+
+@app.post("/api/contacts/groups")
+def api_save_contact_group(req: SaveGroupRequest, user: dict = Depends(require_auth)):
+    if not req.company_name.strip():
+        raise HTTPException(400, "company_name is required")
+    result = database.save_contact_group(req.company_name.strip(), req.contacts)
+    return {"success": True, **result}
+
+
+class DeleteGroupRequest(BaseModel):
+    group_id: int
+
+
+@app.delete("/api/contacts/groups")
+def api_delete_contact_group(req: DeleteGroupRequest, user: dict = Depends(require_auth)):
+    database.delete_contact_group(req.group_id)
+    return {"success": True}
 
 
 # ─── POST /api/parse-index ────────────────────────────────────
@@ -135,12 +405,11 @@ def health():
 @app.post("/api/parse-index")
 async def api_parse_index(
     file: UploadFile = File(...),
+    user: dict = Depends(require_auth),
 ):
     """
     Upload an Excel drawing index file.
     Returns parsed document rows: [{doc_no, desc, rev}, ...]
-    
-    Requires activation token (Bearer token in Authorization header).
     """
     if not file.filename:
         raise HTTPException(400, "No file provided.")
@@ -170,25 +439,31 @@ async def api_parse_index(
 
 # ─── Filesystem helpers ───────────────────────────────────────
 
-# Pattern matching typical job numbers like "R3P-2401", "ABC-1234", etc.
 _JOB_NUM_RE = re.compile(r'^([A-Z][A-Z0-9]*-\d{3,})', re.IGNORECASE)
-# Pattern matching numeric-prefixed job numbers like "25074-HEN"
 _JOB_NUM_RE2 = re.compile(r'^(\d+[A-Z]?-[A-Z]{2,})', re.IGNORECASE)
-# Transmittals folder name detector
+_JOB_NUM_NUMERIC_RE = re.compile(r'^(\d{4,})')
+_EMBEDDED_TEMPLATE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "templates", "transmittal_template.docx"
+)
 _TRANSMITTALS_NAME_RE = re.compile(r'transmittal', re.IGNORECASE)
-# Numbered department folder pattern like "01-ENGINEERING"
 _DEPT_FOLDER_RE = re.compile(r'^\d{2}-')
 
 
 def _parse_project_name(folder_name: str) -> tuple[str, str]:
-    """
-    Split a project folder name into (job_num, client_site).
+    """Split a project folder name into (job_num, client_site).
 
-    Handles two naming conventions:
-      "ABC-2401-Project-Name"                   → ("ABC-2401", "Project Name")
-      "25074-HEN - NANULAK 180 MW BESS DESIGN"  → ("25074-HEN", "NANULAK 180 MW BESS DESIGN")
+    Priority: pure-numeric prefix (25074-HEN → "25074"), then alphanumeric patterns.
     """
-    # Try primary pattern first (letter-led: e.g. ABC-2401)
+    # Pure-numeric project numbers: "25074-HEN - NANULAK 180 MW BESS E&I DESIGN"
+    mn = _JOB_NUM_NUMERIC_RE.match(folder_name)
+    if mn:
+        job_num = mn.group(1)
+        rest = folder_name[mn.end():]  # e.g. "-HEN - NANULAK 180 MW BESS E&I DESIGN"
+        if " - " in rest:
+            client_site = rest.split(" - ", 1)[1].strip()
+        else:
+            client_site = rest.lstrip("-").strip()
+        return job_num, client_site
     m = _JOB_NUM_RE.match(folder_name)
     if m:
         job_num = m.group(1).upper()
@@ -198,7 +473,6 @@ def _parse_project_name(folder_name: str) -> tuple[str, str]:
         else:
             client_site = rest.lstrip("-").replace("-", " ").strip()
         return job_num, client_site
-    # Try secondary pattern (digit-led: 25074-HEN)
     m2 = _JOB_NUM_RE2.match(folder_name)
     if m2:
         job_num = m2.group(1).upper()
@@ -212,11 +486,6 @@ def _parse_project_name(folder_name: str) -> tuple[str, str]:
 
 
 def _is_transmittals_folder(folder_name: str, folder_path: str) -> bool:
-    """
-    Return True if the folder appears to be a transmittals folder.
-    Checks both the folder name (contains 'transmittal') and its contents
-    (has at least one XMTL-* subfolder).
-    """
     if _TRANSMITTALS_NAME_RE.search(folder_name):
         return True
     try:
@@ -229,7 +498,6 @@ def _is_transmittals_folder(folder_name: str, folder_path: str) -> bool:
 
 
 def _find_transmittals_subfolder(folder_path: str) -> Optional[str]:
-    """Return the path of the first transmittals subfolder found, or None."""
     try:
         for entry in os.scandir(folder_path):
             if entry.is_dir() and _is_transmittals_folder(entry.name, entry.path):
@@ -240,14 +508,6 @@ def _find_transmittals_subfolder(folder_path: str) -> Optional[str]:
 
 
 def _collect_pdf_sources(parent_path: str, exclude_path: Optional[str] = None, max_depth: int = 4) -> list[dict]:
-    """
-    Build a list of PDF source descriptors by recursively scanning subfolders of
-    *parent_path* up to *max_depth* levels deep, skipping *exclude_path*.
-
-    Each descriptor: {path, label, pdf_count, pdf_files}  where pdf_files is a
-    sorted list of *absolute* paths to the discovered PDFs and label is the
-    relative folder path using " / " as separator (e.g. "01-ENGINEERING / DRAWINGS / ISSUED").
-    """
     sources: list[dict] = []
     exclude_norm = os.path.normpath(exclude_path) if exclude_path else None
 
@@ -291,7 +551,6 @@ def _collect_pdf_sources(parent_path: str, exclude_path: Optional[str] = None, m
 
 
 def _load_contacts_from(folder_path: str) -> list[dict]:
-    """Try to load and return contacts from contacts.json in folder_path."""
     contacts_path = os.path.join(folder_path, "contacts.json")
     if os.path.isfile(contacts_path):
         try:
@@ -303,10 +562,6 @@ def _load_contacts_from(folder_path: str) -> list[dict]:
 
 
 def _get_next_xmtl_num(folder_path: str) -> str:
-    """
-    Scan for existing XMTL-NNN sub-folders and return the next available
-    three-digit number as a zero-padded string (e.g. "003").
-    """
     max_num = 0
     try:
         for entry in os.scandir(folder_path):
@@ -320,10 +575,6 @@ def _get_next_xmtl_num(folder_path: str) -> str:
 
 
 def _fuzzy_match(query: str, folder_name: str) -> bool:
-    """
-    Return True when every whitespace-separated token in *query* appears as a
-    case-insensitive substring anywhere in *folder_name*.
-    """
     if not query.strip():
         return True
     target = folder_name.lower()
@@ -331,16 +582,14 @@ def _fuzzy_match(query: str, folder_name: str) -> bool:
 
 
 def _build_project_meta(folder_path: str, folder_name: str) -> dict:
-    """Return lightweight metadata for a project folder (no deep scan)."""
     job_num, client_site = _parse_project_name(folder_name)
 
-    # Detect presence of key file types without reading them
     has_drawings = False
     has_index = False
     has_template = False
     has_contacts = False
     existing_xmtl: list[str] = []
-    xmtl_scan_dir = folder_path  # where to look for XMTL-* folders
+    xmtl_scan_dir = folder_path
 
     try:
         for entry in os.scandir(folder_path):
@@ -351,9 +600,8 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
                 elif n == "drawings":
                     has_drawings = True
                 elif _is_transmittals_folder(entry.name, entry.path):
-                    # Project root has a transmittals subfolder — use it for XMTL scanning
                     xmtl_scan_dir = entry.path
-                    has_drawings = True  # assume drawings exist somewhere
+                    has_drawings = True
             elif entry.is_file():
                 if n.endswith(".pdf"):
                     has_drawings = True
@@ -366,7 +614,6 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
     except OSError:
         pass
 
-    # If a transmittals subfolder was found, enumerate XMTL-* from there
     if xmtl_scan_dir != folder_path:
         try:
             for entry in os.scandir(xmtl_scan_dir):
@@ -397,14 +644,11 @@ def _build_project_meta(folder_path: str, folder_name: str) -> dict:
 def api_scan_projects(
     root: str,
     query: str = "",
+    user: dict = Depends(require_auth),
 ):
     """
     Scan immediate subdirectories of *root* and return project metadata.
-
-    Optional *query* performs fuzzy text filtering (all words in query must
-    appear in the folder name, case-insensitive).
-    
-    Requires activation token (Bearer token in Authorization header).
+    Optional *query* performs fuzzy text filtering.
     """
     root = os.path.normpath(root)
     if not os.path.isdir(root):
@@ -421,16 +665,10 @@ def api_scan_projects(
 
     seen_paths: set[str] = set()
     for entry in entries:
-        # Skip numbered department folders ("01-ENGINEERING") and any
-        # transmittals subfolder — these are *inside* a project, not
-        # projects themselves. Without this filter, scanning a project
-        # root makes folders like "06-TRANSMITTALS" appear in the project
-        # picker (and clicking twice was registering as two adds).
         if _DEPT_FOLDER_RE.match(entry.name):
             continue
         if _is_transmittals_folder(entry.name, entry.path):
             continue
-        # Defensive dedupe by normalized path
         norm = os.path.normpath(entry.path).lower()
         if norm in seen_paths:
             continue
@@ -450,33 +688,11 @@ class ScanFolderRequest(BaseModel):
 @app.post("/api/scan-folder")
 def api_scan_folder(
     req: ScanFolderRequest,
+    user: dict = Depends(require_auth),
 ):
     """
     Deep-scan a specific project folder.
-
-    Supports multi-level folder structures:
-
-    **Transmittals folder** (contains XMTL-* subfolders or name contains "transmittal"):
-      - Walks up to infer the project root (skipping numbered dept folders)
-      - Scans sibling folders for PDF sources, index/template files
-      - Returns output_dir = the transmittals folder itself
-
-    **Department subfolder** (name starts with two digits + dash, e.g. "01-ENGINEERING"):
-      - Walks up to the project root
-      - Finds the transmittals sibling folder for XMTL numbering
-      - Collects PDF sources from ALL sibling dept folders
-      - Returns output_dir = transmittals sibling (or project root if none)
-
-    **Project root** (contains numbered department subfolders like "01-*"):
-      - Locates the transmittals subfolder within it
-      - Scans department subfolders for PDF sources
-      - Returns output_dir = transmittals subfolder (or the root if none found)
-
-    **Flat structure** (original behavior fallback):
-      - Scans for PDFs, index, template, XMTL folders at the top level
-      - Returns output_dir = the selected folder
-      
-    Requires activation token (Bearer token in Authorization header).
+    Handles transmittals folders, dept subfolders, project roots, and flat structures.
     """
     folder_path = os.path.normpath(req.folder_path)
     if not os.path.isdir(folder_path):
@@ -484,9 +700,7 @@ def api_scan_folder(
 
     folder_name = os.path.basename(folder_path)
 
-    # ── Classify the selected folder ──────────────────────────
     is_xmtl_folder = _is_transmittals_folder(folder_name, folder_path)
-    # A numbered dept subfolder (e.g. "01-ENGINEERING") that is NOT itself a transmittals folder
     is_dept_folder = bool(_DEPT_FOLDER_RE.match(folder_name)) and not is_xmtl_folder
 
     has_dept_subfolders = False
@@ -501,52 +715,38 @@ def api_scan_folder(
 
     transmittals_folder: Optional[str] = None
     project_root: Optional[str] = None
-    # NOTE: pdf_sources is intentionally always [] now — the frontend's
-    # "PDF Sources Found" panel was removed in v5.0 in favor of the
-    # drag-and-drop dropzone, and computing the recursive walk on every
-    # project load was both expensive and unused. The field is kept in the
-    # response for backward compatibility with older clients.
     pdf_sources: list[dict] = []
 
     if is_xmtl_folder:
-        # ── Case A: selected folder IS the transmittals folder ──
         transmittals_folder = folder_path
         parent = os.path.dirname(folder_path)
         parent_name = os.path.basename(parent)
-        # If the parent is a numbered dept folder, skip up one more level
         if _DEPT_FOLDER_RE.match(parent_name):
             candidate = os.path.dirname(parent)
         else:
             candidate = parent
-        # Validate the candidate exists; fall back to parent if not
         project_root = candidate if os.path.isdir(candidate) else parent
         job_num, client_site = _parse_project_name(os.path.basename(project_root))
         output_dir = transmittals_folder
 
     elif is_dept_folder:
-        # ── Case D: selected folder is a numbered dept subfolder ──
-        # (e.g. user selected "01-ENGINEERING" from the dropdown)
-        # Walk up to the project root and anchor the scan there.
         project_root = os.path.dirname(folder_path)
         job_num, client_site = _parse_project_name(os.path.basename(project_root))
         transmittals_folder = _find_transmittals_subfolder(project_root)
         output_dir = transmittals_folder or project_root
 
     elif has_dept_subfolders:
-        # ── Case B: selected folder is a project root ────────
         project_root = folder_path
         job_num, client_site = _parse_project_name(folder_name)
         transmittals_folder = _find_transmittals_subfolder(folder_path)
         output_dir = transmittals_folder or folder_path
 
     else:
-        # ── Case C: flat / legacy structure ──────────────────
         project_root = folder_path
         transmittals_folder = None
         job_num, client_site = _parse_project_name(folder_name)
         output_dir = folder_path
 
-    # ── Determine the directory to scan for XMTL-* folders ──
     scan_dir = transmittals_folder or output_dir
 
     existing_xmtl: list[str] = []
@@ -561,7 +761,6 @@ def api_scan_folder(
         except ValueError:
             return path
 
-    # ── Scan transmittals/output dir for XMTL folders + contacts ──
     try:
         for entry in os.scandir(scan_dir):
             n = entry.name.lower()
@@ -577,11 +776,9 @@ def api_scan_folder(
     except OSError:
         pass
 
-    # Fall back to project root contacts if not found in transmittals folder
     if not contacts and project_root and project_root != scan_dir:
         contacts = _load_contacts_from(project_root)
 
-    # ── Scan project root + dept subfolders for index/template files ──
     if project_root:
         try:
             for entry in os.scandir(project_root):
@@ -594,7 +791,6 @@ def api_scan_folder(
                     elif n.endswith(".pdf"):
                         flat_pdfs.append(_rel(entry.path))
                 elif entry.is_dir() and not _is_transmittals_folder(entry.name, entry.path):
-                    # Shallow scan of dept subfolders for index/template files
                     try:
                         for sub in os.scandir(entry.path):
                             sn = sub.name.lower()
@@ -608,7 +804,6 @@ def api_scan_folder(
         except OSError:
             pass
 
-    # ── Flat-only extras: scan "drawings" subfolder ───────────
     if not is_xmtl_folder and not has_dept_subfolders:
         try:
             for entry in os.scandir(folder_path):
@@ -650,7 +845,7 @@ def api_scan_folder(
 
 @app.post("/api/render-to-folder")
 async def api_render_to_folder(
-    template: UploadFile = File(..., description="Transmittal .docx template"),
+    template: Optional[UploadFile] = File(default=None, description="Transmittal .docx template (uses embedded template if omitted)"),
     fields: str = Form(..., description="JSON: project/sender fields"),
     checks: str = Form(..., description="JSON: checkbox states"),
     contacts: str = Form(..., description="JSON: [{name, company, email, phone}]"),
@@ -658,28 +853,15 @@ async def api_render_to_folder(
     output_dir: str = Form(..., description="Absolute path to the transmittals / project folder"),
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
     local_pdf_paths: str = Form(default="[]", description="JSON: list of absolute paths to local PDFs on disk"),
+    user: dict = Depends(require_auth),
 ):
     """
-    Render a transmittal package and write the output files directly to disk.
-
-    Creates an ``XMTL-NNN/`` sub-folder inside *output_dir*, writes the
-    rendered ``.docx``, ``.pdf``, and combined drawings PDF into it, and
-    saves a ``contacts.json`` file in both the XMTL folder and the project
-    root for easy reuse.
-
-    Source PDFs can be provided either as uploaded files (*pdfs*) or as a
-    JSON list of absolute local paths (*local_pdf_paths*).  Both may be used
-    together; duplicates (by basename) are silently dropped.
-
-    Returns JSON with the path to the created folder and the list of files
-    written.
-    
-    Requires activation token (Bearer token in Authorization header).
+    Render a transmittal package and write output directly to disk.
+    Creates XMTL-NNN/ inside output_dir.
     """
     work_dir = _make_work_dir()
 
     try:
-        # Parse JSON form fields
         try:
             fields_dict = json.loads(fields)
             checks_dict = json.loads(checks)
@@ -693,10 +875,13 @@ async def api_render_to_folder(
         if not os.path.isdir(output_dir):
             raise HTTPException(400, f"Output directory does not exist: {output_dir}")
 
-        # Save template to temp dir
-        template_path = _save_upload(template, work_dir, "template.docx")
+        if template and template.filename:
+            template_path = _save_upload(template, work_dir, "template.docx")
+        elif os.path.isfile(_EMBEDDED_TEMPLATE_PATH):
+            template_path = _EMBEDDED_TEMPLATE_PATH
+        else:
+            raise HTTPException(500, "No transmittal template available — embedded template not found.")
 
-        # Save source PDFs to temp dir
         pdf_dir = os.path.join(work_dir, "pdfs")
         os.makedirs(pdf_dir, exist_ok=True)
         saved_pdfs: list[str] = []
@@ -706,7 +891,6 @@ async def api_render_to_folder(
                 saved_pdfs.append(_save_upload(pdf, pdf_dir))
                 seen_names.add(pdf.filename.lower())
 
-        # Copy local PDFs directly from disk (avoid duplicate basenames)
         for lp in local_paths:
             lp = os.path.normpath(lp)
             bname = os.path.basename(lp).lower()
@@ -718,27 +902,21 @@ async def api_render_to_folder(
                 saved_pdfs.append(dest)
                 seen_names.add(bname)
 
-        # Determine output filenames. Strip any leading "XMTL-" the user may
-        # have typed so the filename never contains "XMTL-XMTL-001".
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
         raw_xmtl = fields_dict.get("transmittal_num", "").strip()
         xmtl_num = _normalize_xmtl_num(raw_xmtl) or _get_next_xmtl_num(output_dir)
         project_desc = fields_dict.get("project_desc", "").strip()
         date_str = fields_dict.get("date", "")
-        # Pad to 3 digits if purely numeric; non-numeric values (e.g. "ABC") are
-        # passed through unchanged — this is intentional for non-standard numbering.
         xmtl_num_padded = xmtl_num.zfill(3) if xmtl_num.isdigit() else xmtl_num
-        # Preserve the job_num as-is if it already has a prefix; otherwise prepend "R3P-"
         job_label = job_num if job_num.upper().startswith("R3P-") else f"R3P-{job_num}"
-        # Transmittal letter filename: e.g. R3P-JobNumber-XMTL-016 - DOCUMENT INDEX
         base_name = f"{job_label}-XMTL-{xmtl_num_padded} - DOCUMENT INDEX"
 
-        # Create the XMTL output sub-folder
         xmtl_folder_name = f"XMTL-{xmtl_num_padded}"
         xmtl_folder = os.path.join(output_dir, xmtl_folder_name)
-        os.makedirs(xmtl_folder, exist_ok=True)
 
-        # Render the .docx into a temp file first
+        # Render everything into the temp work_dir first.
+        # The XMTL folder on disk is only created once all files are ready —
+        # a crash or restart during rendering leaves nothing behind.
         docx_tmp = os.path.join(work_dir, f"{base_name}.docx")
         render_transmittal(
             template_path=template_path,
@@ -750,12 +928,12 @@ async def api_render_to_folder(
             has_attached_drawings=bool(saved_pdfs),
         )
 
-        # Create transmittal PDF
         transmittal_pdf_tmp, error = docx_to_pdf(docx_tmp, work_dir)
         if not transmittal_pdf_tmp:
             raise HTTPException(500, f"Transmittal PDF generation failed: {error}")
 
-        # Copy final files into the XMTL output folder
+        # All rendering succeeded — now create the folder and copy files out.
+        os.makedirs(xmtl_folder, exist_ok=True)
         files_written: list[str] = []
 
         def _copy_to_xmtl(src: str, dest_name: str) -> str:
@@ -767,7 +945,6 @@ async def api_render_to_folder(
         _copy_to_xmtl(docx_tmp, f"{base_name}.docx")
         _copy_to_xmtl(transmittal_pdf_tmp, f"{base_name}.pdf")
 
-        # Create and copy merged drawings PDF only when source PDFs were provided
         if saved_pdfs:
             drawings_combined_name = _build_combined_pdf_name(
                 job_label, project_desc, checks_dict, date_str,
@@ -779,7 +956,6 @@ async def api_render_to_folder(
                 raise HTTPException(500, f"Drawing PDF merge failed: {e}")
             _copy_to_xmtl(drawings_combined_tmp, drawings_combined_name)
 
-        # Save contacts.json in the XMTL folder
         clean_contacts = [
             {k: c.get(k, "") for k in ("name", "company", "email", "phone")}
             for c in contacts_list
@@ -791,7 +967,6 @@ async def api_render_to_folder(
         files_written.append(contacts_xmtl)
 
         def _write_merged_contacts(target_dir: str) -> None:
-            """Merge clean_contacts into an existing contacts.json in target_dir."""
             contacts_path = os.path.join(target_dir, "contacts.json")
             existing: list[dict] = []
             if os.path.isfile(contacts_path):
@@ -800,7 +975,6 @@ async def api_render_to_folder(
                         existing = json.load(f)
                 except (OSError, json.JSONDecodeError):
                     existing = []
-            # Deduplicate by email (new contacts take precedence over existing ones)
             merged = {c.get("email", "").lower(): c for c in existing if c.get("email")}
             for c in clean_contacts:
                 if c.get("email"):
@@ -809,25 +983,37 @@ async def api_render_to_folder(
             with open(contacts_path, "w", encoding="utf-8") as f:
                 json.dump(merged_list, f, indent=2, ensure_ascii=False)
 
-        # Write/merge contacts.json at output_dir level (transmittals folder)
         _write_merged_contacts(output_dir)
 
-        # Also write/merge at the project root if output_dir is a transmittals folder
         output_dir_name = os.path.basename(output_dir)
         if _is_transmittals_folder(output_dir_name, output_dir):
             parent = os.path.dirname(output_dir)
             parent_name = os.path.basename(parent)
             candidate_root = os.path.dirname(parent) if _DEPT_FOLDER_RE.match(parent_name) else parent
-            # Only write to the project root if it exists and differs from output_dir
             if (os.path.isdir(candidate_root)
                     and os.path.normpath(candidate_root) != os.path.normpath(output_dir)):
                 _write_merged_contacts(candidate_root)
 
+        # Log the completed transmittal to the database for history + duplicate detection
+        try:
+            database.log_transmittal(
+                project_path=output_dir,
+                xmtl_num=xmtl_num_padded,
+                folder_name=xmtl_folder_name,
+                folder_path=xmtl_folder,
+                date=date_str,
+                sender_name=fields_dict.get("from_name", ""),
+                documents=documents_list,
+            )
+        except Exception:
+            pass  # log failure must never block a successful render
+
+        next_num = _get_next_xmtl_num(output_dir)
         return JSONResponse({
             "success": True,
             "xmtl_folder": xmtl_folder,
             "xmtl_folder_name": xmtl_folder_name,
-            "next_xmtl_num": _get_next_xmtl_num(output_dir),
+            "next_xmtl_num": next_num,
             "files_written": files_written,
         })
 
@@ -849,21 +1035,12 @@ async def api_render(
     contacts: str = Form(..., description="JSON: [{name, company, email, phone}]"),
     documents: str = Form(..., description="JSON: [{doc_no, desc, rev}]"),
     pdfs: List[UploadFile] = File(default=[], description="Source PDF documents"),
+    user: dict = Depends(require_auth),
 ):
-    """
-    Render a transmittal package.
-
-    Always returns a ZIP containing:
-        - the rendered transmittal .docx
-        - the rendered transmittal .pdf
-        - a merged PDF of the submitted drawing PDFs only
-        
-    Requires activation token (Bearer token in Authorization header).
-    """
+    """Render a transmittal package and return a ZIP download."""
     work_dir = _make_work_dir()
 
     try:
-        # Parse JSON form fields
         try:
             fields_dict = json.loads(fields)
             checks_dict = json.loads(checks)
@@ -872,10 +1049,8 @@ async def api_render(
         except json.JSONDecodeError as e:
             raise HTTPException(400, f"Invalid JSON in form data: {e}")
 
-        # Save template
         template_path = _save_upload(template, work_dir, "template.docx")
 
-        # Save source PDFs
         pdf_dir = os.path.join(work_dir, "pdfs")
         os.makedirs(pdf_dir, exist_ok=True)
         saved_pdfs: list[str] = []
@@ -883,20 +1058,15 @@ async def api_render(
             if pdf.filename and pdf.filename.lower().endswith(".pdf"):
                 saved_pdfs.append(_save_upload(pdf, pdf_dir))
 
-        # Build output filename. Strip any leading "XMTL-" the user may have
-        # typed so the filename never contains "XMTL-XMTL-001".
         job_num = fields_dict.get("job_num", "").strip() or "UNKNOWN"
         raw_xmtl = fields_dict.get("transmittal_num", "").strip()
         xmtl_num = _normalize_xmtl_num(raw_xmtl) or "001"
         project_desc = fields_dict.get("project_desc", "").strip()
         date_str = fields_dict.get("date", "")
         xmtl_num_padded = xmtl_num.zfill(3) if xmtl_num.isdigit() else xmtl_num
-        # Preserve the job_num as-is if it already has a prefix; otherwise prepend "R3P-"
         job_label = job_num if job_num.upper().startswith("R3P-") else f"R3P-{job_num}"
-        # Transmittal letter filename: e.g. R3P-JobNumber-XMTL-016 - DOCUMENT INDEX
         base_name = f"{job_label}-XMTL-{xmtl_num_padded} - DOCUMENT INDEX"
 
-        # Render the .docx
         docx_out = os.path.join(work_dir, f"{base_name}.docx")
         render_transmittal(
             template_path=template_path,
@@ -908,12 +1078,10 @@ async def api_render(
             has_attached_drawings=bool(saved_pdfs),
         )
 
-        # Create transmittal PDF
         transmittal_pdf_path, error = docx_to_pdf(docx_out, work_dir)
         if not transmittal_pdf_path:
             raise HTTPException(500, f"Transmittal PDF generation failed: {error}")
 
-        # Return package ZIP
         import zipfile
         zip_name = f"{job_label}-XMTL-{xmtl_num_padded}-Package.zip"
         zip_path = os.path.join(work_dir, zip_name)
@@ -921,7 +1089,6 @@ async def api_render(
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.write(docx_out, arcname=f"{base_name}.docx")
             zf.write(transmittal_pdf_path, arcname=f"{base_name}.pdf")
-            # Include merged drawings PDF only when source PDFs were provided
             if saved_pdfs:
                 drawings_combined_name = _build_combined_pdf_name(
                     job_label, project_desc, checks_dict, date_str,
@@ -963,13 +1130,9 @@ class EmailRequest(BaseModel):
 @app.post("/api/email")
 async def api_email(
     req: EmailRequest,
+    user: dict = Depends(require_auth),
 ):
-    """
-    Send a transmittal email.
-    Note: SMTP credentials must be provided per-request or via env vars.
-    
-    Requires activation token (Bearer token in Authorization header).
-    """
+    """Send a transmittal email via SMTP."""
     from chamber19_desktop_toolkit.utils.email_sender import send_email  # type: ignore
 
     sender = req.sender or os.environ.get("SMTP_SENDER", "")
@@ -1006,14 +1169,6 @@ def cleanup_temp_dirs():
 
 
 # ─── PyInstaller / sidecar entry point ───────────────────────
-# When the backend is bundled as a standalone executable by PyInstaller
-# and launched by the Tauri Rust shell, this block runs:
-#   1. Reads TRANSMITTAL_BACKEND_PORT env var (set by Rust) or picks a
-#      free OS port.
-#   2. Prints the actual port on stdout so Rust can capture it.
-#   3. Starts uvicorn on that port.
-# In normal development (`uvicorn app:app --port 8000`) this block is
-# never reached.
 
 if __name__ == "__main__":
     import socket
@@ -1026,13 +1181,10 @@ if __name__ == "__main__":
         port = 0
 
     if port == 0:
-        # Ask the OS for a free port.
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _s:
             _s.bind(("127.0.0.1", 0))
             port = _s.getsockname()[1]
 
-    # ── First line of stdout must be the port number ───────────────
-    # The Tauri Rust launcher reads this before the server is ready.
     print(port, flush=True)
 
     uvicorn.run(
