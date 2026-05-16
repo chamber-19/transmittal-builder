@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD024 -->
+
 # Changelog
 
 All notable changes to Transmittal Builder are documented here.
@@ -9,16 +11,40 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### 2026-05-10
+
+#### Changed
+
+- `docs/OPERATOR_RUNBOOK.md` — removed stale pre-refactor Tauri/NSIS and deleted-script references; release checklist now matches backend-only + auto-tag release flow.
+- `docs/CONDA.md` — removed frontend/Tauri compile commands and kept backend-only daily commands.
+- `.gitignore` — removed legacy `frontend/src-tauri` and NSIS artifact ignore patterns now that the frontend shell is no longer in this repo.
+
+---
+
+## [6.3.3] — 2026-05-10
+
 ### Changed
 
-- Launcher frontend now attaches `Authorization: Bearer <activation_token>`
-  to backend API calls (`/api/health`, `/api/scan-projects`,
-  `/api/scan-folder`, `/api/parse-index`, `/api/render`,
-  `/api/render-to-folder`) when an activation token exists in local storage.
-  This aligns launcher request behavior with backend auth middleware.
-- Launcher frontend now fails fast in activation-enforced builds when no
-  activation token is present, showing an explicit re-activation message
-  instead of repeatedly retrying backend startup.
+- `.github/workflows/release.yml` now dispatches `backend-released` to `chamber-19/launcher` after publishing a GitHub release, with payload `{ "backend_id": "transmittal-builder", "version": APP_VERSION }`.
+- Dispatch step is guarded with `if: ${{ secrets.LAUNCHER_DISPATCH_TOKEN != '' }}` so releases skip cleanly until the secret is configured.
+- Documented release secret requirement: `LAUNCHER_DISPATCH_TOKEN` must be a PAT with `repo` scope that can dispatch to `chamber-19/launcher`.
+
+---
+
+## [4.0.2] — 2026-05-10
+
+### Changed
+
+- Launcher now attaches `Authorization: Bearer <activation_token>` to all
+  backend API calls when an activation token exists. Backend auth middleware
+  aligned to expect this header.
+- Launcher now fails fast when no activation token is present in
+  activation-enforced builds, showing an explicit re-activation message
+  instead of retrying backend startup.
+- Version is now read from `APP_VERSION` env var at startup — set by CI
+  from the git tag. Returns `"dev"` in local development.
+- Release process automated: push to `main` with a new CHANGELOG version
+  entry → CI auto-tags → builds PyInstaller binary → publishes GitHub Release.
 
 ---
 
@@ -39,6 +65,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - PIN activation enforcement is now build-gated and enabled only for packaged
   builds (`TB_ENFORCE_PIN=1` in release workflow). Local dev/agent runs remain
   unblocked by default.
+- Release workflow replaced with backend-only CI: tests + health check + GitHub release
+  (no NSIS installer build, no Tauri packaging)
+- New E2E documentation cleanup across org repos with markdown formatting standards
 
 ### Added
 
@@ -49,12 +78,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - New end-user install/update/PIN guide in `USER_MANUAL.md`.
 - Expanded agent/copilot guidance in `.github/copilot-instructions.md`,
   `AGENTS.md`, and `.github/instructions/desktop-sidecar.instructions.md`.
-
-### Ops
-
-- Release workflow replaced with backend-only CI: tests + health check + GitHub release
-  (no NSIS installer build, no Tauri packaging)
-- New E2E documentation cleanup across org repos with markdown formatting standards
 
 ## [6.3.2] — 2026-04-25
 
@@ -74,8 +97,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   verify that the new update modal correctly renders formatted markdown
   in release notes (a feature shipped in v6.3.0 but only visible when
   updating _from_ v6.3.0 to a later version).
-
-### Renderer test cases
 
 The following markdown features should all render correctly in the
 update modal you're seeing right now:
@@ -124,10 +145,6 @@ function hello() {
 
 - Nothing. This is a pure version bump.
 
-### Changed
-
-- Nothing. This is a pure version bump.
-
 ## [6.3.0] — 2026-04-25
 
 ### Changed
@@ -147,14 +164,10 @@ function hello() {
     `showOnReady()` helper. Background color set to `#1C1B19` so any
     brief pre-JS exposure matches the design system instead of showing
     white. See `frontend/src/main.jsx` for the call.
-
-### Migration
-
-- Internal: `frontend/src/main.jsx` now calls
-  `showOnReady()` from `@chamber-19/desktop-toolkit/window/showOnReady`
-  after `createRoot().render()`. This is a hard requirement of v2.3.0 —
-  without it the main window stays invisible after launch. Documented
-  in desktop-toolkit `docs/CONSUMING.md` § "Window flash prevention".
+- Internal: `frontend/src/main.jsx` now calls `showOnReady()` from
+  `@chamber-19/desktop-toolkit/window/showOnReady` after `createRoot().render()`.
+  Hard requirement of v2.3.0 — without it the main window stays invisible.
+  Documented in desktop-toolkit `docs/CONSUMING.md` § "Window flash prevention".
 
 ## [6.2.9] — 2026-04-25
 

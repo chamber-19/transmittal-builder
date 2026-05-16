@@ -1,38 +1,5 @@
-# Dependabot configuration
-#
-# Transmittal Builder is a Windows-only Tauri/NSIS app. The glib/rand ignores
-# cover Linux-only GTK transitive dependencies in the Tauri graph that are not
-# compiled into the shipped Windows installer.
 version: 2
 updates:
-  - package-ecosystem: "cargo"
-    directory: "/frontend/src-tauri"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "rust"
-    ignore:
-      - dependency-name: "glib"
-        versions: ["0.x"]
-      - dependency-name: "rand"
-        versions: ["0.7.x"]
-      - dependency-name: "desktop-toolkit"
-        # Toolkit pins are bumped manually alongside npm/Python pins.
-
-  - package-ecosystem: "npm"
-    directory: "/frontend"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "javascript"
-    ignore:
-      - dependency-name: "@chamber-19/desktop-toolkit"
-        # Toolkit pins are paired review PRs.
-
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:

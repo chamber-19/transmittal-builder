@@ -66,21 +66,18 @@ Agent guidance: Any markdown file with linter warnings is treated as technical d
 Format fixes are low-risk and required. Update all `.md` files before merging PRs.
 For new markdown files, validate with editor linter before committing.
 
-## SKILLS and Shared Resources
+## Skills
 
-This repo draws on shared knowledge from [`chamber-19/.github`](https://github.com/chamber-19/.github):
+Org-wide skill files live in [`chamber-19/.github/docs/skills/`](https://github.com/chamber-19/.github/tree/main/docs/skills).
 
-- **SKILLS** — Reusable domain knowledge in `.github/` folder (Tauri, Python, Rust, Markdown, etc.)
-- **`copilot-instructions.md`** — Org-wide baseline for all agents
-- **Hard architectural decisions** — Closed decisions on Tauri, Python, AutoCAD patterns
-- **Family conventions** — Shared practices across all repos
+| Read | When |
+|------|------|
+| `PYTHON.md` | Before any Python / FastAPI / sidecar work |
+| `MARKDOWN.md` | Before editing any `.md` file |
+| `CHANGELOG.md` | Before writing or updating `CHANGELOG.md` |
 
-**When working in this repo:** Always check `.github` repo first for shared context,
-then apply repo-specific rules from this file. Repo-specific rules override org-wide
-rules on conflict.
+**NEVER** consult `RUST.MD` or `TAURI.MD` here — this repo contains no Rust or Tauri code. If you see Cargo or frontend references, they are stale and should be removed.
 
 
 <!-- Added by chamber-19-skill-sync — required skill references for this repo's stack -->
 - Read [`docs/skills/PYTHON.md`](https://github.com/chamber-19/.github/blob/main/docs/skills/PYTHON.md) before any Python work.
-- Read [`docs/skills/RUST.MD`](https://github.com/chamber-19/.github/blob/main/docs/skills/RUST.MD) before any Rust work.
-- Read [`docs/skills/TAURI.MD`](https://github.com/chamber-19/.github/blob/main/docs/skills/TAURI.MD) before any Tauri work.
