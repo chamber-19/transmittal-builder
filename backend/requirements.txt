@@ -1,9 +1,11 @@
 fastapi>=0.136.1
+python-dotenv>=1.0.0
 uvicorn[standard]>=0.46.0
 python-multipart>=0.0.27
 python-docx>=1.2.0
 pandas>=3.0.2  # pandas 3.x requires Python >=3.11
 openpyxl>=3.1.5
-pypdf>=6.10.2,<7
+pypdf>=6.11.0,<7
 docx2pdf>=0.1.8  # Windows: uses Microsoft Word COM automation for .docx→PDF
+google-auth>=2.27.0
 chamber19-desktop-toolkit @ git+https://github.com/chamber-19/desktop-toolkit@v2.3.2#subdirectory=python
