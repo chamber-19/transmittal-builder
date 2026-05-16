@@ -77,3 +77,7 @@ Org-wide skill files live in [`chamber-19/.github/docs/skills/`](https://github.
 | `CHANGELOG.md` | Before writing or updating `CHANGELOG.md` |
 
 **NEVER** consult `RUST.MD` or `TAURI.MD` here — this repo contains no Rust or Tauri code. If you see Cargo or frontend references, they are stale and should be removed.
+
+
+<!-- Added by chamber-19-skill-sync — required skill references for this repo's stack -->
+- Read [`docs/skills/PYTHON.md`](https://github.com/chamber-19/.github/blob/main/docs/skills/PYTHON.md) before any Python work.
