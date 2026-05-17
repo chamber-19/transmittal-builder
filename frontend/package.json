@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@chamber-19/desktop-toolkit": "2.4.1",
     "@react-oauth/google": "^0.12.1",
     "react": "^19.0.0",
     "react-dom": "^19.2.6"
