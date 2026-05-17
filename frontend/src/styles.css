@@ -824,7 +824,7 @@ td input[type="text"]:focus {
 
 .pp-badge--info { background: color-mix(in srgb,var(--info) 10%,transparent); color: var(--info); border-color: color-mix(in srgb,var(--info) 30%,transparent); }
 .pp-badge--ok   { background: color-mix(in srgb,var(--success) 10%,transparent); color: var(--success); border-color: color-mix(in srgb,var(--success) 30%,transparent); }
-.pp-badge--pdf  { background: rgba(147,112,219,0.1); color: #9370DB; border-color: rgba(147,112,219,0.3); }
+.pp-badge--pdf  { background: color-mix(in srgb,var(--warning) 10%,transparent); color: var(--warning); border-color: color-mix(in srgb,var(--warning) 30%,transparent); }
 
 /* ── Folder browser modal ────────────────────────────────────── */
 
@@ -1072,7 +1072,7 @@ td input[type="text"]:focus {
   border: 1px solid;
 }
 
-.tb-chip--pdf { background: rgba(147,112,219,0.1); border-color: rgba(147,112,219,0.3); color: #9370DB; }
+.tb-chip--pdf { background: color-mix(in srgb,var(--warning) 10%,transparent); border-color: color-mix(in srgb,var(--warning) 30%,transparent); color: var(--warning); }
 .tb-chip--xl  { background: color-mix(in srgb,var(--success) 10%,transparent); border-color: color-mix(in srgb,var(--success) 30%,transparent); color: var(--success); }
 .tb-chip--doc { background: color-mix(in srgb,var(--info) 10%,transparent); border-color: color-mix(in srgb,var(--info) 30%,transparent); color: var(--info); }
 
@@ -1099,10 +1099,10 @@ td input[type="text"]:focus {
 }
 
 .tb-toast { border-radius: var(--radius); overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid; }
-.tb-toast--success { background: #162b16; color: #7fd87f; border-color: rgba(107,158,107,0.4); }
-.tb-toast--error   { background: #2e1414; color: #e87070; border-color: rgba(184,92,92,0.4); }
-.tb-toast--loading { background: #221a0e; color: var(--accent); border-color: color-mix(in srgb,var(--accent) 30%,transparent); }
-.tb-toast--info    { background: #111e2e; color: #70a8e8; border-color: rgba(92,142,184,0.4); }
+.tb-toast--success { background: color-mix(in srgb,var(--success) 18%,var(--bg)); color: color-mix(in srgb,var(--success) 70%,white); border-color: color-mix(in srgb,var(--success) 40%,transparent); }
+.tb-toast--error   { background: color-mix(in srgb,var(--error) 18%,var(--bg));   color: color-mix(in srgb,var(--error) 70%,white);   border-color: color-mix(in srgb,var(--error) 40%,transparent); }
+.tb-toast--loading { background: color-mix(in srgb,var(--accent) 18%,var(--bg));  color: var(--accent);                                  border-color: color-mix(in srgb,var(--accent) 30%,transparent); }
+.tb-toast--info    { background: color-mix(in srgb,var(--info) 18%,var(--bg));    color: color-mix(in srgb,var(--info) 70%,white);    border-color: color-mix(in srgb,var(--info) 40%,transparent); }
 
 .tb-toast__body  { display: flex; align-items: center; gap: 10px; padding: 14px 18px; font-size: 13px; font-weight: 500; }
 .tb-toast__icon  { font-size: 15px; flex-shrink: 0; display: flex; }
