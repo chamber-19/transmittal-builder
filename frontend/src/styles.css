@@ -1,9 +1,19 @@
+/*
+ * Root tokens.
+ *
+ * The four base palette tokens (--bg, --surface, --accent, --border) are
+ * aliased to --ch-* equivalents written by ToolkitThemeProvider so a palette
+ * swap or font-mode change in main.jsx flows through automatically. Hex
+ * literals below act as fallbacks for the initial paint (before React mounts
+ * the provider) and for the surface-2/surface-3 ramps the toolkit does not
+ * provide directly.
+ */
 :root {
-  --bg: #1C1B19;
-  --surface: #242320;
+  --bg: var(--ch-bg, #1C1B19);
+  --surface: var(--ch-surface, #242320);
   --surface-2: #2C2B27;
   --surface-3: #333230;
-  --accent: #C4884D;
+  --accent: var(--ch-accent, #C4884D);
   --accent-dim: #A3703E;
   --success: #6B9E6B;
   --warning: #C4A24D;
@@ -12,11 +22,11 @@
   --text: #E8E6E0;
   --text-muted: #9B9890;
   --text-dim: #6B6A68;
-  --border: #3A3936;
-  --border-focus: #C4884D;
-  --font-body: 'DM Sans', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  --font-display: 'Instrument Serif', serif;
+  --border: var(--ch-border, #3A3936);
+  --border-focus: var(--ch-accent, #C4884D);
+  --font-body: var(--ch-font-ui, 'DM Sans'), sans-serif;
+  --font-mono: var(--ch-font-mono, 'JetBrains Mono'), monospace;
+  --font-display: var(--ch-font-display, 'Instrument Serif'), serif;
   --radius: 6px;
   --radius-lg: 10px;
 }
