@@ -2152,3 +2152,26 @@ td input[type="text"]:focus {
   color: var(--warning);
   font-weight: 600;
 }
+
+
+/* -- Utilities (small, single-purpose classes that replace inline style={{}}) -- */
+
+.mono       { font-family: var(--font-mono); }
+.w-full     { width: 100%; }
+.is-hidden  { display: none; }
+.ml-auto    { margin-left: auto; }
+.text-muted { color: var(--text-muted); }
+.text-dim   { color: var(--text-dim); }
+.text-error { color: var(--error); }
+.mb-sm      { margin-bottom: 6px; }
+.mb-md      { margin-bottom: 8px; }
+.mb-lg      { margin-bottom: 10px; }
+.btn--full-center { width: 100%; justify-content: center; }
+.btn--xs    { padding: 2px 6px; }
+.btn--xs-clean { padding: 3px 7px; }
+.text-12        { font-size: 12px; }
+.text-13        { font-size: 13px; }
+.row-c-4        { display: flex; gap: 4px; align-items: center; }
+.row-auto-4     { margin-left: auto; display: flex; gap: 4px; }
+.input--mono    { width: 100%; font-family: var(--font-mono); }
+.tb-address-card { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); }

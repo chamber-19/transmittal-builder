@@ -177,11 +177,11 @@ function Sidebar({ draft, checks, contacts, documents, pdfFiles, indexFile, proj
 
       {/* Package Summary */}
       <div className="card">
-        <div className="field__label" style={{ marginBottom: 10 }}>Package Summary</div>
+        <div className="field__label mb-lg">Package Summary</div>
         <div className="stack stack--8">
           {rows.map(x => (
             <div key={x.l} className="tb-summary-row">
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{x.l}</span>
+              <span className="text-12 text-muted">{x.l}</span>
               <span className={`tb-badge tb-badge--fixed${x.ok ? ' tb-badge--ok' : x.err ? ' tb-badge--error' : ' tb-badge--dim'}`}>
                 {String(x.v)}
               </span>
@@ -200,7 +200,7 @@ function Sidebar({ draft, checks, contacts, documents, pdfFiles, indexFile, proj
         <button
           type="button"
           className="btn btn--primary btn--lg"
-          style={{ width: '100%', justifyContent: 'center' }}
+          className="btn--full-center"
           disabled={!canGenerate}
           onClick={onGenerate}
         >
@@ -511,11 +511,11 @@ export default function TransmittalForm({ project, onBack }) {
               <div className="grid-4">
                 <div className="field">
                   <label className="field__label field__label--required">Job Number</label>
-                  <input type="text" value={draft.job_num} onChange={e => setField('job_num', e.target.value)} placeholder="XXXX" style={{ fontFamily: 'var(--font-mono)' }} />
+                  <input type="text" value={draft.job_num} onChange={e => setField('job_num', e.target.value)} placeholder="XXXX" className="mono" />
                 </div>
                 <div className="field">
                   <label className="field__label field__label--required">Transmittal No.</label>
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <div className="row-c-4">
                     <input type="text" value={draft.transmittal_num} onChange={e => setField('transmittal_num', e.target.value)} placeholder="001" style={{ fontFamily: 'var(--font-mono)', flex: 1, minWidth: 0 }} />
                     {nextXmtlNum && draft.transmittal_num !== nextXmtlNum && (
                       <button type="button" className="tb-next-btn" onClick={handleNextXmtl} title={`Jump to next: ${nextXmtlNum}`}>Next: {nextXmtlNum}</button>
@@ -534,7 +534,7 @@ export default function TransmittalForm({ project, onBack }) {
                 </div>
                 <div className="field">
                   <label className="field__label field__label--required">Date</label>
-                  <input type="text" value={draft.date} onChange={e => setField('date', e.target.value)} placeholder="MM/DD/YYYY" style={{ fontFamily: 'var(--font-mono)' }} />
+                  <input type="text" value={draft.date} onChange={e => setField('date', e.target.value)} placeholder="MM/DD/YYYY" className="mono" />
                 </div>
               </div>
               <div className="grid-2">
@@ -575,7 +575,7 @@ export default function TransmittalForm({ project, onBack }) {
                 </div>
                 <div className="field">
                   <label className="field__label">Firm Registration</label>
-                  <input type="text" value={draft.firm} onChange={e => setField('firm', e.target.value)} placeholder="TX FIRM #XXXXX" style={{ fontFamily: 'var(--font-mono)' }} />
+                  <input type="text" value={draft.firm} onChange={e => setField('firm', e.target.value)} placeholder="TX FIRM #XXXXX" className="mono" />
                 </div>
               </div>
             </div>
@@ -593,7 +593,7 @@ export default function TransmittalForm({ project, onBack }) {
                     { label: 'Vendor Response', keys: [['vr_approved','Approved'],['vr_approved_noted','Approved as Noted'],['vr_rejected','Rejected']] },
                   ].map(g => (
                     <div key={g.label}>
-                      <div className="field__label" style={{ marginBottom: 6 }}>{g.label}</div>
+                      <div className="field__label mb-sm">{g.label}</div>
                       <div className="check-group">
                         {g.keys.map(([k, l]) => (
                           <label key={k} className={`check-pill${checks[k] ? ' check-pill--active' : ''}`}>
@@ -605,7 +605,7 @@ export default function TransmittalForm({ project, onBack }) {
                   ))}
                 </div>
                 <div>
-                  <div className="field__label" style={{ marginBottom: 6 }}>Transmittal Type / Intent</div>
+                  <div className="field__label mb-sm">Transmittal Type / Intent</div>
                   <div className="check-group">
                     {[
                       ['ci_approval','For Approval'], ['ci_const','For Construction'], ['ci_preliminary','For Preliminary'],
@@ -638,21 +638,21 @@ export default function TransmittalForm({ project, onBack }) {
             </div>
 
             {showBook && (
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
-                <div className="field__label" style={{ marginBottom: 8 }}>Address Book</div>
+              <div className="tb-address-card">
+                <div className="field__label mb-md">Address Book</div>
                 {addressBookLoading ? (
-                  <div style={{ fontSize: 12, color: 'var(--text-dim)' }}><Spin /> Loading…</div>
+                  <div className="text-12 text-dim"><Spin /> Loading…</div>
                 ) : addressBook.length === 0 ? (
-                  <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic' }}>No saved companies. Add contacts and click Save.</div>
+                  <div className="text-12 text-dim" style={{ fontStyle: 'italic' }}>No saved companies. Add contacts and click Save.</div>
                 ) : (
                   <div className="stack stack--6">
                     {addressBook.map(group => (
                       <div key={group.id} className="tb-list-row">
-                        <span style={{ fontSize: 13 }}>{group.company_name}</span>
+                        <span className="text-13">{group.company_name}</span>
                         <span className="tb-badge tb-badge--dim">{group.contacts.length}</span>
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                        <div className="row-auto-4">
                           <button type="button" className="btn btn--ghost btn--sm" onClick={() => loadGroup(group)}>Import</button>
-                          <button type="button" className="btn btn--danger btn--sm" style={{ padding: '3px 7px' }} onClick={() => deleteGroup(group.id, group.company_name)}><Trash /></button>
+                          <button type="button" className="btn btn--danger btn--sm btn--xs-clean" onClick={() => deleteGroup(group.id, group.company_name)}><Trash /></button>
                         </div>
                       </div>
                     ))}
@@ -680,11 +680,11 @@ export default function TransmittalForm({ project, onBack }) {
                   <tbody>
                     {contacts.map(c => (
                       <tr key={c.id}>
-                        <td><input type="text" value={c.name} onChange={e => updateContact(c.id, 'name', e.target.value)} placeholder="Name" style={{ width: '100%' }} /></td>
-                        <td><input type="text" value={c.company} onChange={e => updateContact(c.id, 'company', e.target.value)} placeholder="Company" style={{ width: '100%' }} /></td>
-                        <td><input type="email" value={c.email} onChange={e => updateContact(c.id, 'email', e.target.value)} placeholder="email@example.com" style={{ width: '100%' }} /></td>
-                        <td><input type="tel" value={c.phone} onChange={e => updateContact(c.id, 'phone', e.target.value)} placeholder="Phone" style={{ width: '100%' }} /></td>
-                        <td><button type="button" className="btn btn--danger btn--sm" style={{ padding: '2px 6px' }} onClick={() => removeContact(c.id)}>×</button></td>
+                        <td><input type="text" value={c.name} onChange={e => updateContact(c.id, 'name', e.target.value)} placeholder="Name" className="w-full" /></td>
+                        <td><input type="text" value={c.company} onChange={e => updateContact(c.id, 'company', e.target.value)} placeholder="Company" className="w-full" /></td>
+                        <td><input type="email" value={c.email} onChange={e => updateContact(c.id, 'email', e.target.value)} placeholder="email@example.com" className="w-full" /></td>
+                        <td><input type="tel" value={c.phone} onChange={e => updateContact(c.id, 'phone', e.target.value)} placeholder="Phone" className="w-full" /></td>
+                        <td><button type="button" className="btn btn--danger btn--sm btn--xs" onClick={() => removeContact(c.id)}>×</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -698,7 +698,7 @@ export default function TransmittalForm({ project, onBack }) {
             <div className="section__header">
               <h3>Documents</h3>
               <div className="row row--8">
-                {hasAnything && <button type="button" className="btn btn--ghost btn--sm" style={{ color: 'var(--error)' }} onClick={clearAll}><Trash /> Clear All</button>}
+                {hasAnything && <button type="button" className="btn btn--ghost btn--sm" className="text-error" onClick={clearAll}><Trash /> Clear All</button>}
                 <button type="button" className="btn btn--ghost btn--sm" onClick={addDoc}><Plus /> Add Row</button>
               </div>
             </div>
@@ -710,7 +710,7 @@ export default function TransmittalForm({ project, onBack }) {
                 onDrop={e => { prevent(e); setOver(false); onFileDrop([...e.dataTransfer.files]) }}
                 onClick={() => inputRef.current?.click()}
               >
-                <input ref={inputRef} type="file" multiple accept=".pdf,.xlsx,.xls" style={{ display: 'none' }}
+                <input ref={inputRef} type="file" multiple accept=".pdf,.xlsx,.xls" className="is-hidden"
                   onChange={e => { onFileDrop([...e.target.files]); e.target.value = '' }} />
                 <div className="tb-dropzone__icon">{indexLoading ? <Spin /> : <Upload />}</div>
                 <div className="tb-dropzone__text">{indexLoading ? 'Reading drawing index…' : 'Click to browse or drag and drop files here'}</div>
@@ -762,10 +762,10 @@ export default function TransmittalForm({ project, onBack }) {
                     <tbody>
                       {documents.map(d => (
                         <tr key={d.id}>
-                          <td><input type="text" value={d.doc_no} onChange={e => updateDoc(d.id, 'doc_no', e.target.value)} placeholder="E0-001" style={{ width: '100%', fontFamily: 'var(--font-mono)' }} /></td>
-                          <td><input type="text" value={d.desc} onChange={e => updateDoc(d.id, 'desc', e.target.value)} placeholder="Description" style={{ width: '100%' }} /></td>
+                          <td><input type="text" value={d.doc_no} onChange={e => updateDoc(d.id, 'doc_no', e.target.value)} placeholder="E0-001" className="input--mono" /></td>
+                          <td><input type="text" value={d.desc} onChange={e => updateDoc(d.id, 'desc', e.target.value)} placeholder="Description" className="w-full" /></td>
                           <td><input type="text" value={d.rev} onChange={e => updateDoc(d.id, 'rev', e.target.value)} placeholder="—" style={{ width: '100%', fontFamily: 'var(--font-mono)', color: 'var(--accent)' }} /></td>
-                          <td><button type="button" className="btn btn--ghost btn--sm" style={{ padding: '2px 5px', color: 'var(--text-dim)' }} onClick={() => removeDoc(d.id)}>×</button></td>
+                          <td><button type="button" className="btn btn--ghost btn--sm btn--xs text-dim" onClick={() => removeDoc(d.id)}>×</button></td>
                         </tr>
                       ))}
                     </tbody>
@@ -779,8 +779,8 @@ export default function TransmittalForm({ project, onBack }) {
           {result && (
             <div className="notice notice--success stack stack--8">
               <div><strong>{result.folder}</strong> created successfully.</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, wordBreak: 'break-all' }}>{result.path}</div>
-              <div style={{ fontSize: 12 }}>
+              <div className="mono text-12" style={{ wordBreak: 'break-all' }}>{result.path}</div>
+              <div className="text-12">
                 {result.files.length} file{result.files.length !== 1 ? 's' : ''} written · next XMTL: <strong>{result.nextNum}</strong>
                 {result.zipName && <> · <strong>{result.zipName}</strong> downloaded for email</>}
               </div>
