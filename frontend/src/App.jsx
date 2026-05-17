@@ -5,7 +5,6 @@ import ProjectPicker from './components/ProjectPicker.jsx'
 import TransmittalForm from './components/TransmittalForm.jsx'
 import HelpDrawer from './components/HelpDrawer.jsx'
 import ProfileSetupModal from './components/ProfileSetupModal.jsx'
-import SplashScreen from './components/SplashScreen.jsx'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -13,7 +12,6 @@ export default function App() {
   const [project, setProject] = useState(null)
   const [checking, setChecking] = useState(true)
   const [showProfileSetup, setShowProfileSetup] = useState(false)
-  const [showSplash, setShowSplash] = useState(true)
 
   useEffect(() => {
     const token = sessionStorage.getItem('auth_token')
@@ -58,8 +56,6 @@ export default function App() {
     setProject(null)
     setView('projects')
   }, [])
-
-  if (showSplash) return <SplashScreen onDone={() => setShowSplash(false)} />
 
   if (checking) return null
 
