@@ -7,5 +7,5 @@ pandas>=3.0.3  # pandas 3.x requires Python >=3.11
 openpyxl>=3.1.5
 pypdf>=6.11.0,<7
 docx2pdf>=0.1.8  # Windows: uses Microsoft Word COM automation for .docx→PDF
-google-auth>=2.27.0
+google-auth>=2.53.0
 chamber19-desktop-toolkit @ git+https://github.com/chamber-19/desktop-toolkit@v2.4.0#subdirectory=python
