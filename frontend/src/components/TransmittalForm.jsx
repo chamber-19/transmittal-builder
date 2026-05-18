@@ -698,7 +698,7 @@ export default function TransmittalForm({ project, onBack }) {
             <div className="section__header">
               <h3>Documents</h3>
               <div className="row row--8">
-                {hasAnything && <button type="button" className="btn btn--ghost btn--sm" className="text-error" onClick={clearAll}><Trash /> Clear All</button>}
+                {hasAnything && <button type="button" className="btn btn--ghost btn--sm text-error" onClick={clearAll}><Trash /> Clear All</button>}
                 <button type="button" className="btn btn--ghost btn--sm" onClick={addDoc}><Plus /> Add Row</button>
               </div>
             </div>
